@@ -1,0 +1,21 @@
+{
+  "name": "@assayops/contracts",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@assayops/biome-config": "workspace:*",
+    "@assayops/typescript-config": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^6.0.3"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

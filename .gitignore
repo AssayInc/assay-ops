@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Turbo
+.turbo
+
+# Build outputs
+dist
+.output
+
+# Testing / coverage
+coverage
+
+# Python (UV)
+.venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Tooling state
+.gstack/
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*

@@ -1,0 +1,24 @@
+[project]
+name = "assayops-contracts"
+version = "0.0.0"
+description = "AssayOps contract models (Pydantic v2). E0-1 shell; E1 generates the models from contracts/schemas."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
