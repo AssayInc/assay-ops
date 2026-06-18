@@ -231,7 +231,8 @@ eval = **S3 / private HF Dataset**; task specs + published results = **Git**; an
 "auth" = **AWS IAM + KMS + an env-server bearer token**. A DB/auth appears **only at Phase-2
 productization**, scoped to where it's needed: default to **submission-by-PR** (Git = store +
 identity + audit, SWE-bench pattern); if richer UX is wanted, **Drizzle + plain Postgres** + **GitHub
-OAuth (Auth.js)** — *not* Convex/Supabase-platform/Clerk. **We do NOT open-source the leaderboard or
+OAuth (Auth.js)** — *not* Convex/Supabase-platform/Clerk/BetterAuth (WorkOS only if a lab later
+requires SAML/SSO). **We do NOT open-source the leaderboard or
 the site.** The RL-env companies open their **harness / environment / verifier framework** to drive
 adoption — copying their "open" would mean **open-sourcing the moat**. The **only** genuinely-public
 artifact is the **result/submission schema** (`@assayops/contracts`), plus *optionally and later* a
@@ -245,27 +246,29 @@ tamper-evident-ledger trust model that *is* the product. *[impl, founder Q 2026-
 
 **[locked — eng-arch §Threat model; 15th promoted per impl-plan §13 review C1]**
 
-This 15-row table is the **canonical Phase-1 exit bar** and is kept **verbatim-identical with issue
-#56 (E10-1)**, which owns the red-team fixtures (`tools/red-team`). It is the 14 eng-arch vectors
-**+ read-side state-read spoofing** (the moat-defeating 15th, promoted out of spike #63). **Any
-change is made in #56 in a `fixture-change` PR and mirrored here** — do not edit it casually.
+This 15-row table is the **canonical Phase-1 exit bar**. Its **`Attack vector` column is kept
+verbatim-identical with issue #56 (E10-1)**'s 15-vector list (#56 owns the red-team fixtures in
+`tools/red-team`); the *Defense* and *Source* columns are annotations carried from the
+eng-architecture plan. It is the 14 eng-arch vectors **+ read-side state-read spoofing** (the
+moat-defeating 15th, promoted out of spike #63). **Any change to the vectors is made in #56 in a
+`fixture-change` PR and mirrored here** — do not edit it casually.
 
 | #  | Attack vector | Defense | Source |
 |----|---------------|---------|--------|
 | 1  | fs write to grader path | 1C separate account/FS | review |
 | 2  | conftest/env-var injection | verifier diffs out-of-band, never runs agent test code | review |
 | 3  | monkey-patch evaluator / fake exit codes | 1C out-of-process in B; T1 reads deployed state | review |
-| 4  | **CDK-synth escape** | T1: verifier never synths; synth runs A-side disposable | **Codex** |
-| 5  | **terraform provider-plugin abuse** | T1: verifier reads deployed state, not agent's plan | **Codex** |
+| 4  | CDK-synth escape | T1: verifier never synths; synth runs A-side disposable | **Codex** |
+| 5  | terraform provider-plugin abuse | T1: verifier reads deployed state, not agent's plan | **Codex** |
 | 6  | network MITM on reward | 4B no in-band reward; no agent net path to B | review |
 | 7  | state-file edit ("looks clean") | 2A verifier regenerates golden + reads B-side state | review |
 | 8  | timer manipulation | verifier clock in B | review |
 | 9  | reward-record forgery/overwrite | 4B KMS-sign + WORM; zero agent creds to B | review |
 | 10 | cross-account assume-role (A→B) | 1C no A→B trust | review |
-| 11 | **IAM escalation in account A** | SCP guardrails (T7) | **Codex** |
-| 12 | **network egress / data exfil** | Daytona net-block + SCP egress controls | **Codex** |
-| 13 | **cost-bomb / quota / region-span** | SCP + budget caps + region limits (T7) — **critical gap today** | **Codex** |
-| 14 | **benchmark / eval leakage** | OOD held-out + private eval + contamination check (T2) | **Codex** |
+| 11 | IAM escalation in account A | SCP guardrails (T7) | **Codex** |
+| 12 | network egress / data exfil | Daytona net-block + SCP egress controls | **Codex** |
+| 13 | cost-bomb / quota / region-span | SCP + budget caps + region limits (T7) — **critical gap today** | **Codex** |
+| 14 | benchmark / eval leakage | OOD held-out + private eval + contamination check (T2) | **Codex** |
 | 15 | **read-side state-read spoofing** — crafted IaC that fools the verifier's *read* of deployed state into a false "in-sync" (the moat-defeating 15th; promoted from spike #63 per review C1). KMS/WORM protect the **write** path; this protects the **read** path. | verifier read-path hardening: golden regenerated independently (2A) + deployed-state read coverage; the E10 read-path test set | **review C1** |
 
 > **R1 kill-criterion [locked — proof-first §Risks; impl-plan §10]:** the red-team suite (T10/E10)
@@ -348,9 +351,10 @@ appears to require breaking one, stop and flag it — don't code around it.**
 - [ ] **Any lift claim must clear the §6 eval rigor** (OOD slice, ≥3 seeds, clustered SEs,
       contamination + verifier-determinism checks, pre-registered +8–10 pt threshold). **[T2, T11]**
 - [ ] **Gold trajectories + held-out eval live in a private data store, never committed to any code
-      repo** (contamination control + moat). **[I11, I5]**
+      repo** (contamination control + moat). **[I11]**
 - [ ] **Benchmark is private-now, publish-gated (D1=C); never open-source the
-      harness/verifier/corpus/site.** The only public artifact is `@assayops/contracts`. **[I11, roadmap]**
+      harness/verifier/corpus/site.** The only public artifact is `@assayops/contracts` (plus,
+      optionally and later, a small public sample task split). **[I11, roadmap]**
 - [ ] **Don't re-litigate a decision in this file.** It's settled — **flag, don't silently deviate.**
       For the deeper *why* beyond this floor, query the `assay-brain` skill (#73).
 
