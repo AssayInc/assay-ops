@@ -22,7 +22,7 @@ The split is polyglot by design ([I1, I2](../DECISIONS.md#4-implementation-decis
   not a locked decision — swap freely.)*
 - **One gate:** `bun run verify` → `turbo run typecheck lint test` across **both** lanes.
 - **Setup:** `bun install && uv sync` (or `bun run setup`). Lockfiles `bun.lock` + `uv.lock` are
-  committed. Generated contract artifacts (TS + Pydantic) are committed too, so neither lane needs
+  committed. Generated contract artifacts (TS + Pydantic) will be committed in E1, so neither lane needs
   the other's toolchain to build ([I2, I3](../DECISIONS.md#4-implementation-decisions-i1i11)).
 
 ## Repository layout (target map; status per item)
@@ -125,7 +125,9 @@ identical reward. The headline proof is a lift on an OOD slice — eval rigor is
   whose `typecheck`/`lint`/`test` scripts call `uv run` — that wrapper is what lets the one Turbo
   graph drive the Python lane (I2). Add it to nothing else; `[tool.uv.workspace]` + the
   `py/packages/*` glob pick it up.
-- **The gate is `bun run verify`.** Every package wires `typecheck`/`lint`/`test`; CI (E0-2) runs
+- **The gate is `bun run verify`.** Every *source* package wires `typecheck`/`lint`/`test` (the
+  config-only packages — `typescript-config`, `biome-config` — export config and have no gate tasks);
+  CI (E0-2) runs
   the same gate.
 - **Locked fixtures:** `contracts/vectors` (#28) and `tools/red-team` (#56) change **only** in
   `fixture-change` PRs — see [`DECISIONS.md` §8](../DECISIONS.md#8-agent-non-negotiables-checklist).
