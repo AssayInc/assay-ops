@@ -34,8 +34,9 @@ assay-ops/
 ├─ DECISIONS.md ............... ✅ the frozen floor — why/rules, the trust model, the 15-vector bar
 ├─ docs/ARCHITECTURE.md ....... ✅ this file — how/where
 ├─ package.json turbo.json .... ✅ root TS tooling: Bun workspaces + the `verify` task graph
-├─ biome.json tsconfig.json ... ✅ root lint/format + tsconfig
+├─ biome.json ................. ✅ root Biome lint/format config
 ├─ pyproject.toml ............. ✅ UV workspace ([tool.uv.workspace]) + dev tools (ruff/mypy/pytest)
+├─ .python-version ........... ✅ pins the Python interpreter (3.12) for uv + CI
 ├─ bun.lock uv.lock ........... ✅ committed lockfiles (both lanes)
 │
 ├─ contracts/ ................. ◻ E1 — THE SPINE: JSON Schema (Draft 2020-12) source of truth [5A/I3]
@@ -71,6 +72,17 @@ assay-ops/
 ├─ tools/red-team/ ........... ◻ E10 the 15-vector attack suite — fixture-change only (#56) [T10]
 └─ .github/workflows/ci.yml .. ◻ E0-2 two independent cache-keyed lanes (turbo / uv)
 ```
+
+> **Layout note — why `ts/` + `py/` instead of the conventional `apps/` + `packages/`.**
+> Turborepo *recommends* starting with `apps/` (services) + `packages/` (everything else), but that
+> is a convention, not a requirement — packages are discovered by workspace globs, and the docs
+> [explicitly support grouping packages by directory](https://turborepo.dev/docs/crafting-your-repository/structuring-a-repository#declaring-directories-for-packages)
+> with single-level globs. We deliberately split by **language** at the top level because the two
+> lanes have **separate workspace managers** (Bun owns `ts/`, UV owns `py/`) and separate toolchains
+> (Biome → `ts/**`; ruff/mypy → `py/**`); a clean `ts/**` vs `py/**` boundary keeps each manager's
+> globs and each linter's scope unambiguous. The app-vs-library role split is preserved *under* `ts/`
+> (`ts/apps/*`, `ts/packages/*`). We honor the docs' two caveats: only single-level globs
+> (`ts/packages/*`, never `**`), and no `package.json` at the grouping dirs (`ts/`, `ts/packages/`).
 
 The AI-operating layer (`CLAUDE.md`/`AGENTS.md`, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`)
 and the `assay-brain` skill arrive in **E0-6 (#18)** and **E0-7 (#73)**.
