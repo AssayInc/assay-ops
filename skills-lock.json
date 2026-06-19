@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "assay-brain": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "assay-brain/SKILL.md",
+      "computedHash": "7cae0ff586bf1a067595d95eda0caa3164162e4403e4531978dc8bd93d60ccca"
+    },
     "bun": {
       "source": "bun.sh",
       "sourceType": "well-known",
