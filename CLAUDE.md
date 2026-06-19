@@ -18,25 +18,20 @@ for Infrastructure-as-Code agents; the moat is a grader the agent being trained 
   (E0-7, #73) — it queries the brain (wiki / `raw/plans/` / articles / `VISION.md`) and answers with
   citations, degrading gracefully when the sibling isn't checked out. `DECISIONS.md` is the always-on
   floor; `assay-brain` is the rest of the iceberg.
-- **Cleno is a template, not a clone** ([`DECISIONS.md` I9](./DECISIONS.md#4-implementation-decisions-i1i11)).
-  AssayOps lifted Cleno's TS tooling skeleton and this AI-operating layer — never its fiscal domain, and
-  never a bulk copy of its skills (the skill layer is prefer-official; see **Skill layer**). Don't "sync
-  from Cleno"; port a specific convention deliberately if a need arises.
 
 ## Architecture
 
 - **Where things live:** [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — the package map
   (`ts/packages/*`, `py/packages/*`, the `contracts/` spine) and how a graded episode flows
-  (env-server → verifier → reward ledger → trainer). It points back to `DECISIONS.md` for the *why*;
-  the trust model is **not** duplicated across the two.
+  (env-server → verifier → reward ledger → trainer); the trust model is **not** duplicated here.
 - **The moat in one line:** the verifier runs in a **separate AWS account (B)** to which the agent has
   **zero credentials and zero network path**; it grades **deployed resource state read-only** against an
   independently regenerated golden, and **never runs the agent's `cdk synth` / `terraform plan`** (or any
   agent code) — so reward is execution-grounded and can't be forged. The full *why* is
   [`DECISIONS.md` §1](./DECISIONS.md#1-trust-model-the-moat-in-one-diagram--the-rule-that-defines-the-product).
-- **Polyglot by design** ([I1/I2](./DECISIONS.md#4-implementation-decisions-i1i11)): **TypeScript** for
-  the IP, **Python** for the trainer/eval, joined by one codegen'd contract schema (5A/I3) — the
-  generated types are the single source of truth, never hand-maintained on both sides.
+- **Polyglot by design:** **TypeScript** for the IP, **Python** for the trainer/eval, joined by one
+  codegen'd contract schema — the generated types are the single source of truth, never hand-maintained
+  on both sides.
 
 ## Commands
 
@@ -66,12 +61,10 @@ How agents and engineers work here, session after session.
 specific **`#N`**). There is **no paste-able HANDOFF prompt** — it would duplicate this auto-loaded
 constitution (a DRY violation), and there is **no `HANDOFF.md`**. On the trigger:
 
-- `gh`-query for the next **open, unblocked** issue. Work is tracked in **GitHub Issues + Projects v2**
-  ([I4](./DECISIONS.md#4-implementation-decisions-i1i11)); an issue is **ready** when it is open and every
-  issue it is **blocked-by** is closed — the dependency graph makes "ready" computable. Prefer
-  `prio:P1` and the current phase (e.g. `gh issue list --state open --label prio:P1`, then check the
-  blocked-by graph), respecting the locked epic/task mapping in
-  [`DECISIONS.md` §3](./DECISIONS.md#3-locked-tasks-t1t13--epic-mapping).
+- `gh`-query for the next **open, unblocked** issue. Work is tracked in **GitHub Issues + Projects v2**;
+  an issue is **ready** when it is open and every issue it is **blocked-by** is closed — the dependency
+  graph makes "ready" computable. Prefer `prio:P1` and the current phase (e.g.
+  `gh issue list --state open --label prio:P1`, then check the blocked-by graph).
 - Or take the **`#N`** the human named.
 
 **Task loop**
@@ -129,7 +122,7 @@ quality/readability/maintainability/testability are non-negotiable.**
   refactors. Every changed line traces directly to the issue.
 - **DRY — one source of truth per fact.** Types ← the **contract schema** (codegen, never dual
   hand-maintained types); rules/decisions ← **`DECISIONS.md`**; scope ← **the issue**. Don't restate the
-  trust model here or in `docs/ARCHITECTURE.md` — point to `DECISIONS.md`.
+  trust model here or in `docs/ARCHITECTURE.md` — point there.
 - **KISS / YAGNI.** Minimum code that solves the problem. "Would a senior engineer call this
   overcomplicated?" → simplify.
 - **Evidence, not assertion.** "Done" = a pasted **green `bun run verify`**, never a claim. Always
@@ -196,7 +189,7 @@ The verifiable loop's external truth is **`bun run verify`**, run by CI on every
     approved fixture changes are recorded in the owning `fixture-change` PR, never slipped in to make a
     test pass.
   - **Gold trajectories + held-out eval are private, never committed** to any code repo (contamination
-    control + the moat) ([`DECISIONS.md` I11](./DECISIONS.md#4-implementation-decisions-i1i11)).
+    control + the moat).
 
 ## Verification Checklist
 
@@ -209,10 +202,9 @@ Before completing any task:
 ## Toolchain (polyglot: Bun + UV, one Turbo graph)
 
 **Bun + Turborepo** own the TS lane (`ts/**`); **UV** owns the Python lane (`py/**`); **Turborepo
-orchestrates both** via thin `package.json` wrappers on the Python packages
-([I2](./DECISIONS.md#4-implementation-decisions-i1i11)). Don't reach for Nx/Bazel/Pants, npm/yarn/pnpm,
-or pip/poetry. **Pin everything** — `oven/bun:1.3.x`, `uv`, `openenv[core]`, model revisions by hash
-([I8](./DECISIONS.md#4-implementation-decisions-i1i11)).
+orchestrates both** via thin `package.json` wrappers on the Python packages. Don't reach for
+Nx/Bazel/Pants, npm/yarn/pnpm, or pip/poetry. **Pin everything** — `oven/bun:1.3.x`, `uv`,
+`openenv[core]`, model revisions by hash.
 
 **TS lane (Bun).**
 
@@ -280,8 +272,8 @@ Available skills (listed here because non-Claude agents read this file via `AGEN
 Beyond gstack (the per-developer workflow layer above), the repo's committed agent skills are managed via
 **skills.sh + a committed `skills-lock.json`** — sources are declared once and synced into
 `.agents/skills/`, symlinked into `.claude/skills/` (set up in **E0-10, #85**). **Prefer official /
-upstream skills**; author homegrown skills only for AssayOps-specific gaps, and **never bulk-copy Cleno's
-skills**.
+upstream skills**; author homegrown skills only for AssayOps-specific gaps — never bulk-copy a template's
+skills.
 
 - **Official packs** (assay-ops's lock): `aws/agent-toolkit-for-aws` (the verifier reads AWS deployed
   state), `hashicorp/agent-skills` (the Terraform adapter), `meta-pytorch/openenv` (env-server
@@ -310,7 +302,7 @@ Vercel/deploy routing live in **`assay-web`**, not here.)
 ## Skill preflight (fast-moving / pinned APIs)
 
 Before writing code against these, load the skill/official docs **first** and follow them — never rely on
-cached API knowledge (they are pinned, pre-1.0, or fast-moving — [I6/I8](./DECISIONS.md#4-implementation-decisions-i1i11)).
+cached API knowledge (they are pinned, pre-1.0, or fast-moving).
 
 | Domain | Skill | Where |
 |--------|-------|-------|
