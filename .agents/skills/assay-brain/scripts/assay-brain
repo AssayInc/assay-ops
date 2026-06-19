@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# assay-brain — locate and query the Assay brain (wiki + raw sources) from any repo.
+#
+# The Assay brain is a separate repo (https://github.com/AssayInc/brain): an
+# LLM-maintained Obsidian wiki (wiki/) plus raw research sources (raw/).
+# Everything Assay-stable is baked in here — only the brain's absolute path is
+# machine-specific, so we resolve it at runtime. Nothing here needs a populated
+# .env; the qmd collection and filesystem both work with zero config.
+#
+# Usage (run via this skill's bundled path, or as `assay-brain` after install.sh):
+#   assay-brain path                 # print the resolved brain directory
+#   assay-brain doctor               # diagnose brain path, qmd, collection, page count
+#   assay-brain search <terms...>    # lexical search (names, codes, file paths) -> ranked pages
+#   assay-brain ask <question...>    # hybrid lex+vec search (concepts) -> ranked pages
+#   assay-brain map [term]           # compact catalog TOC (section headers); 'map <term>' filters it
+#   assay-brain hot                  # print wiki/hot.md (what changed most recently)
+#   assay-brain env                  # print `export` lines (eval before delegating to wiki-query)
+#   assay-brain setup                # write ~/.obsidian-wiki/config so generic wiki-* skills resolve the brain too
+#
+# Env overrides:
+#   ASSAY_BRAIN_PATH        preferred brain dir; checked first, warns + falls back if it lacks wiki/index.md
+#   ASSAY_BRAIN_COLLECTION  qmd wiki collection (default: assay-brain-wiki)
+#   ASSAY_BRAIN_PAPERS      qmd papers/raw collection (default: assay-brain-papers)
+#   ASSAY_BRAIN_N           number of results (default: 8)
+#   QMD_CLI                 qmd binary (default: qmd)
+
+set -eu
+
+CLONE_URL="https://github.com/AssayInc/brain"
+COLL="${ASSAY_BRAIN_COLLECTION:-assay-brain-wiki}"
+PAPERS="${ASSAY_BRAIN_PAPERS:-assay-brain-papers}"
+N="${ASSAY_BRAIN_N:-8}"
+QMD="${QMD_CLI:-qmd}"
+
+# A directory is the brain if it contains the compiled wiki catalog.
+_is_brain() { [ -f "$1/wiki/index.md" ]; }
+
+# Resolve to an absolute path without requiring realpath.
+_abspath() { (cd "$1" 2>/dev/null && pwd); }
+
+resolve_brain() {
+  # 1) Explicit override (checked first; warns + falls back if invalid).
+  if [ -n "${ASSAY_BRAIN_PATH:-}" ]; then
+    if _is_brain "$ASSAY_BRAIN_PATH"; then _abspath "$ASSAY_BRAIN_PATH"; return 0; fi
+    echo "assay-brain: ASSAY_BRAIN_PATH=$ASSAY_BRAIN_PATH has no wiki/index.md; falling back to auto-resolution" >&2
+  fi
+  # 2) Sibling of the current git repo (the documented topology: ../brain).
+  local root
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$root" ]; then
+    if _is_brain "$root/../brain"; then _abspath "$root/../brain"; return 0; fi
+    if _is_brain "$root"; then _abspath "$root"; return 0; fi   # we're inside the brain itself
+  fi
+  # 3) Sibling of the current directory, or the cwd itself.
+  if _is_brain "$PWD/../brain"; then _abspath "$PWD/../brain"; return 0; fi
+  if _is_brain "$PWD"; then _abspath "$PWD"; return 0; fi
+  # 4) Well-known checkout location.
+  if _is_brain "$HOME/Projects/Assay/brain"; then echo "$HOME/Projects/Assay/brain"; return 0; fi
+  return 1
+}
+
+_no_brain() {
+  cat >&2 <<EOF
+assay-brain: could not locate the Assay brain.
+
+Looked for a sibling 'brain/' checkout (wiki/index.md) next to this repo.
+Fix it one of these ways:
+  • Clone it beside your repo:   git clone $CLONE_URL ../brain
+  • Point at an existing copy:   export ASSAY_BRAIN_PATH=/abs/path/to/brain
+EOF
+}
+
+has_qmd() { command -v "$QMD" >/dev/null 2>&1; }
+has_collection() { has_qmd && "$QMD" ls 2>/dev/null | grep -q "qmd://$COLL/"; }
+
+# Grep fallback (only when qmd or the collection is unavailable). Literal OR-match
+# over the search words — fixed-string (-F) so regex metacharacters in a query
+# (. [ ( * | etc.) can't misfire or error.
+_grep_fallback() {
+  local brain="$1"; shift
+  echo "# qmd '$COLL' unavailable — grep fallback over $brain/wiki" >&2
+  local args=() t
+  for t in "$@"; do [ -n "$t" ] && args+=(-e "$t"); done
+  [ "${#args[@]}" -gt 0 ] || return 0
+  grep -rinIF "${args[@]}" --include='*.md' "$brain/wiki" 2>/dev/null | head -n 40 || true
+}
+
+cmd_search() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  if has_collection; then
+    "$QMD" search "$*" -c "$COLL" -n "$N" --files
+  else
+    _grep_fallback "$brain" "$@"
+  fi
+}
+
+cmd_ask() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  if has_collection; then
+    "$QMD" query "$(printf 'lex: %s\nvec: %s' "$*" "$*")" -c "$COLL" -n "$N" --files
+  else
+    _grep_fallback "$brain" "$@"
+  fi
+}
+
+cmd_map() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  local idx="$brain/wiki/index.md"
+  if [ "$#" -gt 0 ]; then
+    grep -inIF -- "$*" "$idx" || true   # -F: term is literal, not a regex
+  else
+    # Compact table of contents (section headers + entry count). Avoids dumping the
+    # full index into context — use `map <term>` / search / ask for detail.
+    grep -E '^#{1,3} ' "$idx" || true
+    echo "—"
+    echo "$(grep -cE '^- \[\[' "$idx") catalog entries. Filter with 'assay-brain map <term>', or rank pages with 'search'/'ask'. Full catalog: $idx"
+  fi
+}
+
+cmd_hot() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  [ -f "$brain/wiki/hot.md" ] && cat "$brain/wiki/hot.md" || echo "(no hot.md in $brain/wiki)"
+}
+
+cmd_path() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  echo "$brain"
+}
+
+# Print the resolved, Assay-stable config as shell-escaped exports so
+# `eval "$(assay-brain env)"` is safe even if the brain path has spaces.
+cmd_env() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  printf 'export OBSIDIAN_VAULT_PATH=%q\n' "$brain/wiki"
+  printf 'export OBSIDIAN_SOURCES_DIR=%q\n' "$brain/raw"
+  printf 'export QMD_WIKI_COLLECTION=%q\n' "$COLL"
+  printf 'export QMD_PAPERS_COLLECTION=%q\n' "$PAPERS"
+  printf 'export QMD_TRANSPORT=cli\n'
+}
+
+# Persist the resolved config to the cross-project location that wiki-query and
+# every generic wiki-* skill reads (~/.obsidian-wiki/config). Idempotent, atomic,
+# never committed — the absolute path belongs in user config, not the repo.
+# Note: this file is machine-global (one brain at a time). On a machine with more
+# than one brain, prefer per-invocation `eval "$(assay-brain env)"` over `setup`.
+cmd_setup() {
+  local brain; brain="$(resolve_brain)" || { _no_brain; return 1; }
+  local dir="$HOME/.obsidian-wiki"
+  local cfg="$dir/config"
+  mkdir -p "$dir"
+  local desired
+  desired="$(cat <<EOF
+# Written by 'assay-brain setup' — points the generic wiki-* skills at the Assay brain.
+OBSIDIAN_VAULT_PATH=$brain/wiki
+OBSIDIAN_SOURCES_DIR=$brain/raw
+QMD_WIKI_COLLECTION=$COLL
+QMD_PAPERS_COLLECTION=$PAPERS
+QMD_TRANSPORT=cli
+QMD_CLI_SEARCH_MODE=quality
+EOF
+)"
+  # Idempotent: no-op if already correct.
+  if [ -f "$cfg" ] && [ ! -L "$cfg" ] && [ "$(cat "$cfg" 2>/dev/null)" = "$desired" ]; then
+    echo "assay-brain: $cfg already points at $brain/wiki (no change)"
+    return 0
+  fi
+  # Refuse to write through a symlink (don't clobber an unrelated target).
+  if [ -L "$cfg" ]; then
+    echo "assay-brain: $cfg is a symlink; refusing to overwrite. Remove it and re-run." >&2
+    return 1
+  fi
+  # Back up an existing real config to a timestamped file (never clobber a prior backup).
+  if [ -f "$cfg" ]; then
+    local bak="$cfg.bak.$(date +%Y%m%d%H%M%S)"
+    cp "$cfg" "$bak"
+    echo "assay-brain: backed up existing config to $bak" >&2
+  fi
+  # Atomic write with tight perms.
+  local tmp
+  tmp="$(umask 077; mktemp "$dir/config.XXXXXX")"
+  printf '%s\n' "$desired" > "$tmp"
+  chmod 600 "$tmp"
+  mv -f "$tmp" "$cfg"
+  echo "assay-brain: wrote $cfg (vault=$brain/wiki, collection=$COLL)"
+}
+
+cmd_doctor() {
+  local brain status
+  if brain="$(resolve_brain)"; then status="ok"; else status="NOT FOUND"; fi
+  echo "brain path     : ${brain:-<unresolved>} [$status]"
+  echo "clone url      : $CLONE_URL"
+  echo "collection     : $COLL"
+  echo "papers         : $PAPERS"
+  if has_qmd; then
+    echo "qmd            : $("$QMD" --version 2>/dev/null || echo present)"
+  else
+    echo "qmd            : MISSING (grep fallback will be used)"
+  fi
+  if has_collection; then
+    echo "collection live: yes"
+  else
+    echo "collection live: no (grep fallback will be used)"
+  fi
+  if [ -n "${brain:-}" ] && [ -f "$brain/wiki/index.md" ]; then
+    echo "wiki pages     : $(find "$brain/wiki" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+  fi
+  echo "user config    : $([ -f "$HOME/.obsidian-wiki/config" ] && echo "$HOME/.obsidian-wiki/config" || echo "absent (run: assay-brain setup)")"
+}
+
+usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; }
+
+case "${1:-}" in
+  path)    shift; cmd_path ;;
+  doctor)  shift; cmd_doctor ;;
+  search)  shift; [ "$#" -gt 0 ] || { echo "usage: assay-brain search <terms>" >&2; exit 2; }; cmd_search "$@" ;;
+  ask)     shift; [ "$#" -gt 0 ] || { echo "usage: assay-brain ask <question>" >&2; exit 2; }; cmd_ask "$@" ;;
+  map)     shift; cmd_map "$@" ;;
+  hot)     shift; cmd_hot ;;
+  env)     shift; cmd_env ;;
+  setup)   shift; cmd_setup ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "assay-brain: unknown command '$1'" >&2; usage; exit 2 ;;
+esac

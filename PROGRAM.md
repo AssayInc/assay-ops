@@ -7,10 +7,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 - **Phase 0 — Gate & scaffolding.** The repo skeleton ([`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md))
   and the frozen floor ([`DECISIONS.md`](./DECISIONS.md)) are in; the AI-operating layer lands with
-  **E0-6 (#18)** (this file set). The **agent skill layer** is underway: `AssayInc/skills` now exists with
-  the `assay-brain` deep-recall skill (**E0-11/#86 + E0-7/#73** — PR `AssayInc/skills#1`, in review). Still
-  open in the skill layer: the **prefer-official** skills.sh lock + consumer `.agents/skills/` wiring
-  (**E0-10, #85**) and the six homegrown domain skills (**#86**). Other ready E0 work: two-lane CI + branch
+  **E0-6 (#18)** (this file set). The **agent skill layer** is landing: the **skills.sh lock + consumer `.agents/skills/`
+  wiring is bootstrapped** (PR #89 — `skills-lock.json` + `bun`/`turborepo`/`karpathy-guidelines` + the
+  `assay-brain` recall skill, vendored and symlinked into `.claude/`+`.hermes/`; `assay-brain` was built in
+  `AssayInc/skills`, **#73 + #86**, closed). Still open in **E0-10 (#85)**: the prefer-official cloud/IaC
+  packs — AWS / Terraform / OpenEnv + `skill-creator`; the six homegrown domain skills are **#86**. Other ready E0 work: two-lane CI + branch
   protection (**E0-2, #19**), the LocalStack dev loop (**E0-3, #20**), repo hygiene (**E0-4, #21**), and the
   Project v2 board (**E0-5, #22**). Phase-1 build proper starts at the contract-schema spine (**E1**), the
   join key for the whole system.
@@ -35,13 +36,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   arrive with E0-2. Until then, the **PR + verify-green + `/review`** convention in `CLAUDE.md` is the
   merge gate. E0-1 deliberately shipped no CI; E0-6 documents the invariant, E0-2 implements it.
 - **Brain sibling + skill layer.** Strategy/research/vision live in `../brain/` (`AssayInc/brain`);
-  recall via the **`assay-brain`** skill, now built in `AssayInc/skills` (**E0-11/#86 + E0-7/#73** — PR
-  `AssayInc/skills#1`, in review). It's a per-developer install (`AssayInc/skills` → `./install.sh`,
-  symlinked into `~/.claude/skills`), resolves `../brain` with zero config, and degrades gracefully when
-  the brain is absent. Still open: the **prefer-official** skills.sh lock + consumer `.agents/skills/`
-  sync (**E0-10, #85**) and the six homegrown domain skills (**#86**). Until #85 lands, `assay-ops` has no
-  `.agents/skills/` — use the installed `assay-brain` CLI (or query `../brain/wiki` via `qmd` / the
-  brain-side `wiki-query`). `CLAUDE.md` documents the layer as the design; this note tracks build status.
+  recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73 + #86**, closed). As of PR #89
+  it's **committed into this repo's skill layer** (`.agents/skills/assay-brain`, symlinked into
+  `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`), so every agent here — Codex, CI, a fresh clone —
+  gets it with zero setup. It also still ships as a **per-developer install** (`AssayInc/skills` →
+  `./install.sh`, symlinked into `~/.claude/skills`) that makes recall work from *any* Assay repo; on a dev
+  machine that global copy shadows the committed one (same content). Both resolve `../brain` with zero config
+  and degrade gracefully when the brain is absent. Still open in **#85**: the prefer-official cloud/IaC packs
+  (AWS / Terraform / OpenEnv + `skill-creator`); the six homegrown domain skills are **#86**. `CLAUDE.md`
+  documents the layer as the design.
 - **Read order for a new agent:** `CLAUDE.md`/`AGENTS.md` (operating layer) → `DECISIONS.md` (why/rules)
   → `docs/ARCHITECTURE.md` (how/where). The build spine is the `contracts/` schema (E1) — built first
   because it is the join key both lanes and a buying lab verify against.

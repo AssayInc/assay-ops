@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "skills": {
+    "assay-brain": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "assay-brain/SKILL.md",
+      "computedHash": "7cae0ff586bf1a067595d95eda0caa3164162e4403e4531978dc8bd93d60ccca"
+    },
+    "bun": {
+      "source": "bun.sh",
+      "sourceType": "well-known",
+      "computedHash": "3f507a4312969a2a27c547e6693c7a10f3454c8bff31144d0c15607ae03e33bb"
+    },
+    "karpathy-guidelines": {
+      "source": "szkocot/andrej-karpathy-skills",
+      "sourceType": "github",
+      "skillPath": "skills/karpathy-guidelines/SKILL.md",
+      "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
+    },
+    "turborepo": {
+      "source": "vercel/turborepo",
+      "sourceType": "github",
+      "skillPath": "skills/turborepo/SKILL.md",
+      "computedHash": "b7c3165ae67a2892d6195a5b2cba15c8d96341f5c64ddd0d3ce4225c94a2ae83"
+    }
+  }
+}
