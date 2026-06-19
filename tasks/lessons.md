@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-19 — eval-is-part-of-the-skill
+- **Mistake:** Built the `assay-brain` skill, verified its CLI by hand, and called it done — scoping the
+  `evals/` tree out as a "follow-up." That shipped a *verification* skill with no verification that it
+  actually triggers or improves answers. The user caught it ("you missed the eval... it validates the
+  skill is working").
+- **Rule:** A skill is not done until its eval is **authored AND run**. Follow the `skill-creator` loop:
+  `evals.json` (3+ realistic cases + expectations) + `trigger-eval.json` (≈10 should / 10 should-not) +
+  a with-skill/without-skill A/B (subagents) + a `claude -p` trigger probe (`probe_precise.py`), with the
+  measured outcome in `RESULTS.md`. For verification-infra especially, an unvalidated skill violates
+  "prove it or flag it." Also run `skill-creator/scripts/quick_validate.py` and check the SKILL.md
+  `description` against the agentskills.io **1024-char limit** before claiming done.
+- **Context:** E0-11 (#86) / `AssayInc/skills#1`. The eval also caught a real defect the hand-check and
+  code-review both missed — the `description` was 1490 chars (over 1024); `quick_validate.py` rejected it.
+
 ## 2026-06-18 — claude-md-serves-all-agents-no-dedupe
 - **Mistake:** Trimmed the gstack skill list + routing out of `CLAUDE.md`, reasoning it duplicated
   `~/.claude/CLAUDE.md` and was context bloat.
