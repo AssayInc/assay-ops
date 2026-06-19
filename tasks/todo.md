@@ -12,7 +12,7 @@ when done.
 (lock + `.agents/skills/` → `.claude/`+`.hermes/` symlinks), then close it. The lock mechanism +
 `assay-brain` already landed (PR #89). What's left: the cloud/IaC/training/Python/eval packs.
 
-**Selection (21 skills; each maps to a coding surface — prefer-official, reviewed per-repo, not bulk-added):**
+**Selection (25 skills; each maps to a coding surface — prefer-official, reviewed per-repo, not bulk-added):**
 - `skill-creator` ← `anthropics/skills` — author homegrown skills (#86)
 - `aws-cdk`, `aws-sdk-js-v3-usage`, `aws-cloudformation`, `aws-iam` ← `aws/agent-toolkit-for-aws`
   (verifier E2 reads state via SDK-v3 + CFN; CDK adapter E3/T3 + drift tasks E11; A/B read-only role)
@@ -24,12 +24,16 @@ when done.
   — LocalStack dev loop (E0-3/#20): container lifecycle, deploy CDK/TF (`cdklocal`/`tflocal`), IAM-policy testing, state snapshots (replay E6/T8), log debug
 - `map-inspect-packages`, `reading-logs`, `babysitting-evals` ← `meridianlabs-ai/inspect-skills` — Inspect AI
   eval lane E13/T11 (Meridian Labs now maintains `inspect_ai`; `map-inspect-packages` also routes Harbor = orchestrator E7)
+- `typescript-advanced-types`, `python-testing-patterns`, `python-type-safety`, `async-python-patterns` ← `wshobson/agents`
+  — well-adopted **community** TS/Python craft (no official skill exists): strict TS types, pytest, mypy/typing, asyncio
 
 **Deliberately excluded:** the off-target majority of each multi-skill repo (AWS bedrock/amplify/
 containers/serverless/billing/observability/messaging/secrets/swift/python-sdk; all TF provider-dev +
 Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills; LocalStack `localstack-extensions`);
-`ty` (we use mypy, not ty).
-**Scope note:** the user chose the *fuller* set, so `ruff` + `terraform-test` + `generate-openenv-env` are in.
+`ty` (we use mypy, not ty); from `wshobson/agents` only on-target TS/Python craft (skipped uv-package-manager
+[dup astral], python-code-style/design-patterns [ruff/CLAUDE.md cover; design-patterns risks classes], js-testing/nodejs-backend [bun, not jest/Node]).
+**Scope note:** the user chose the *fuller* set (incl. `ruff` + `terraform-test` + `generate-openenv-env`) and OK'd
+well-adopted **community** skills where no official exists (`wshobson/agents`) — a policy now in `CLAUDE.md`.
 
 ### Build (branch `feat/skills-official-packs`) — done
 - [x] Installed each pack with **default agent targeting** (never `-a '*'`); `git status` after each →
@@ -42,15 +46,16 @@ Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills; LocalStac
 - [x] `astral-sh/claude-code-plugins` → uv, ruff
 - [x] `meridianlabs-ai/inspect-skills` → map-inspect-packages, reading-logs, babysitting-evals (added after /review)
 - [x] `localstack/skills` → localstack, localstack-deploy, localstack-iam, localstack-state, localstack-logs (LocalStack dev loop; user-requested)
+- [x] `wshobson/agents` → typescript-advanced-types, python-testing-patterns, python-type-safety, async-python-patterns (well-adopted community; inspected for conflicts vs locked style)
 
 ### Hygiene — green
 - [x] skill-creator (18 files, incl. executable `scripts/*`) + generate-openenv-env (17 files, incl.
-      `assets/*.py` templates) **byte-identical to upstream** (git blob SHAs); all 21 `SKILL.md` verbatim.
-- [x] All 21 `description` ≤ 1024 (max: hf-cli 1008). 3 AWS skills carry a benign upstream `version:`
+      `assets/*.py` templates) **byte-identical to upstream** (git blob SHAs); all 25 `SKILL.md` verbatim.
+- [x] All 25 `description` ≤ 1024 (max: hf-cli 1008). 3 AWS skills carry a benign upstream `version:`
       frontmatter key (Claude Code loads them fine — not edited, would break byte-identity + lock hash).
 - [x] `.claude/skills/*` + `.hermes/skills/*` all mode-120000 symlinks → `../../.agents/skills/<name>`;
       executable scripts preserved at 100755.
-- [x] `skills-lock.json`: 25 entries (4 prior + 21), each source + skillPath + computedHash; `npx skills list` resolves all.
+- [x] `skills-lock.json`: 29 entries (4 prior + 25), each source + skillPath + computedHash; `npx skills list` resolves all.
 
 ### Gate + bookkeeping
 - [x] `bun run verify` green — 6/6 tasks (typecheck/lint/test, both lanes), FULL TURBO.
@@ -59,8 +64,8 @@ Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills; LocalStac
 
 ### Review
 
-- **Done:** 21 skills added to the committed skills.sh layer for **#85** (18 from official vendor repos +
-  3 maintainer-authored Inspect AI from `meridianlabs-ai`), each mapped to an AssayOps coding surface
+- **Done:** 25 skills added to the committed skills.sh layer for **#85** (18 official-vendor + 3 maintainer-authored
+  Inspect AI `meridianlabs-ai` + 4 well-adopted community `wshobson/agents`), each mapped to an AssayOps coding surface
   (verifier/adapters/env-server/trainer/Python lane/eval lane/dev loop). Lock +
   3-dir symlink layout (`.agents/skills` → `.claude/`+`.hermes/`) preserved; `bun run verify` green.
 - **Method/traps avoided:** every multi-skill repo (AWS 43, HashiCorp 16, OpenEnv 16, HF 19) was previewed
