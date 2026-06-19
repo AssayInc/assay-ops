@@ -6,47 +6,50 @@ when done.
 
 ---
 
-## DECISIONS.md + ARCHITECTURE.md faithfulness pass (vs `../brain/raw/plans`)
+## E0-11 (#86) — `AssayInc/skills` repo + the `assay-brain` recall skill
 
-**Goal:** close the gaps a 4-plan audit found between the committed reference docs and their source
-plans. ADD missing load-bearing content + fix two consistency defects; trim the one bloat block. (Docs
-own issues #74/#17, both merged — this is faithful maintenance, "plans win → fix the doc".)
+**Goal:** stand up the `AssayInc/skills` compilation repo and author its headline homegrown skill,
+`assay-brain` — search/answer from the Assay brain (wiki + raw) from any repo. Adapt the proven
+`cleno-brain` template (`Cleno/skills`) to Assay's domain, brain topology, and qmd collections;
+**degrade gracefully without the `brain` sibling** (the #73 requirement).
 
-### DECISIONS.md
-- [x] **§3 — add a "Phases (T0-relative)" block** so the table's `Phase` column is legible (proof-first):
-      Phase 0–4, the ~13–15-wk T0 clock, folding in N≈30–50 + cut-to-30 + proof-only fallback + the two
-      hard gates (RL/eval owner; proof-clears-bar-before-pitch).
-- [x] **§3 — add the Lane legend + A↔C conflict / "C after B" sequencing** (eng-arch §Parallelization).
-- [x] **§4 I3 — pin the signing crypto** (`SHA-256 → KMS asymmetric ECDSA P-256, MessageType=DIGEST`) so
-      ARCHITECTURE's existing pointer resolves (impl-plan §3).
-- [x] **§7 — fix the E1/E2/E3 collision + add the two missing flywheel bets + D1=C gating** (roadmap):
-      spell out the bets (lab-agnostic / ELT second act / publish verifier-isolation), mark them distinct
-      from build-epics E1–E3, restore the safety+warm-path gate, record rejected alternatives.
-- [x] **§8 — add two scope non-negotiables:** build-only-the-IP / reuse-the-rest list; RL is SFT-only /
-      stretch, off the critical path (eng-arch §NOT-in-scope + §reuse).
-- [x] **Sources — reword the roadmap row** so it describes the flywheel bets, not "E1/E2/E3".
+**Scope (this work):** the repo scaffolding + the single `assay-brain` skill. The six domain skills
+(`write-isolated-verifier`, `deterministic-verification`, `reward-ledger-worm`, `red-team-15-vectors`,
+`eval-rigor`, `localstack-verifier`) and the consumer `skills-lock.json` wiring are **follow-ups** — the
+latter blocked on the skills.sh lock format (**E0-10/#85, open**). So **don't close #86**; advance it and
+make **#73 (assay-brain)** ready to close.
 
-### docs/ARCHITECTURE.md
-- [x] **Spine section — add the JCS schema-modeling rules** (big ints/nonces/timestamps as strings;
-      bounded doubles; reject NaN/Inf), the `just codegen` entry point, and the parity-gate mechanism
-      (impl-plan §3/§5). Highest-value gap (byte-parity is a §8 non-negotiable).
-- [x] **Compress the ~11-line "Layout note"** (`ts/` vs `apps/`) to ~3 lines, drop the 2 turborepo URLs
-      (flagged by 3/4 auditors as the one clear bloat block).
-- [x] **`tasks/` layout line — note the deferred families** (migration/incident/cost + Pulumi → after
-      drift&debug; cheap via 6A).
+### Build (fresh clone `~/Projects/Assay/skills`, branch `assay-brain-skill`) — done
+- [x] `assay-brain/scripts/assay-brain` — adapted helper (rename, URLs, `assay-brain-wiki/-papers`, env vars); `chmod +x`.
+- [x] `assay-brain/SKILL.md` — frontmatter + retrieval protocol/answering/trust boundary; provenance-cited.
+- [x] `assay-brain/references/brain-map.md` — Assay cluster map + qmd cheatsheet + `wiki-query` delegation.
+- [x] `README.md`, `install.sh` (+x), `.gitignore` — Assay-adapted (org, skill table, clone URLs).
 
-### Verify
-- [x] `bun run verify` green; faithful quotes vs plans; focused PR (separate from the merged #84).
+### Verify (against the real brain — qmd 2.1.0, `assay-brain-wiki` live, 108 pages) — green
+- [x] `doctor` resolves `~/Projects/Assay/brain`, qmd present, collection live, 108 pages.
+- [x] `map` TOC + `map verifier` filter; `search "cloud control api"` → aws-cloud-control-api; `ask "…forge"` → reward-hacking.
+- [x] `hot`; `env` exports `assay-brain-wiki`.
+- [x] Graceful degradation (#73): no brain → `doctor` NOT FOUND (no crash), `search` clean guidance + exit 1; bogus path warns+falls back.
+- [x] `./install.sh` symlinks skill→`~/.claude/skills` + CLI→`~/.local/bin`; idempotent; `bash -n` clean.
+- [x] Focused PR on `AssayInc/skills` (#1) — references `assay-ops#86`, completes #73.
+
+### assay-ops bookkeeping (this branch `e0-11-assay-skills-brain`)
+- [x] `PROGRAM.md` + `ISSUES.md`: skill layer now partial (`AssayInc/skills` + `assay-brain`); #85 lock + 6 domain skills pending; recall note → `assay-brain`.
+- [ ] Comment on #86 (landed / remaining) and #73 (assay-brain shipped → ready to close on merge).
 
 ### Review
 
-- **Done:** 6 `DECISIONS.md` edits (Phases block; Lane legend + A↔C sequencing; I3 signing crypto; §7
-  flywheel rewrite + E1/E2/E3 disambiguation; §8 build-vs-reuse + RL-training-deferred; Sources reword) + 2
-  `docs/ARCHITECTURE.md` edits (spine schema-rules/`just codegen`/parity-gate; Layout-note compression).
-- **Net:** DECISIONS 378→412 (+34, high-value); ARCHITECTURE 145→146 (spine grew, layout-note trimmed —
-  net flat). `bun run verify` green.
-- **Faithfulness:** every addition is quoted from a source plan (eng-arch §NOT-in-scope/§reuse/
-  §Parallelization; proof-first §phases/gates/N; impl-plan §3 signing+schema; roadmap D1/E1/E2/E3). The
-  two consistency defects are fixed (E1/E2/E3 collision; the previously-undefined `Phase` column).
-- **Scope:** separate PR from the merged #84; the docs own #74/#17 — faithful maintenance ("plans win →
-  fix the doc"), not re-litigation.
+- **Done:** new repo `AssayInc/skills` (PR #1) with `assay-brain` — `scripts/assay-brain` CLI
+  (`doctor/hot/map/search/ask/env/setup`), `SKILL.md`, `references/brain-map.md`, plus `README.md` /
+  `install.sh` / `.gitignore`. assay-ops `PROGRAM.md` + `ISSUES.md` updated to the in-flight state.
+- **Approach:** faithful adaptation of the eval-tested `cleno-brain` template — proven script logic kept
+  intact; only identifiers/URLs/collections/domain changed. The three non-mechanical adaptations (would be
+  wrong to copy): qmd collections `assay-brain-wiki`/`-papers` (Cleno's brain coexists on this machine);
+  the SKILL.md `description` (cloud/IaC RL-env verification + the DECISIONS.md-is-the-locked-floor note);
+  the brain-map clusters. Verified `wiki-query` actually exists in the Assay brain before keeping the handoff.
+- **Evidence:** acceptance suite green against the real brain (see PR #1 body); `bash -n` clean; install
+  idempotent; #73 graceful-degradation paths exercised.
+- **Scope/flag:** #86 deliberately **not** closed — its six domain skills + the #85 consumer-lock wiring
+  remain. `assay-brain` (#73) is delivered, ready to close on merge. **Naming:** kept `assay-brain` (not
+  `assay-query`) for consistency with #73 / `CLAUDE.md` / the brain's own `assay-brain-wiki` collection /
+  the `cleno-brain` precedent — trivially renamable if preferred.
