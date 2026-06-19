@@ -41,7 +41,7 @@ own issues #74/#17, both merged — this is faithful maintenance, "plans win →
 ### Review
 
 - **Done:** 6 `DECISIONS.md` edits (Phases block; Lane legend + A↔C sequencing; I3 signing crypto; §7
-  flywheel rewrite + E1/E2/E3 disambiguation; §8 build-vs-reuse + RL-out-of-scope; Sources reword) + 2
+  flywheel rewrite + E1/E2/E3 disambiguation; §8 build-vs-reuse + RL-training-deferred; Sources reword) + 2
   `docs/ARCHITECTURE.md` edits (spine schema-rules/`just codegen`/parity-gate; Layout-note compression).
 - **Net:** DECISIONS 378→412 (+34, high-value); ARCHITECTURE 145→146 (spine grew, layout-note trimmed —
   net flat). `bun run verify` green.

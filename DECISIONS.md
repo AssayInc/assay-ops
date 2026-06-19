@@ -386,9 +386,10 @@ appears to require breaking one, stop and flag it — don't code around it.**
       suite, eval-harness wiring, task corpus, account infra + guardrails. **Reuse, don't rebuild:**
       OpenEnv, Fleet Harbor (rollouts only), LocalStack, Daytona/Modal, Control Tower AFT, KMS + S3
       Object Lock, terraform/cdk CLIs. **[eng-arch]**
-- [ ] **The proof is SFT-only; RL is a stretch goal, off the critical path** — don't build RL infra for
-      the proof. Deferred too: migration/incident/cost task families (after drift&debug) + the Pulumi
-      adapter (cheap via 6A). **[eng-arch / proof-first]**
+- [ ] **The proof's training is SFT-only; the RL loop (GRPO) is a post-proof stretch, off the critical
+      path** — what's deferred is the *training loop*, **not** the RL infrastructure (the reward
+      ledger/verifier it would consume is core and built). Deferred too: migration/incident/cost task
+      families (after drift&debug) + the Pulumi adapter (cheap via 6A). **[eng-arch / proof-first]**
 - [ ] **Don't re-litigate a decision in this file.** It's settled — **flag, don't silently deviate.**
       For the deeper *why* beyond this floor, query the `assay-brain` skill (#73).
 
