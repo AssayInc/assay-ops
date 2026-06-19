@@ -130,7 +130,8 @@ Design, QA, and Vercel/deploy skills belong to `assay-web`, not this repo.
 - **skills.sh + `skills-lock.json`, prefer-official** (E0-10/#85, landed): official packs vendored into
   `.agents/skills/` (→ `.claude/`+`.hermes/`) — `anthropics/skills` (skill-creator),
   `aws/agent-toolkit-for-aws`, `hashicorp/agent-skills`, `huggingface/OpenEnv`, `huggingface/skills` (TRL),
-  `astral-sh/claude-code-plugins` (uv/ruff), `bun`, `turborepo`. Vendor only on-target skills per repo (not
-  bulk-add). Homegrown AssayOps skills → `AssayInc/skills` (#86). **`assay-brain`** (#73) = brain recall.
+  `astral-sh/claude-code-plugins` (uv/ruff), `meridianlabs-ai/inspect-skills` (Inspect AI), `bun`,
+  `turborepo`. Vendor only on-target skills per repo (not bulk-add). Homegrown AssayOps skills →
+  `AssayInc/skills` (#86). **`assay-brain`** (#73) = brain recall.
 - **Preflight:** before coding against AWS / Terraform / OpenEnv / TRL / Inspect AI, load its skill or
   official docs first — never cached API knowledge.

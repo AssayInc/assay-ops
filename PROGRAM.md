@@ -10,24 +10,25 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
   wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
   symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73 + #86**, closed)
-  plus the **prefer-official cloud/IaC/training packs** (**E0-10 (#85)**, landed — 13 official skills across
-  AWS / Terraform / OpenEnv / TRL / Python-UV + `skill-creator`). Still open: the six homegrown AssayOps
-  domain skills (**#86**). Other ready E0 work: two-lane CI + branch
+  plus the **prefer-official cloud/IaC/training/eval packs** (**E0-10 (#85)**, landed — 16 official skills
+  across AWS / Terraform / OpenEnv / TRL / Inspect AI / Python-UV + `skill-creator`). Still open: the six
+  homegrown AssayOps domain skills (**#86**). Other ready E0 work: two-lane CI + branch
   protection (**E0-2, #19**), the LocalStack dev loop (**E0-3, #20**), repo hygiene (**E0-4, #21**), and the
   Project v2 board (**E0-5, #22**). Phase-1 build proper starts at the contract-schema spine (**E1**), the
   join key for the whole system.
 
 ## Recently Landed
 
-- **E0-10 (#85): prefer-official skill packs.** 13 official skills vendored into the committed layer,
+- **E0-10 (#85): prefer-official skill packs.** 16 official skills vendored into the committed layer,
   each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
   `aws-cloudformation` / `aws-iam` (verifier read surface E2 + CDK adapter/drift E3/E11 + A/B role);
   `terraform-style-guide` / `terraform-test` (adapter-terraform E3); `openenv-cli` / `generate-openenv-env`
   (env-server E5, from canonical `huggingface/OpenEnv` — `meta-pytorch/openenv` now redirects there);
-  `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane). Vendored verbatim (byte-identical
-  to upstream), symlinked into `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`; the off-target
-  majority of each multi-skill repo excluded (prefer-official, smallest-change). Gap flagged: **Inspect AI
-  (E13) has no official eval-authoring skill** → official docs per `CLAUDE.md` preflight. (PR #91.)
+  `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane); and Inspect AI `map-inspect-packages` /
+  `reading-logs` / `babysitting-evals` (eval lane E13, from `meridianlabs-ai/inspect-skills` — Meridian Labs
+  now maintain `inspect_ai`). Vendored verbatim (byte-identical to upstream), symlinked into
+  `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`; the off-target majority of each multi-skill repo
+  excluded (prefer-official, smallest-change). All five `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
 
 - **E0-6 (#18): AI-operating layer.** `CLAUDE.md` (the single auto-loaded constitution) + `AGENTS.md`
   symlink, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`; the **`verify`-gate + locked-fixtures

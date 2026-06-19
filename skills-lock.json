@@ -31,6 +31,12 @@
       "skillPath": "skills/core-skills/aws-sdk-js-v3-usage/SKILL.md",
       "computedHash": "b2c5175e7e8951cb6b2d65ddda09187906feb222cdd97a3757a82f7fa142a873"
     },
+    "babysitting-evals": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/babysitting-evals/SKILL.md",
+      "computedHash": "f0fe0f35ce5b2fbcb9a737fa63070ddd8dc5379c9fa3eec5a2857386a8c11acd"
+    },
     "bun": {
       "source": "bun.sh",
       "sourceType": "well-known",
@@ -54,11 +60,23 @@
       "skillPath": "skills/karpathy-guidelines/SKILL.md",
       "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
     },
+    "map-inspect-packages": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/map-inspect-packages/SKILL.md",
+      "computedHash": "b6b69630ad8f0385984376338ad4c451fd2166a121fa52614aeb502e7d62d942"
+    },
     "openenv-cli": {
       "source": "huggingface/OpenEnv",
       "sourceType": "github",
       "skillPath": ".agents/skills/openenv-cli/SKILL.md",
       "computedHash": "c9c6bdbb871a1288862fca0c1202443138a86b4cf12821627e2879ceb3f05842"
+    },
+    "reading-logs": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/reading-logs/SKILL.md",
+      "computedHash": "61709e76c301230b6843bfa84f09201e4ca9501ce83845ce2a02bc21914b53e8"
     },
     "ruff": {
       "source": "astral-sh/claude-code-plugins",

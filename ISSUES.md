@@ -13,17 +13,23 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   E0-1 deliberately shipped no `ci.yml`, and E0-6 (#18) only *documents* the invariant — it does not
   author the workflow (that would poach E0-2's scope).
 - **The committed skill layer — #85 landed; #86 remains.** The skills.sh lock + consumer `.agents/skills/`
-  wiring (PR #89) and the **prefer-official cloud/IaC/training packs** (**E0-10 / #85**) are in: 13 official
-  skills — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
+  wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 16
+  official skills — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
   `terraform-style-guide` / `terraform-test`, `openenv-cli` / `generate-openenv-env` (canonical
-  `huggingface/OpenEnv`; `meta-pytorch/openenv` redirects there), `hf-cli` / `trl-training`, `uv` / `ruff` —
-  vendored verbatim and symlinked into `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`. Each maps
-  to a coding surface; off-target skills in each multi-skill repo were excluded. **No official skill exists
-  for Inspect AI (E13)** — the eval lane relies on official Inspect AI docs per the `CLAUDE.md` preflight
-  rule (skill *or* docs). Still open: the six homegrown AssayOps domain skills (`write-isolated-verifier`, …)
-  in **#86**; the **`assay-brain`** recall skill (**#73 + #86**) is closed. `CLAUDE.md` documents the layer
-  (prefer-official; author homegrown only for gaps). Recall also works from any repo via the per-developer
-  `assay-brain` install (or `../brain/wiki` via `qmd` / the brain-side `wiki-query`).
+  `huggingface/OpenEnv`; `meta-pytorch/openenv` redirects there), `hf-cli` / `trl-training`, `uv` / `ruff`,
+  and Inspect AI `map-inspect-packages` / `reading-logs` / `babysitting-evals` (from
+  `meridianlabs-ai/inspect-skills`, who now maintain `inspect_ai`) — vendored verbatim and symlinked into
+  `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`. Each maps to a coding surface; off-target skills
+  in each multi-skill repo were excluded. All five `CLAUDE.md` preflight domains (AWS / Terraform / OpenEnv /
+  TRL / Inspect AI) now have a vendored skill. Still open: the six homegrown AssayOps domain skills
+  (`write-isolated-verifier`, …) in **#86**; the **`assay-brain`** recall skill (**#73 + #86**) is closed.
+  `CLAUDE.md` documents the layer (prefer-official; author homegrown only for gaps). Recall also works from
+  any repo via the per-developer `assay-brain` install (or `../brain/wiki` via `qmd` / the brain-side `wiki-query`).
+- **Skill-lock coverage is `SKILL.md`-only (fast-follow).** `skills-lock.json` hash-pins each vendored
+  `SKILL.md` but **not** its `resources/`/`scripts/` (e.g. skill-creator's executable `scripts/*.py`). A
+  future `npx skills` sync could alter a script without changing the lock — the [[skills-sync-hygiene]] rule
+  (manual `git diff` of `resources/*` after any sync) is the current guard. Wiring a full-dir hash check into
+  the `verify` gate belongs to **E0-2 (#19)** CI; the lock today is restore-grade, not part of `bun run verify`.
 - **Locked-fixtures directories don't exist yet.** `contracts/vectors` (#28, E1-3) and `tools/red-team`
   (#56, E10-1) are scaffolded by their owning epics; the locked-fixtures rule in
   `CLAUDE.md`/`DECISIONS.md` binds the moment they do. Listed so the rule isn't mistaken for stale config
