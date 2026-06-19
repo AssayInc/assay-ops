@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-19 — claude-md-is-lean-no-issue-numbers
+- **Mistake:** Bloated `CLAUDE.md`'s skills section with a flat enumeration of every source repo + per-skill
+  annotations + GitHub issue/epic numbers (`E0-10/#85, landed`, `#86`, `#73`, `T7`). The user cut it: issue/epic
+  numbers "do not add any value" in `CLAUDE.md`, and the repo list just duplicated `skills-lock.json`.
+- **Rule:** `CLAUDE.md` is for what an agent can't infer from the repo — short, specific, actionable. **No GitHub
+  issue/epic numbers** (`#N`, `E0-N`, `T`/`I` labels); state decisions as plain facts (date if needed) and link a
+  real anchor (`DECISIONS.md §N`, `ISSUES.md`) when detail lives elsewhere. The skill inventory lives in
+  `skills-lock.json` (source of truth) and auto-loads by description — don't re-list sources in `CLAUDE.md`. For
+  fast-moving APIs use a **Domain → Skill → Surface preflight table** (Cleno pattern). Prune `CLAUDE.md` like code.
+  Pairs with [[claude-md-serves-all-agents-no-dedupe]] — completeness vs conciseness; aim for high signal, low noise.
+  (Issue numbers DO belong in work-tracking files — `PROGRAM.md`, `ISSUES.md`, lessons — just not the constitution.)
+- **Context:** E0-10 (#85) `CLAUDE.md` skills section. Refs: `brain/raw/articles/The File That Turns Claude Code
+  Into Your Best Engineer`, Cleno `CLAUDE.md` (`#skill-preflight-fast-moving-apis`).
+
 ## 2026-06-19 — verify-skill-absence-beyond-the-registry
 - **Mistake:** Concluded "no official Inspect AI skill exists" from `npx skills find` (registry) searches
   alone, and judged a repo's officialness by its GitHub org slug. Both wrong: `meridianlabs-ai/inspect-skills`
