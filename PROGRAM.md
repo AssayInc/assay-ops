@@ -34,7 +34,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (well-adopted community `wshobson/agents`, where no official skill exists). Vendored verbatim (byte-identical to upstream), symlinked into
   `.claude/`+`.hermes/`, each `SKILL.md` hash-pinned in `skills-lock.json` (scripts/resources guarded by the
   `skills-sync-hygiene` rule, not the lock); the off-target majority of each multi-skill repo excluded
-  (prefer-official, smallest-change). All five `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
+  (prefer-official, smallest-change). All six `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
 
 - **E0-6 (#18): AI-operating layer.** `CLAUDE.md` (the single auto-loaded constitution) + `AGENTS.md`
   symlink, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`; the **`verify`-gate + locked-fixtures

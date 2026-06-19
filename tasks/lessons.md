@@ -149,7 +149,7 @@ operating-layer, strict-TS, and debugging rules that apply to this repo. Prune a
 - **Mistake:** A skills.sh upstream sync silently dropped security-relevant excludes/validation from a
   vendored skill's `resources/*`; the lock file hashes only `SKILL.md`, so nothing flagged it.
 - **Rule:** After any **skills.sh** install or sync (the committed skill layer arriving in #85/#86),
-  `git diff` the skill's `resources/*` — especially executable scripts — before committing. Treat reduced
+  `git diff` the skill's full vendored dir (all non-`SKILL.md` files) — especially executable scripts — before committing. Treat reduced
   excludes or validation in vendored scripts as a regression to restore and report upstream, never a
   neutral update.
 - **Context:** Directly relevant to the incoming skill layer (E0-10/E0-11, #85/#86).

@@ -30,7 +30,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 - **Skill-lock coverage is `SKILL.md`-only (fast-follow).** `skills-lock.json` hash-pins each vendored
   `SKILL.md` but **not** its `resources/`/`scripts/` (e.g. skill-creator's executable `scripts/*.py`). A
   future `npx skills` sync could alter a script without changing the lock — the [[skills-sync-hygiene]] rule
-  (manual `git diff` of `resources/*` after any sync) is the current guard. Wiring a full-dir hash check into
+  (manual `git diff` of the full vendored skill dir — all non-`SKILL.md` files, especially executable `scripts/*` —
+  after any sync) is the current guard. Wiring a full-dir hash check into
   the `verify` gate belongs to **E0-2 (#19)** CI; the lock today is restore-grade, not part of `bun run verify`.
 - **Locked-fixtures directories don't exist yet.** `contracts/vectors` (#28, E1-3) and `tools/red-team`
   (#56, E10-1) are scaffolded by their owning epics; the locked-fixtures rule in
