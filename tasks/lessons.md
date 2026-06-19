@@ -15,6 +15,33 @@ Entry format:
 
 ---
 
+## 2026-06-19 — claude-md-is-lean-no-issue-numbers
+- **Mistake:** Bloated `CLAUDE.md`'s skills section with a flat enumeration of every source repo + per-skill
+  annotations + GitHub issue/epic numbers (`E0-10/#85, landed`, `#86`, `#73`, `T7`). The user cut it: issue/epic
+  numbers "do not add any value" in `CLAUDE.md`, and the repo list just duplicated `skills-lock.json`.
+- **Rule:** `CLAUDE.md` is for what an agent can't infer from the repo — short, specific, actionable. **No GitHub
+  issue/epic numbers** (`#N`, `E0-N`, `T`/`I` labels); state decisions as plain facts (date if needed) and link a
+  real anchor (`DECISIONS.md §N`, `ISSUES.md`) when detail lives elsewhere. The skill inventory lives in
+  `skills-lock.json` (source of truth) and auto-loads by description — don't re-list sources in `CLAUDE.md`. For
+  fast-moving APIs use a **Domain → Skill → Surface preflight table** (Cleno pattern). Prune `CLAUDE.md` like code.
+  Pairs with [[claude-md-serves-all-agents-no-dedupe]] — completeness vs conciseness; aim for high signal, low noise.
+  (Issue numbers DO belong in work-tracking files — `PROGRAM.md`, `ISSUES.md`, lessons — just not the constitution.)
+- **Context:** E0-10 (#85) `CLAUDE.md` skills section. Refs: `brain/raw/articles/The File That Turns Claude Code
+  Into Your Best Engineer`, Cleno `CLAUDE.md` (`#skill-preflight-fast-moving-apis`).
+
+## 2026-06-19 — verify-skill-absence-beyond-the-registry
+- **Mistake:** Concluded "no official Inspect AI skill exists" from `npx skills find` (registry) searches
+  alone, and judged a repo's officialness by its GitHub org slug. Both wrong: `meridianlabs-ai/inspect-skills`
+  exists (not registry-indexed — found only by checking the maintainer's GitHub directly), and Meridian Labs
+  now maintains `inspect_ai` even though the repo still sits under `UKGovernmentBEIS`. The user flagged the
+  framing ("what do you mean no official skills exist") and `/review` caught the concrete miss.
+- **Rule:** Before asserting a tool/skill "doesn't exist" or "isn't official," look beyond the skills.sh
+  registry: check the maintaining project's own GitHub org and a `<tool>-skills` repo, and read who actually
+  *maintains* the upstream (not just the repo's org slug) to judge first-party. `npx skills find` indexes only
+  a subset; a negative there means "not in the registry," not "doesn't exist." Phrase absence as "none found
+  in <where I looked>," and prefer under-claiming a gap (flag for verification) over asserting one.
+- **Context:** E0-10 (#85), the Inspect AI (E13) lane. Pairs with [[skills-sync-hygiene]] + the prefer-official rule.
+
 ## 2026-06-19 — skills-add-default-agent-targeting
 - **Mistake:** Installed a skill with `npx skills add <src> -a '*'`, reading `*` as "this project's
   agents." It means **all 72 agents skills.sh knows**, so it vendored the skill into dozens of stray
@@ -122,7 +149,7 @@ operating-layer, strict-TS, and debugging rules that apply to this repo. Prune a
 - **Mistake:** A skills.sh upstream sync silently dropped security-relevant excludes/validation from a
   vendored skill's `resources/*`; the lock file hashes only `SKILL.md`, so nothing flagged it.
 - **Rule:** After any **skills.sh** install or sync (the committed skill layer arriving in #85/#86),
-  `git diff` the skill's `resources/*` — especially executable scripts — before committing. Treat reduced
+  `git diff` the skill's full vendored dir (all non-`SKILL.md` files) — especially executable scripts — before committing. Treat reduced
   excludes or validation in vendored scripts as a regression to restore and report upstream, never a
   neutral update.
 - **Context:** Directly relevant to the incoming skill layer (E0-10/E0-11, #85/#86).

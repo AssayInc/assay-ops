@@ -12,7 +12,7 @@ contract schema**. The moat is a grader the trained agent **cannot reach**.
   eval bar. Read it before touching code; it is **settled — flag, don't silently deviate**. Rules live
   there; this file is the operating layer.
 - **Strategy / research / vision** live in the sibling `brain` repo (`../brain/`) — recall via the
-  **`assay-brain` skill** (#73).
+  **`assay-brain` skill**.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ bun run verify             # turbo run typecheck lint test (TS + Python) — THE
 bun run build
 ```
 
-`bun run verify` is the single local gate — green before claiming done. CI runs it on every PR (E0-2).
+`bun run verify` is the single local gate — green before claiming done. CI runs it on every PR.
 
 ## Agent Operating Loop
 
@@ -77,14 +77,14 @@ DRY · KISS · YAGNI · verify-first. (After Karpathy's LLM-coding guidelines.)
 
 The **trust-boundary non-negotiables** are the **[`DECISIONS.md` §8 checklist](./DECISIONS.md#8-agent-non-negotiables-checklist)**
 (verifier never runs agent code, account A/B isolation, WORM reward records, one-schema codegen, the
-15-vector exit bar, T7 guardrails, eval rigor, private corpus, publish-gated). Violating one is a trust
+15-vector exit bar, guardrails, eval rigor, private corpus, publish-gated). Violating one is a trust
 break, not a style nit — **stop and flag**. Operating rules:
 
 - **Locked grader:** never edit `contracts/vectors` or `tools/red-team` outside their owning
   `fixture-change` PR (owners in `DECISIONS.md` §8) — the agent that writes code never edits what scores it.
 - **Never edit a fixture / golden to make a test pass** — classify the divergence (real bug vs. approved
   rule change) first.
-- **Never push to `main`** — open a PR; merge only on green CI `verify` + `/review` (branch protection is E0-2).
+- **Never push to `main`** — open a PR; merge only on green CI `verify` + `/review` (branch protection not yet enforced — `ISSUES.md`).
 - **Never** use `any` (use validated `unknown`), add AI-attribution trailers to commits, use Bash for
   communication, or create files the task doesn't need.
 
@@ -127,8 +127,24 @@ Design, QA, and Vercel/deploy skills belong to `assay-web`, not this repo.
 
 ## Skills (committed layer)
 
-- **skills.sh + `skills-lock.json`, prefer-official** (E0-10/#85): `aws/agent-toolkit-for-aws`,
-  `hashicorp/agent-skills`, `meta-pytorch/openenv`, `bun`, `turborepo`, `skill-creator`. Homegrown AssayOps
-  skills → `AssayInc/skills` (#86). **`assay-brain`** (#73) = brain recall.
-- **Preflight:** before coding against AWS / Terraform / OpenEnv / TRL / Inspect AI, load its skill or
-  official docs first — never cached API knowledge.
+Vendored skills live in `.agents/skills/` (symlinked into `.claude/`+`.hermes/`), pinned by `skills-lock.json`
+and auto-loaded by name/description — the lock is the source of truth for what's installed.
+
+- **Adding a skill:** `npx skills add <repo> --skill <name>` with default agent targeting (**never `-a '*'`** —
+  it litters the repo); take only the on-target skills from a multi-skill repo, not the whole pack.
+- **Source bar:** prefer official/first-party; a well-adopted, maintained community skill is an acceptable
+  fallback only where none official exists. Homegrown AssayOps skills → `AssayInc/skills`; **`assay-brain`** = brain recall.
+
+## Skill preflight (fast-moving APIs)
+
+Before writing code against a fast-moving API/framework, load its skill (or the official docs) FIRST and follow
+it — never cached API knowledge.
+
+| Domain | Skill(s) | Surface |
+|--------|----------|---------|
+| AWS | `aws-sdk-js-v3-usage` · `aws-cloudformation` · `aws-cdk` · `aws-iam` | verifier reads deployed state (read-only, cross-account); ledger KMS/S3; CDK adapter + drift tasks |
+| Terraform | `terraform-style-guide` · `terraform-test` | the Terraform → diff-IR adapter |
+| OpenEnv | `openenv-cli` · `generate-openenv-env` | the OpenEnv-compatible env-server |
+| TRL / HF Hub | `trl-training` · `hf-cli` | the SFT + LoRA trainer |
+| Inspect AI | `map-inspect-packages` · `reading-logs` · `babysitting-evals` | the eval harness (deploy-verifier as `Scorer`) |
+| LocalStack | `localstack` · `localstack-deploy` · `localstack-iam` · `localstack-state` · `localstack-logs` | the local dev loop |

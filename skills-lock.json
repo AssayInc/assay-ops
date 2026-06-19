@@ -7,10 +7,58 @@
       "skillPath": "assay-brain/SKILL.md",
       "computedHash": "7cae0ff586bf1a067595d95eda0caa3164162e4403e4531978dc8bd93d60ccca"
     },
+    "async-python-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/async-python-patterns/SKILL.md",
+      "computedHash": "e0f03523d989848310c93a599541948474f24ccaa04c8d52ed1b45cc5adaebde"
+    },
+    "aws-cdk": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-cdk/SKILL.md",
+      "computedHash": "681d65ddfdb1d5f0454230c09cf3bc01b5dcf4c1484d99a098222b35f125d3ca"
+    },
+    "aws-cloudformation": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-cloudformation/SKILL.md",
+      "computedHash": "3fbb63b4e6ad7624a1646872fd83aad687758dd3dc3d72b2157faabee72d3622"
+    },
+    "aws-iam": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-iam/SKILL.md",
+      "computedHash": "e6b01570731dc3a67e26ecaaa5ce0d1d7b54f39f5e041a057f23f3b22c57cd9c"
+    },
+    "aws-sdk-js-v3-usage": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-sdk-js-v3-usage/SKILL.md",
+      "computedHash": "b2c5175e7e8951cb6b2d65ddda09187906feb222cdd97a3757a82f7fa142a873"
+    },
+    "babysitting-evals": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/babysitting-evals/SKILL.md",
+      "computedHash": "f0fe0f35ce5b2fbcb9a737fa63070ddd8dc5379c9fa3eec5a2857386a8c11acd"
+    },
     "bun": {
       "source": "bun.sh",
       "sourceType": "well-known",
       "computedHash": "3f507a4312969a2a27c547e6693c7a10f3454c8bff31144d0c15607ae03e33bb"
+    },
+    "generate-openenv-env": {
+      "source": "huggingface/OpenEnv",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/generate-openenv-env/SKILL.md",
+      "computedHash": "26eb68f0baf025d02e51fdcffab0c7b5dc44ad03c8f2b37358aa59a4bb18279b"
+    },
+    "hf-cli": {
+      "source": "huggingface/skills",
+      "sourceType": "github",
+      "skillPath": "skills/hf-cli/SKILL.md",
+      "computedHash": "8d7a3e2b59e574e4f2dd7f1c51efa49afcf057b39880395fa1121356a657daea"
     },
     "karpathy-guidelines": {
       "source": "szkocot/andrej-karpathy-skills",
@@ -18,11 +66,113 @@
       "skillPath": "skills/karpathy-guidelines/SKILL.md",
       "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
     },
+    "localstack": {
+      "source": "localstack/skills",
+      "sourceType": "github",
+      "skillPath": "skills/localstack-lifecycle/SKILL.md",
+      "computedHash": "ac9e6fd8aa895191fb75e2df4d3d435c8b66d79a7e273b37fbbc46e1d1b4f853"
+    },
+    "localstack-deploy": {
+      "source": "localstack/skills",
+      "sourceType": "github",
+      "skillPath": "skills/iac-deployment/SKILL.md",
+      "computedHash": "1d34d549502d2e7915e26210b88fe59e1ceede2d093199627e256f89784ee2c4"
+    },
+    "localstack-iam": {
+      "source": "localstack/skills",
+      "sourceType": "github",
+      "skillPath": "skills/iam-policy-analyzer/SKILL.md",
+      "computedHash": "baf9a97e87e6b10366133f3118c6d4b78d0557079cec0253c1e665effe34f090"
+    },
+    "localstack-logs": {
+      "source": "localstack/skills",
+      "sourceType": "github",
+      "skillPath": "skills/logs-analysis/SKILL.md",
+      "computedHash": "6fb18c443f9891c083ca495d7e1717751e5258d36fc7f8ea46b7c0d6d6b9f73f"
+    },
+    "localstack-state": {
+      "source": "localstack/skills",
+      "sourceType": "github",
+      "skillPath": "skills/state-management/SKILL.md",
+      "computedHash": "bb23113c1f73203eaf9e95f031173276deddf7f219e2a156114a062edb3b4cc9"
+    },
+    "map-inspect-packages": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/map-inspect-packages/SKILL.md",
+      "computedHash": "b6b69630ad8f0385984376338ad4c451fd2166a121fa52614aeb502e7d62d942"
+    },
+    "openenv-cli": {
+      "source": "huggingface/OpenEnv",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/openenv-cli/SKILL.md",
+      "computedHash": "c9c6bdbb871a1288862fca0c1202443138a86b4cf12821627e2879ceb3f05842"
+    },
+    "python-testing-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-testing-patterns/SKILL.md",
+      "computedHash": "1306eea409e7eff2288d7658806cb508f18339a0ee9a686d324a0fd2570eae55"
+    },
+    "python-type-safety": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-type-safety/SKILL.md",
+      "computedHash": "16314aa8a4a465773be809c517f62f8ef704f5ab1bb237e8c9b8a759689fcb21"
+    },
+    "reading-logs": {
+      "source": "meridianlabs-ai/inspect-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/inspect-skills/skills/reading-logs/SKILL.md",
+      "computedHash": "61709e76c301230b6843bfa84f09201e4ca9501ce83845ce2a02bc21914b53e8"
+    },
+    "ruff": {
+      "source": "astral-sh/claude-code-plugins",
+      "sourceType": "github",
+      "skillPath": "plugins/astral/skills/ruff/SKILL.md",
+      "computedHash": "905f1c2b66e722ab534d7cbeceafb6ee37d32e3bfe51f3e68c661c51eb19a776"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
+    },
+    "terraform-style-guide": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "skillPath": "terraform/code-generation/skills/terraform-style-guide/SKILL.md",
+      "computedHash": "fd301fe5bfb41764acac67c25244cc5650b5dd0a5d8d037414449a2d3adecbbf"
+    },
+    "terraform-test": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "skillPath": "terraform/code-generation/skills/terraform-test/SKILL.md",
+      "computedHash": "c446a090ac98bea46704c16003761a030e6aa56a27b0e95d6914fbdb7c1d2a23"
+    },
+    "trl-training": {
+      "source": "huggingface/skills",
+      "sourceType": "github",
+      "skillPath": "skills/trl-training/SKILL.md",
+      "computedHash": "ae41062997a13dd9da1d73ecf111cffed04ebbd734bdaf5320c65f6f1c5b89a3"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",
       "skillPath": "skills/turborepo/SKILL.md",
       "computedHash": "b7c3165ae67a2892d6195a5b2cba15c8d96341f5c64ddd0d3ce4225c94a2ae83"
+    },
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
+      "computedHash": "8cbf2bf600f392d7260e476e3202932a876e2281cda3b15a8b6a5a43f383252d"
+    },
+    "uv": {
+      "source": "astral-sh/claude-code-plugins",
+      "sourceType": "github",
+      "skillPath": "plugins/astral/skills/uv/SKILL.md",
+      "computedHash": "b1ca9e9826d906f6ee6ea172da50018ec13bb622ac9ba7204bda8b10e7fc8d0a"
     }
   }
 }
