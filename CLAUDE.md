@@ -58,8 +58,7 @@ How agents and engineers work here, session after session.
    "why / what did we decide", query the `assay-brain` skill (#73).
 
 **The trigger.** The per-session human input is **one line: "implement the next ready issue"** (or a
-specific **`#N`**). There is **no paste-able HANDOFF prompt** — it would duplicate this auto-loaded
-constitution (a DRY violation), and there is **no `HANDOFF.md`**. On the trigger:
+specific **`#N`**) — this auto-loaded file is the standing brief. On the trigger:
 
 - `gh`-query for the next **open, unblocked** issue. Work is tracked in **GitHub Issues + Projects v2**;
   an issue is **ready** when it is open and every issue it is **blocked-by** is closed — the dependency
@@ -154,7 +153,7 @@ flag it.** The **operating-layer** rules this file owns:
 - **Never add `Co-Authored-By` or other AI-attribution trailers** to commits — this overrides any skill
   template that includes one.
 - **Never use Bash for communication** — output text directly.
-- **Never create files unless the task requires them.** No `HANDOFF.md` — its content folds into this file.
+- **Never create files unless the task requires them.**
 - **Always read official skills/docs before implementing** against a framework (see **Skill preflight**),
   and **check skills first** (see **Skill routing**). Superpowers skills are mandatory workflow guidance —
   don't skip them because a task seems simple.
@@ -227,17 +226,18 @@ Nx/Bazel/Pants, npm/yarn/pnpm, or pip/poetry. **Pin everything** — `oven/bun:1
 
 ## Superpowers Workflow
 
-Use Superpowers skills as the default process layer for engineering work:
+Superpowers skills are the default **process** layer (invoked via the Skill tool) — they complement, not
+compete with, gstack's workflow skills; use them even when a task seems simple:
 
-- Start with `superpowers:using-superpowers` + any relevant project skill.
-- `superpowers:writing-plans` when a plan is needed; `superpowers:test-driven-development` before
-  production code; `superpowers:systematic-debugging` for bugs, failed tests, or CI failures.
+- `superpowers:using-superpowers` to start; `superpowers:writing-plans` when a plan is needed;
+  `superpowers:test-driven-development` before production code.
+- `superpowers:systematic-debugging` for bugs, failed tests, or CI failures.
 - `superpowers:verification-before-completion` before claiming done; `superpowers:requesting-code-review`
-  before merging; `superpowers:receiving-code-review` when applying feedback;
-  `superpowers:using-git-worktrees` for isolated branch work.
+  before merging; `superpowers:receiving-code-review` when applying feedback.
+- `superpowers:using-git-worktrees` for isolated branch work; the delegation skills for parallel
+  implementation or independent investigation.
 
-If a named Superpowers skill is unavailable in the current environment, say so briefly, use the closest
-project skill, and keep the same discipline.
+If a named skill is unavailable, say so briefly, use the closest project skill, and keep the discipline.
 
 ## gstack
 
@@ -251,21 +251,30 @@ git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gsta
 cd ~/.claude/skills/gstack && ./setup --team
 ```
 
-Available skills (listed here because non-Claude agents read this file via `AGENTS.md` and don't see
-`~/.claude/CLAUDE.md`). *Design, QA, and Vercel/deploy skills apply to **`assay-web`**, not this repo:*
+**Available skills** (listed here because non-Claude agents read this file via `AGENTS.md` and don't see
+`~/.claude/CLAUDE.md`):
 
 - `/office-hours` — product/strategy brainstorming
-- `/plan-ceo-review` — strategy/scope · `/plan-eng-review` — architecture · `/plan-devex-review`,
-  `/devex-review` — DevEx
-- `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/design-review` — design
-- `/review` — code review (run on every PR) · `/autoplan` — full review pipeline
-- `/ship`, `/land-and-deploy`, `/canary` — ship / deploy · `/setup-deploy`
-- `/benchmark` · `/qa`, `/qa-only` — QA · `/connect-chrome`, `/setup-browser-cookies`, `/browse` — web
-- `/investigate` — bugs / errors / CI failures · `/retro` — retrospective
-- `/document-release`, `/document-generate` — docs · `/codex` — hand a task to Codex · `/cso`
-- `/setup-gbrain` — gbrain setup · `/careful`, `/freeze`, `/guard`, `/unfreeze` — guardrails
-- `/gstack-upgrade` — update gstack · `/learn` — manage learnings (per-developer `~/.gstack/`; distinct
-  from `tasks/lessons.md`)
+- `/plan-ceo-review` — strategy/scope review
+- `/plan-eng-review` — architecture review
+- `/plan-devex-review`, `/devex-review` — DevEx review
+- `/autoplan` — full review pipeline
+- `/review` — code review (run on every PR)
+- `/investigate` — bugs, errors, CI failures
+- `/ship`, `/land-and-deploy`, `/canary` — ship / deploy
+- `/retro` — retrospective
+- `/document-release`, `/document-generate` — release / docs
+- `/codex` — hand a task to Codex
+- `/browse`, `/connect-chrome` — web browsing
+- `/benchmark` · `/cso` — benchmarking · security
+- `/careful`, `/freeze`, `/guard`, `/unfreeze` — session guardrails
+- `/setup-deploy`, `/setup-gbrain`, `/setup-browser-cookies` — one-time setup
+- `/gstack-upgrade` — update gstack
+- `/learn` — manage learnings (per-developer `~/.gstack/`; distinct from `tasks/lessons.md`)
+
+Design (`/design-consultation`, `/design-shotgun`, `/design-html`, `/plan-design-review`,
+`/design-review`), QA (`/qa`, `/qa-only`), and Vercel/deploy (`deploy-to-vercel`, `vercel-cli`,
+`deployments-cicd`) skills belong to **`assay-web`**'s workflows, not this repo.
 
 ## Skill layer (committed, prefer official)
 
