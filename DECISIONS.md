@@ -133,6 +133,20 @@ audit-grade provenance as a selling point, reaffirmed by the KMS + Object Lock a
 
 **[locked — eng-arch §Implementation tasks; mapping from impl-plan §6]**
 
+**Phases (T0-relative)** [proof-first §Recommended approach]. The build clock is **~13–15 weeks from
+T0** (= team closed: a verbal yes + a start date + a named first deliverable); the `Phase` column below
+maps to:
+
+- **0 — Gate (pre-T0):** close the team + scout; the build proceeds **regardless of the Henry intro**.
+- **1 — A-spike (wk 1–5):** the write-isolated verifier + deterministic replay on a small **Terraform**
+  slice (engine validation, **not** the CDK proof corpus); exit = the §5 attack list each demonstrated
+  to fail + a measured LocalStack cost/trajectory.
+- **2 — Ship the corpus (wk 4–10), separable:** **N ≈ 30–50** CDK drift&debug tasks; if the window
+  slips, cut to the **~30** floor, or drop to **proof-only** (private eval, skip the public leaderboard).
+- **3 — Lift demo (wk 8–12):** **SFT** on gold trajectories; **hard-gated on the RL/eval owner**; the
+  proof must clear the §6 bar **before** Phase 4.
+- **4 — Pitch (wk ~13–15):** **gated on the proof clearing the bar, not a fixed date.**
+
 | Task | What | Prio | Epic | Lane | Phase |
 |------|------|------|------|------|-------|
 | **T1** | Verifier core: account-B, deployed-state read-only grading, normalized-diff IR, **never runs agent synth/plan** | P1 | E2 | A | 1 |
@@ -151,6 +165,11 @@ audit-grade provenance as a selling point, reaffirmed by the KMS + Object Lock a
 
 All 13 locked tasks are mapped: **T1→E2, T2/T3→E3, T4→E4, T5→E1, T6→E8, T7→E9, T8→E6, T9/T12→E7,
 T10→E10, T11→E13, T13→E11** — plus the env-server (E5), trainer (E12), and GTM (E15) surfaces.
+
+> **Lanes (parallel worktrees) [eng-arch §Parallelization].** A = the IP · B = account infra (Orgs +
+> pool + T7) · C = episode lifecycle/orchestration (**waits on B's account pool, T6**) · D = eval-task
+> authoring. **A and C both touch the verifier/episode boundary — coordinate or sequence; start C only
+> after B lands the account pool.** Launch A + B + D in parallel.
 
 > **T7 is P1-blocking [locked — eng-arch §Failure modes].** Isolating the verifier does **not**
 > isolate the agent's *spend*. Account A can run cost-bombs / quota exhaustion / region-spanning
@@ -178,7 +197,8 @@ lint/format; no Nx/Bazel/Pants. Turborepo is language-agnostic (vercel/turborepo
 refined per founder input]*
 
 **I3 — Contract schema = JSON Schema (Draft 2020-12) source of truth** → `quicktype` (TS) +
-`datamodel-code-generator`→Pydantic v2 (Py); sign over **RFC 8785 JCS canonical JSON**. Protobuf is
+`datamodel-code-generator`→Pydantic v2 (Py); sign over **RFC 8785 JCS canonical JSON** (record → JCS →
+UTF-8 → SHA-256 → **KMS asymmetric ECDSA P-256, `MessageType=DIGEST`**). Protobuf is
 *disqualified*: its spec says serialization is non-canonical, which breaks KMS signing across
 runtimes. JCS pins every serialization degree of freedom and ships a cross-language conformance
 suite. *[impl — realizes 5A + 4B]*
@@ -320,10 +340,16 @@ number without this rigor is dismissible by a post-training lead in 60 seconds �
 - **R6 — Henry routing fails** ⇒ build proceeds (pitch is gated on the artifact, not on Henry);
   open parallel buyer paths.
 
-**Benchmark posture [locked — roadmap D1=C]:** **private now, publish gated** — decided right after
-the first Anthropic conversation. Build the corpus/verifier/contracts **lab-agnostic from day one**;
-treat any first exclusive as **time-limited**. Never open-source the harness/verifier/corpus/site
-(see I11).
+**Benchmark posture & the 12-month flywheel [locked — roadmap].** **D1=C — private now, publish
+gated:** the corpus/verifier/contracts are built **lab-agnostic from day one**, any first exclusive is
+**time-limited**, and public benchmark publication is decided right after the first Anthropic
+conversation (**gated on safety + whether the warm/Henry path materialized**). Never open-source the
+harness/verifier/corpus/site (I11). The roadmap also commits **three directional bets** beyond the
+proof — *distinct from the build-epics E1–E3* — (1) the **lab-agnostic / second-buyer** posture; (2) the
+**ELT data-pipeline second act**, architecture-ready via the 6A adapters, built only **after** the cloud
+proof; (3) **publishing the verifier-isolation design** as thought-leadership — the safe category-stake
+(it leaks nothing, unlike the corpus) and the early-attention move. *Rejected:* leading with a public
+benchmark; a single-lab-only bet; skipping ELT.
 
 ---
 
@@ -355,6 +381,14 @@ appears to require breaking one, stop and flag it — don't code around it.**
 - [ ] **Benchmark is private-now, publish-gated (D1=C); never open-source the
       harness/verifier/corpus/site.** The only public artifact is `@assayops/contracts` (plus,
       optionally and later, a small public sample task split). **[I11, roadmap]**
+- [ ] **Build only the IP; reuse the rest.** Build: verifier core, diff IR + adapters, reward ledger,
+      contract schema, determinism + replay, episode lifecycle, the TS OpenEnv env-server, red-team
+      suite, eval-harness wiring, task corpus, account infra + guardrails. **Reuse, don't rebuild:**
+      OpenEnv, Fleet Harbor (rollouts only), LocalStack, Daytona/Modal, Control Tower AFT, KMS + S3
+      Object Lock, terraform/cdk CLIs. **[eng-arch]**
+- [ ] **The proof is SFT-only; RL is a stretch goal, off the critical path** — don't build RL infra for
+      the proof. Deferred too: migration/incident/cost task families (after drift&debug) + the Pulumi
+      adapter (cheap via 6A). **[eng-arch / proof-first]**
 - [ ] **Don't re-litigate a decision in this file.** It's settled — **flag, don't silently deviate.**
       For the deeper *why* beyond this floor, query the `assay-brain` skill (#73).
 
@@ -370,7 +404,7 @@ go deeper (via the `assay-brain` skill, #73). **On any conflict, the brain plans
 |---|---|---|
 | eng-arch | `assay-eng-architecture-2026-06-17.md` | Trust model, locked decisions 1C–T3, tasks T1–T13, the 14-vector threat table, eval design |
 | proof-first | `assay-proof-first-plan-2026-06-16.md` | The 5 phases (T0-relative), risks & kill-criteria R1–R6, pre-registered success criteria |
-| roadmap | `assay-strategic-roadmap-2026-06-17.md` | D1=C benchmark posture; the E1/E2/E3 12-month flywheel |
+| roadmap | `assay-strategic-roadmap-2026-06-17.md` | D1=C benchmark posture; the 12-month flywheel (lab-agnostic · ELT second act · published verifier-isolation) |
 | impl-plan | `assayops-implementation-plan-2026-06-17.md` | Implementation decisions I1–I11, T→Epic mapping, the 15th-vector promotion, this provenance convention |
 
 **Related issues:** #56 (E10-1) owns the canonical 15-vector table + red-team fixtures · #17 (E0-1)

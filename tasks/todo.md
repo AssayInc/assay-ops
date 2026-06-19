@@ -2,62 +2,51 @@
 
 Plan-first scratchpad for the current piece of work (see `CLAUDE.md`/`AGENTS.md` → **Agent Operating
 Loop**). Write checkable items here before touching code; mark them as you go; add a short **Review**
-when done. For parallel work, each git worktree carries its own copy.
+when done.
 
 ---
 
-## E0-6 (#18) — Adopt the AI-operating layer + verifiable loop
+## DECISIONS.md + ARCHITECTURE.md faithfulness pass (vs `../brain/raw/plans`)
 
-**Goal:** stand up the AI-operating layer — a single auto-loaded constitution + the verifiable-loop
-scaffold — for AssayOps's polyglot, verification-infra domain.
+**Goal:** close the gaps a 4-plan audit found between the committed reference docs and their source
+plans. ADD missing load-bearing content + fix two consistency defects; trim the one bloat block. (Docs
+own issues #74/#17, both merged — this is faithful maintenance, "plans win → fix the doc".)
 
-- [x] `CLAUDE.md` — title + identity, **Stance banner verbatim**, Project Focus (brain via
-      `assay-brain` #73; `DECISIONS.md` settled), Architecture (pointer + moat one-liner), Commands,
-      **Agent Operating Loop** ("implement the next ready issue" trigger), Working Guidelines (quality
-      bar), Critical rules, Testing (fixtures locked), Toolchain (Bun + UV), Superpowers, Skill routing.
-- [x] `AGENTS.md` → **symlink** to `CLAUDE.md` (`readlink AGENTS.md` → `CLAUDE.md`).
-- [x] `PROGRAM.md` — Right Now / Recently Landed / Handoff Notes, honest to the E0 state.
-- [x] `ISSUES.md` — the real cross-cutting follow-ups (CI=E0-2, `assay-brain`=E0-7, locked-fixture dirs).
-- [x] `tasks/todo.md` (this file) + `tasks/lessons.md` (format seeded, no fabricated entries).
-- [x] **DRY:** point to `DECISIONS.md` for the trust model / non-negotiables — do **not** restate them.
-- [x] **Scope hold:** no `ci.yml` (E0-2/#19); no `HANDOFF.md` (folded into `CLAUDE.md`).
-- [x] Verify AC: stance verbatim · `readlink AGENTS.md` · links to `DECISIONS.md` + `assay-brain` (#73)
-      · locked-fixtures #28/#56 · no `HANDOFF.md` · `bun run verify` green.
+### DECISIONS.md
+- [x] **§3 — add a "Phases (T0-relative)" block** so the table's `Phase` column is legible (proof-first):
+      Phase 0–4, the ~13–15-wk T0 clock, folding in N≈30–50 + cut-to-30 + proof-only fallback + the two
+      hard gates (RL/eval owner; proof-clears-bar-before-pitch).
+- [x] **§3 — add the Lane legend + A↔C conflict / "C after B" sequencing** (eng-arch §Parallelization).
+- [x] **§4 I3 — pin the signing crypto** (`SHA-256 → KMS asymmetric ECDSA P-256, MessageType=DIGEST`) so
+      ARCHITECTURE's existing pointer resolves (impl-plan §3).
+- [x] **§7 — fix the E1/E2/E3 collision + add the two missing flywheel bets + D1=C gating** (roadmap):
+      spell out the bets (lab-agnostic / ELT second act / publish verifier-isolation), mark them distinct
+      from build-epics E1–E3, restore the safety+warm-path gate, record rejected alternatives.
+- [x] **§8 — add two scope non-negotiables:** build-only-the-IP / reuse-the-rest list; RL is SFT-only /
+      stretch, off the critical path (eng-arch §NOT-in-scope + §reuse).
+- [x] **Sources — reword the roadmap row** so it describes the flywheel bets, not "E1/E2/E3".
+
+### docs/ARCHITECTURE.md
+- [x] **Spine section — add the JCS schema-modeling rules** (big ints/nonces/timestamps as strings;
+      bounded doubles; reject NaN/Inf), the `just codegen` entry point, and the parity-gate mechanism
+      (impl-plan §3/§5). Highest-value gap (byte-parity is a §8 non-negotiable).
+- [x] **Compress the ~11-line "Layout note"** (`ts/` vs `apps/`) to ~3 lines, drop the 2 turborepo URLs
+      (flagged by 3/4 auditors as the one clear bloat block).
+- [x] **`tasks/` layout line — note the deferred families** (migration/incident/cost + Pulumi → after
+      drift&debug; cheap via 6A).
+
+### Verify
+- [x] `bun run verify` green; faithful quotes vs plans; focused PR (separate from the merged #84).
 
 ### Review
 
-- **Built:** the AI-operating layer — `CLAUDE.md` (constitution) + `AGENTS.md` symlink, `PROGRAM.md`,
-  `ISSUES.md`, `tasks/{todo,lessons}.md`. A focused `CLAUDE.md` section order + the verifiable-loop
-  discipline, written for the polyglot (Bun + UV) verification-infra domain.
-- **Key decision — DRY against `DECISIONS.md`:** AssayOps has a frozen-floor `DECISIONS.md`, so this
-  `CLAUDE.md` is deliberately thinner on domain rules: it **points** to `DECISIONS.md` §1
-  (trust model) and §8 (non-negotiables) instead of duplicating them. The constitution owns the
-  *operating layer* (the loop, the quality bar, locked-fixtures, toolchain, skill routing); `DECISIONS.md`
-  owns the *rules*.
-- **Key decision — scope:** `ci.yml` is **not** authored here. `docs/ARCHITECTURE.md` assigns it to
-  **E0-2 (#19)** ("two-lane CI + branch protection"), a separate open issue. #18's AC "CI runs verify on
-  every PR" is met by *documenting* the invariant (citing E0-2), matching `ARCHITECTURE.md`'s existing
-  "CI (E0-2) runs the same gate" convention. Authoring the workflow would poach E0-2 and violate the
-  scope discipline this very file establishes.
-- **Assumptions:** the `assay-brain` skill (#73) and the locked-fixture dirs (`contracts/vectors` #28,
-  `tools/red-team` #56) are referenced as forward dependencies — they don't exist yet; noted in
-  `ISSUES.md`. `tasks/lessons.md` starts empty of entries (no real corrections yet to record).
-- **Verification:** `bun run verify` green (both lanes); `readlink AGENTS.md` → `CLAUDE.md`; no
-  `HANDOFF.md`; stance banner present verbatim.
-
-### Review round 2 (user feedback — completeness pass)
-
-- [x] **Caught:** over-trimmed the gstack skill list/routing (deduped against Claude-global config) —
-      recorded in `tasks/lessons.md` (`claude-md-serves-all-agents-no-dedupe`).
-- [x] Added the full **gstack** section (browse-only rule + `never mcp__claude-in-chrome__*` + install +
-      complete skill list + cross-agent rationale) and adapted **Skill routing** (design/QA/Vercel →
-      `assay-web`).
-- [x] Added the **Skill layer** section (skills.sh + `skills-lock.json`, **prefer-official**) — maps
-      **E0-10 (#85)** + **E0-11 (#86, `AssayInc/skills`)**; mapped **`assay-brain` (E0-7, #73)** and
-      removed the "until #73 lands" hedges per user.
-- [x] Filled remaining universal gaps: "never use Bash for communication", comments policy +
-      code-quality, `/review` each PR, read-official-docs-first, gstack `/learn` vs `lessons.md`, Karpathy
-      attribution.
-- [x] Held scope: did **not** create `.agents/skills/` or `skills-lock.json` (that's #85), nor `ci.yml`
-      (E0-2/#19). Kept omitted: shadcn/UI, Mastra/TanStack/Supabase preflight, machine-local gbrain config.
-- [x] Re-verified AC + `bun run verify`; updated `PROGRAM.md` / `ISSUES.md` to map #85/#86/#73.
+- **Done:** 6 `DECISIONS.md` edits (Phases block; Lane legend + A↔C sequencing; I3 signing crypto; §7
+  flywheel rewrite + E1/E2/E3 disambiguation; §8 build-vs-reuse + RL-out-of-scope; Sources reword) + 2
+  `docs/ARCHITECTURE.md` edits (spine schema-rules/`just codegen`/parity-gate; Layout-note compression).
+- **Net:** DECISIONS 378→412 (+34, high-value); ARCHITECTURE 145→146 (spine grew, layout-note trimmed —
+  net flat). `bun run verify` green.
+- **Faithfulness:** every addition is quoted from a source plan (eng-arch §NOT-in-scope/§reuse/
+  §Parallelization; proof-first §phases/gates/N; impl-plan §3 signing+schema; roadmap D1/E1/E2/E3). The
+  two consistency defects are fixed (E1/E2/E3 collision; the previously-undefined `Phase` column).
+- **Scope:** separate PR from the merged #84; the docs own #74/#17 — faithful maintenance ("plans win →
+  fix the doc"), not re-litigation.
