@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-06-19 — verify-skill-absence-beyond-the-registry
+- **Mistake:** Concluded "no official Inspect AI skill exists" from `npx skills find` (registry) searches
+  alone, and judged a repo's officialness by its GitHub org slug. Both wrong: `meridianlabs-ai/inspect-skills`
+  exists (not registry-indexed — found only by checking the maintainer's GitHub directly), and Meridian Labs
+  now maintains `inspect_ai` even though the repo still sits under `UKGovernmentBEIS`. The user flagged the
+  framing ("what do you mean no official skills exist") and `/review` caught the concrete miss.
+- **Rule:** Before asserting a tool/skill "doesn't exist" or "isn't official," look beyond the skills.sh
+  registry: check the maintaining project's own GitHub org and a `<tool>-skills` repo, and read who actually
+  *maintains* the upstream (not just the repo's org slug) to judge first-party. `npx skills find` indexes only
+  a subset; a negative there means "not in the registry," not "doesn't exist." Phrase absence as "none found
+  in <where I looked>," and prefer under-claiming a gap (flag for verification) over asserting one.
+- **Context:** E0-10 (#85), the Inspect AI (E13) lane. Pairs with [[skills-sync-hygiene]] + the prefer-official rule.
+
 ## 2026-06-19 — skills-add-default-agent-targeting
 - **Mistake:** Installed a skill with `npx skills add <src> -a '*'`, reading `*` as "this project's
   agents." It means **all 72 agents skills.sh knows**, so it vendored the skill into dozens of stray
