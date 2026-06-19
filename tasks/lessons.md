@@ -15,6 +15,22 @@ Entry format:
 
 ---
 
+## 2026-06-19 — skills-add-default-agent-targeting
+- **Mistake:** Installed a skill with `npx skills add <src> -a '*'`, reading `*` as "this project's
+  agents." It means **all 72 agents skills.sh knows**, so it vendored the skill into dozens of stray
+  per-agent dirs (`agent/`, plus gitignored ones like `.aider`/`.cursor`) instead of the repo's 3-dir
+  layout — and quietly, since many of those dirs are gitignored and never show in a plain `git status`.
+- **Rule:** Add skills with the **default agent targeting** (omit `-a`): on a project that already has
+  `.agents/skills/` + `.claude/` + `.hermes/`, the default extends those exact dirs (a real
+  `.agents/skills/<name>` dir + mode-`120000` symlinks in `.claude/`+`.hermes/`). Never `-a '*'`. After
+  **every** `skills add`, run `git status --porcelain` and confirm ONLY `.agents/`, `.claude/`, `.hermes/`,
+  and `skills-lock.json` changed; any other new dir is an overshoot — back it out
+  (`npx skills remove <name> -a '*' -y`, then `rm -rf` stragglers) and re-add without `-a '*'`. Preview
+  multi-skill repos with `--list` first and install only the needed skill(s) (`--skill <name>`), not the
+  whole repo.
+- **Context:** E0-10 (#85), `npx skills add` (the committed skill layer). Recurs for the remaining
+  official packs (AWS / Terraform / OpenEnv + `skill-creator`). Pairs with [[skills-sync-hygiene]].
+
 ## 2026-06-19 — eval-is-part-of-the-skill
 - **Mistake:** Built the `assay-brain` skill, verified its CLI by hand, and called it done — scoping the
   `evals/` tree out as a "follow-up." That shipped a *verification* skill with no verification that it
