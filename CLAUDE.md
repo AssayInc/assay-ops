@@ -43,9 +43,10 @@ the standing brief. `gh`-query the next **open, unblocked** issue (tracked in Gi
 **Task loop.**
 1. **Validate** the issue against the code — accurate, unblocked, not already done? A contradiction or a
    locked decision in the way → **comment on the issue; don't code around it**.
-2. **Test-first** — each acceptance criterion → a failing test → implement to green. **Reuse before adding.**
-3. **`bun run verify` green**, then a **focused PR** (`Closes #N`, diff scoped to the AC); run `/review`.
-4. **Update `PROGRAM.md` / `ISSUES.md`** in the same PR.
+2. **Plan** non-trivial work to `tasks/todo.md` before coding.
+3. **Test-first** — each acceptance criterion → a failing test → implement to green. **Reuse before adding.**
+4. **`bun run verify` green**, then a **focused PR** (`Closes #N`, diff scoped to the AC); run `/review`.
+5. **Update `PROGRAM.md` / `ISSUES.md`** in the same PR.
 
 **Self-improvement.** After any user correction, append a preventing rule to `tasks/lessons.md` — the
 shared committed memory (distinct from per-developer gstack `/learn`).
