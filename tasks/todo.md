@@ -12,7 +12,7 @@ when done.
 (lock + `.agents/skills/` → `.claude/`+`.hermes/` symlinks), then close it. The lock mechanism +
 `assay-brain` already landed (PR #89). What's left: the cloud/IaC/training/Python/eval packs.
 
-**Selection (16 skills; each maps to a coding surface — prefer-official, reviewed per-repo, not bulk-added):**
+**Selection (21 skills; each maps to a coding surface — prefer-official, reviewed per-repo, not bulk-added):**
 - `skill-creator` ← `anthropics/skills` — author homegrown skills (#86)
 - `aws-cdk`, `aws-sdk-js-v3-usage`, `aws-cloudformation`, `aws-iam` ← `aws/agent-toolkit-for-aws`
   (verifier E2 reads state via SDK-v3 + CFN; CDK adapter E3/T3 + drift tasks E11; A/B read-only role)
@@ -20,12 +20,15 @@ when done.
 - `openenv-cli`, `generate-openenv-env` ← `huggingface/OpenEnv` — env-server conformance E5 (canonical repo; `meta-pytorch/openenv` redirects here)
 - `hf-cli`, `trl-training` ← `huggingface/skills` — trainer E12 (TRL+LoRA) + HF Hub model/checkpoint mgmt
 - `uv`, `ruff` ← `astral-sh/claude-code-plugins` — `py/` UV workspace + the ruff linter (official astral)
+- `localstack`, `localstack-deploy`, `localstack-iam`, `localstack-state`, `localstack-logs` ← `localstack/skills`
+  — LocalStack dev loop (E0-3/#20): container lifecycle, deploy CDK/TF (`cdklocal`/`tflocal`), IAM-policy testing, state snapshots (replay E6/T8), log debug
 - `map-inspect-packages`, `reading-logs`, `babysitting-evals` ← `meridianlabs-ai/inspect-skills` — Inspect AI
   eval lane E13/T11 (Meridian Labs now maintains `inspect_ai`; `map-inspect-packages` also routes Harbor = orchestrator E7)
 
 **Deliberately excluded:** the off-target majority of each multi-skill repo (AWS bedrock/amplify/
 containers/serverless/billing/observability/messaging/secrets/swift/python-sdk; all TF provider-dev +
-Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills); `ty` (we use mypy, not ty).
+Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills; LocalStack `localstack-extensions`);
+`ty` (we use mypy, not ty).
 **Scope note:** the user chose the *fuller* set, so `ruff` + `terraform-test` + `generate-openenv-env` are in.
 
 ### Build (branch `feat/skills-official-packs`) — done
@@ -38,15 +41,16 @@ Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills); `ty` (we
 - [x] `huggingface/skills` → hf-cli, trl-training
 - [x] `astral-sh/claude-code-plugins` → uv, ruff
 - [x] `meridianlabs-ai/inspect-skills` → map-inspect-packages, reading-logs, babysitting-evals (added after /review)
+- [x] `localstack/skills` → localstack, localstack-deploy, localstack-iam, localstack-state, localstack-logs (LocalStack dev loop; user-requested)
 
 ### Hygiene — green
 - [x] skill-creator (18 files, incl. executable `scripts/*`) + generate-openenv-env (17 files, incl.
-      `assets/*.py` templates) **byte-identical to upstream** (git blob SHAs); all 16 `SKILL.md` verbatim.
-- [x] All 16 `description` ≤ 1024 (max: hf-cli 1008). 3 AWS skills carry a benign upstream `version:`
+      `assets/*.py` templates) **byte-identical to upstream** (git blob SHAs); all 21 `SKILL.md` verbatim.
+- [x] All 21 `description` ≤ 1024 (max: hf-cli 1008). 3 AWS skills carry a benign upstream `version:`
       frontmatter key (Claude Code loads them fine — not edited, would break byte-identity + lock hash).
 - [x] `.claude/skills/*` + `.hermes/skills/*` all mode-120000 symlinks → `../../.agents/skills/<name>`;
       executable scripts preserved at 100755.
-- [x] `skills-lock.json`: 20 entries (4 prior + 16), each source + skillPath + computedHash; `npx skills list` resolves all.
+- [x] `skills-lock.json`: 25 entries (4 prior + 21), each source + skillPath + computedHash; `npx skills list` resolves all.
 
 ### Gate + bookkeeping
 - [x] `bun run verify` green — 6/6 tasks (typecheck/lint/test, both lanes), FULL TURBO.
@@ -55,9 +59,9 @@ Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills); `ty` (we
 
 ### Review
 
-- **Done:** 16 skills added to the committed skills.sh layer for **#85** (13 from official vendor repos +
+- **Done:** 21 skills added to the committed skills.sh layer for **#85** (18 from official vendor repos +
   3 maintainer-authored Inspect AI from `meridianlabs-ai`), each mapped to an AssayOps coding surface
-  (verifier/adapters/env-server/trainer/Python lane/eval lane). Lock +
+  (verifier/adapters/env-server/trainer/Python lane/eval lane/dev loop). Lock +
   3-dir symlink layout (`.agents/skills` → `.claude/`+`.hermes/`) preserved; `bun run verify` green.
 - **Method/traps avoided:** every multi-skill repo (AWS 43, HashiCorp 16, OpenEnv 16, HF 19) was previewed
   with `--list` and only on-target skills vendored — **not bulk-added**. Default agent targeting throughout

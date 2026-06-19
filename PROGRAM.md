@@ -10,24 +10,25 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
   wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
   symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73 + #86**, closed)
-  plus the **prefer-official cloud/IaC/training/eval packs** (**E0-10 (#85)**, landed — 16 skills: 13 from
-  official vendor repos (AWS / Terraform / OpenEnv / TRL / Python-UV + `skill-creator`) and 3 Inspect AI
-  skills from `meridianlabs-ai`, who maintain `inspect_ai`). Still open: the six homegrown AssayOps domain
-  skills (**#86**). Other ready E0 work: two-lane CI + branch
+  plus the **prefer-official cloud/IaC/training/eval/dev-loop packs** (**E0-10 (#85)**, landed — 21 skills:
+  18 from official vendor repos (AWS / Terraform / OpenEnv / TRL / Python-UV / LocalStack + `skill-creator`)
+  and 3 Inspect AI skills from `meridianlabs-ai`, who maintain `inspect_ai`). Still open: the six homegrown
+  AssayOps domain skills (**#86**). Other ready E0 work: two-lane CI + branch
   protection (**E0-2, #19**), the LocalStack dev loop (**E0-3, #20**), repo hygiene (**E0-4, #21**), and the
   Project v2 board (**E0-5, #22**). Phase-1 build proper starts at the contract-schema spine (**E1**), the
   join key for the whole system.
 
 ## Recently Landed
 
-- **E0-10 (#85): prefer-official skill packs.** 16 skills vendored into the committed layer (13 from official
+- **E0-10 (#85): prefer-official skill packs.** 21 skills vendored into the committed layer (18 from official
   vendor repos + 3 maintainer-authored Inspect AI), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
   `aws-cloudformation` / `aws-iam` (verifier read surface E2 + CDK adapter/drift E3/E11 + A/B role);
   `terraform-style-guide` / `terraform-test` (adapter-terraform E3); `openenv-cli` / `generate-openenv-env`
   (env-server E5, from canonical `huggingface/OpenEnv` — `meta-pytorch/openenv` now redirects there);
-  `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane); and Inspect AI `map-inspect-packages` /
-  `reading-logs` / `babysitting-evals` (eval lane E13, from `meridianlabs-ai/inspect-skills` — Meridian Labs
-  now maintain `inspect_ai`). Vendored verbatim (byte-identical to upstream), symlinked into
+  `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane); LocalStack `localstack` /
+  `localstack-deploy` / `localstack-iam` / `localstack-state` / `localstack-logs` (dev loop E0-3, from
+  `localstack/skills`); and Inspect AI `map-inspect-packages` / `reading-logs` / `babysitting-evals` (eval
+  lane E13, from `meridianlabs-ai/inspect-skills` — Meridian Labs now maintain `inspect_ai`). Vendored verbatim (byte-identical to upstream), symlinked into
   `.claude/`+`.hermes/`, each `SKILL.md` hash-pinned in `skills-lock.json` (scripts/resources guarded by the
   `skills-sync-hygiene` rule, not the lock); the off-target majority of each multi-skill repo excluded
   (prefer-official, smallest-change). All five `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
@@ -57,7 +58,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `./install.sh`, symlinked into `~/.claude/skills`) that makes recall work from *any* Assay repo; on a dev
   machine that global copy shadows the committed one (same content). Both resolve `../brain` with zero config
   and degrade gracefully when the brain is absent. The prefer-official cloud/IaC/training/eval packs landed
-  in **#85** (PR #91 — 16 skills, each `SKILL.md` hash-pinned in `skills-lock.json`); the six homegrown
+  in **#85** (PR #91 — 21 skills, each `SKILL.md` hash-pinned in `skills-lock.json`); the six homegrown
   domain skills remain **#86**. `CLAUDE.md` documents the layer as the design.
 - **Read order for a new agent:** `CLAUDE.md`/`AGENTS.md` (operating layer) → `DECISIONS.md` (why/rules)
   → `docs/ARCHITECTURE.md` (how/where). The build spine is the `contracts/` schema (E1) — built first

@@ -13,15 +13,16 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   E0-1 deliberately shipped no `ci.yml`, and E0-6 (#18) only *documents* the invariant — it does not
   author the workflow (that would poach E0-2's scope).
 - **The committed skill layer — #85 landed; #86 remains.** The skills.sh lock + consumer `.agents/skills/`
-  wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 16
-  skills (13 from official vendor repos + 3 maintainer-authored Inspect AI) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
+  wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 21
+  skills (18 from official vendor repos + 3 maintainer-authored Inspect AI) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
   `terraform-style-guide` / `terraform-test`, `openenv-cli` / `generate-openenv-env` (canonical
   `huggingface/OpenEnv`; `meta-pytorch/openenv` redirects there), `hf-cli` / `trl-training`, `uv` / `ruff`,
-  and Inspect AI `map-inspect-packages` / `reading-logs` / `babysitting-evals` (from
+  LocalStack `localstack` / `localstack-deploy` / `localstack-iam` / `localstack-state` / `localstack-logs`
+  (dev loop E0-3, from `localstack/skills`), and Inspect AI `map-inspect-packages` / `reading-logs` / `babysitting-evals` (from
   `meridianlabs-ai/inspect-skills`, who now maintain `inspect_ai`) — vendored verbatim and symlinked into
   `.claude/`+`.hermes/`, each `SKILL.md` hash-pinned in `skills-lock.json`. Each maps to a coding surface; off-target skills
-  in each multi-skill repo were excluded. All five `CLAUDE.md` preflight domains (AWS / Terraform / OpenEnv /
-  TRL / Inspect AI) now have a vendored skill. Still open: the six homegrown AssayOps domain skills
+  in each multi-skill repo were excluded. All `CLAUDE.md` preflight domains (AWS / Terraform / OpenEnv /
+  TRL / Inspect AI / LocalStack) now have a vendored skill. Still open: the six homegrown AssayOps domain skills
   (`write-isolated-verifier`, …) in **#86**; the **`assay-brain`** recall skill (**#73 + #86**) is closed.
   `CLAUDE.md` documents the layer (prefer-official; author homegrown only for gaps). Recall also works from
   any repo via the per-developer `assay-brain` install (or `../brain/wiki` via `qmd` / the brain-side `wiki-query`).
