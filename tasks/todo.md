@@ -55,8 +55,9 @@ Packer + stacks; OpenEnv's own dev-workflow + HF-Spaces-deploy skills); `ty` (we
 
 ### Review
 
-- **Done:** 16 official, prefer-official skills added to the committed skills.sh layer for **#85**, each
-  mapped to an AssayOps coding surface (verifier/adapters/env-server/trainer/Python lane/eval lane). Lock +
+- **Done:** 16 skills added to the committed skills.sh layer for **#85** (13 from official vendor repos +
+  3 maintainer-authored Inspect AI from `meridianlabs-ai`), each mapped to an AssayOps coding surface
+  (verifier/adapters/env-server/trainer/Python lane/eval lane). Lock +
   3-dir symlink layout (`.agents/skills` → `.claude/`+`.hermes/`) preserved; `bun run verify` green.
 - **Method/traps avoided:** every multi-skill repo (AWS 43, HashiCorp 16, OpenEnv 16, HF 19) was previewed
   with `--list` and only on-target skills vendored — **not bulk-added**. Default agent targeting throughout

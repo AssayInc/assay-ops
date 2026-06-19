@@ -10,25 +10,27 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
   wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
   symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73 + #86**, closed)
-  plus the **prefer-official cloud/IaC/training/eval packs** (**E0-10 (#85)**, landed — 16 official skills
-  across AWS / Terraform / OpenEnv / TRL / Inspect AI / Python-UV + `skill-creator`). Still open: the six
-  homegrown AssayOps domain skills (**#86**). Other ready E0 work: two-lane CI + branch
+  plus the **prefer-official cloud/IaC/training/eval packs** (**E0-10 (#85)**, landed — 16 skills: 13 from
+  official vendor repos (AWS / Terraform / OpenEnv / TRL / Python-UV + `skill-creator`) and 3 Inspect AI
+  skills from `meridianlabs-ai`, who maintain `inspect_ai`). Still open: the six homegrown AssayOps domain
+  skills (**#86**). Other ready E0 work: two-lane CI + branch
   protection (**E0-2, #19**), the LocalStack dev loop (**E0-3, #20**), repo hygiene (**E0-4, #21**), and the
   Project v2 board (**E0-5, #22**). Phase-1 build proper starts at the contract-schema spine (**E1**), the
   join key for the whole system.
 
 ## Recently Landed
 
-- **E0-10 (#85): prefer-official skill packs.** 16 official skills vendored into the committed layer,
-  each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
+- **E0-10 (#85): prefer-official skill packs.** 16 skills vendored into the committed layer (13 from official
+  vendor repos + 3 maintainer-authored Inspect AI), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
   `aws-cloudformation` / `aws-iam` (verifier read surface E2 + CDK adapter/drift E3/E11 + A/B role);
   `terraform-style-guide` / `terraform-test` (adapter-terraform E3); `openenv-cli` / `generate-openenv-env`
   (env-server E5, from canonical `huggingface/OpenEnv` — `meta-pytorch/openenv` now redirects there);
   `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane); and Inspect AI `map-inspect-packages` /
   `reading-logs` / `babysitting-evals` (eval lane E13, from `meridianlabs-ai/inspect-skills` — Meridian Labs
   now maintain `inspect_ai`). Vendored verbatim (byte-identical to upstream), symlinked into
-  `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`; the off-target majority of each multi-skill repo
-  excluded (prefer-official, smallest-change). All five `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
+  `.claude/`+`.hermes/`, each `SKILL.md` hash-pinned in `skills-lock.json` (scripts/resources guarded by the
+  `skills-sync-hygiene` rule, not the lock); the off-target majority of each multi-skill repo excluded
+  (prefer-official, smallest-change). All five `CLAUDE.md` preflight domains now have a vendored skill. (PR #91.)
 
 - **E0-6 (#18): AI-operating layer.** `CLAUDE.md` (the single auto-loaded constitution) + `AGENTS.md`
   symlink, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`; the **`verify`-gate + locked-fixtures
@@ -50,13 +52,13 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 - **Brain sibling + skill layer.** Strategy/research/vision live in `../brain/` (`AssayInc/brain`);
   recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73 + #86**, closed). As of PR #89
   it's **committed into this repo's skill layer** (`.agents/skills/assay-brain`, symlinked into
-  `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`), so every agent here — Codex, CI, a fresh clone —
+  `.claude/`+`.hermes/`, `SKILL.md` hash-pinned in `skills-lock.json`), so every agent here — Codex, CI, a fresh clone —
   gets it with zero setup. It also still ships as a **per-developer install** (`AssayInc/skills` →
   `./install.sh`, symlinked into `~/.claude/skills`) that makes recall work from *any* Assay repo; on a dev
   machine that global copy shadows the committed one (same content). Both resolve `../brain` with zero config
-  and degrade gracefully when the brain is absent. Still open in **#85**: the prefer-official cloud/IaC packs
-  (AWS / Terraform / OpenEnv + `skill-creator`); the six homegrown domain skills are **#86**. `CLAUDE.md`
-  documents the layer as the design.
+  and degrade gracefully when the brain is absent. The prefer-official cloud/IaC/training/eval packs landed
+  in **#85** (PR #91 — 16 skills, each `SKILL.md` hash-pinned in `skills-lock.json`); the six homegrown
+  domain skills remain **#86**. `CLAUDE.md` documents the layer as the design.
 - **Read order for a new agent:** `CLAUDE.md`/`AGENTS.md` (operating layer) → `DECISIONS.md` (why/rules)
   → `docs/ARCHITECTURE.md` (how/where). The build spine is the `contracts/` schema (E1) — built first
   because it is the join key both lanes and a buying lab verify against.
