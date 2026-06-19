@@ -6,10 +6,10 @@ when done. For parallel work, each git worktree carries its own copy.
 
 ---
 
-## E0-6 (#18) — Adopt the Cleno AI-operating layer + verifiable loop
+## E0-6 (#18) — Adopt the AI-operating layer + verifiable loop
 
 **Goal:** stand up the AI-operating layer — a single auto-loaded constitution + the verifiable-loop
-scaffold — mirroring Cleno's structure, adapted to AssayOps's polyglot, verification-infra domain.
+scaffold — for AssayOps's polyglot, verification-infra domain.
 
 - [x] `CLAUDE.md` — title + identity, **Stance banner verbatim**, Project Focus (brain via
       `assay-brain` #73; `DECISIONS.md` settled), Architecture (pointer + moat one-liner), Commands,
@@ -27,10 +27,10 @@ scaffold — mirroring Cleno's structure, adapted to AssayOps's polyglot, verifi
 ### Review
 
 - **Built:** the AI-operating layer — `CLAUDE.md` (constitution) + `AGENTS.md` symlink, `PROGRAM.md`,
-  `ISSUES.md`, `tasks/{todo,lessons}.md`. Mirrors Cleno's `CLAUDE.md` section order and verifiable-loop
-  discipline; content rewritten for the polyglot (Bun + UV) verification-infra domain.
-- **Key decision — DRY against `DECISIONS.md`:** AssayOps has a frozen-floor `DECISIONS.md` that Cleno
-  lacks, so this `CLAUDE.md` is deliberately thinner on domain rules: it **points** to `DECISIONS.md` §1
+  `ISSUES.md`, `tasks/{todo,lessons}.md`. A focused `CLAUDE.md` section order + the verifiable-loop
+  discipline, written for the polyglot (Bun + UV) verification-infra domain.
+- **Key decision — DRY against `DECISIONS.md`:** AssayOps has a frozen-floor `DECISIONS.md`, so this
+  `CLAUDE.md` is deliberately thinner on domain rules: it **points** to `DECISIONS.md` §1
   (trust model) and §8 (non-negotiables) instead of duplicating them. The constitution owns the
   *operating layer* (the loop, the quality bar, locked-fixtures, toolchain, skill routing); `DECISIONS.md`
   owns the *rules*.
@@ -55,7 +55,7 @@ scaffold — mirroring Cleno's structure, adapted to AssayOps's polyglot, verifi
 - [x] Added the **Skill layer** section (skills.sh + `skills-lock.json`, **prefer-official**) — maps
       **E0-10 (#85)** + **E0-11 (#86, `AssayInc/skills`)**; mapped **`assay-brain` (E0-7, #73)** and
       removed the "until #73 lands" hedges per user.
-- [x] Filled remaining Cleno-universal gaps: "never use Bash for communication", comments policy +
+- [x] Filled remaining universal gaps: "never use Bash for communication", comments policy +
       code-quality, `/review` each PR, read-official-docs-first, gstack `/learn` vs `lessons.md`, Karpathy
       attribution.
 - [x] Held scope: did **not** create `.agents/skills/` or `skills-lock.json` (that's #85), nor `ci.yml`

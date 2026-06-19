@@ -17,8 +17,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   + bun / turborepo / skill-creator) lands in **#85**; the homegrown AssayOps domain skills in
   `AssayInc/skills` (`write-isolated-verifier`, …) in **#86**; the `assay-brain` deep-recall skill (must
   **degrade gracefully** without the `brain` sibling) in **#73**. `CLAUDE.md` documents the layer as the
-  design; **never bulk-copy Cleno's skills**. Until then, query `../brain/wiki` via the brain-side
-  `wiki-query` skill / `qmd`.
+  design (prefer-official; author homegrown only for gaps). Until then, query `../brain/wiki` via the
+  brain-side `wiki-query` skill / `qmd`.
 - **Locked-fixtures directories don't exist yet.** `contracts/vectors` (#28, E1-3) and `tools/red-team`
   (#56, E10-1) are scaffolded by their owning epics; the locked-fixtures rule in
   `CLAUDE.md`/`DECISIONS.md` binds the moment they do. Listed so the rule isn't mistaken for stale config
