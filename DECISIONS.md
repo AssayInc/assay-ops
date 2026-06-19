@@ -134,13 +134,15 @@ audit-grade provenance as a selling point, reaffirmed by the KMS + Object Lock a
 **[locked — eng-arch §Implementation tasks; mapping from impl-plan §6]**
 
 **Phases (T0-relative)** [proof-first §Recommended approach]. The build clock is **~13–15 weeks from
-T0** (= team closed: a verbal yes + a start date + a named first deliverable); the `Phase` column below
-maps to:
+T0** (= team closed: a verbal yes + a start date + a named first deliverable); the windows **overlap by
+design** (parallel lanes — a small team runs ≤2 phases at once). The `Phase` column below maps to:
 
 - **0 — Gate (pre-T0):** close the team + scout; the build proceeds **regardless of the Henry intro**.
-- **1 — A-spike (wk 1–5):** the write-isolated verifier + deterministic replay on a small **Terraform**
-  slice (engine validation, **not** the CDK proof corpus); exit = the §5 attack list each demonstrated
-  to fail + a measured LocalStack cost/trajectory.
+- **1 — A-spike + substrate (wk 1–5):** the write-isolated verifier + deterministic replay on a small
+  **Terraform** slice (engine validation, **not** the CDK proof corpus), plus the foundational substrate
+  (contracts, reward ledger, account infra + T7); exit = the **§5 15-vector bar** (proof-first's 6
+  starter attacks → eng-arch's 14 → the read-side 15th) each demonstrated to fail + a measured LocalStack
+  cost/trajectory.
 - **2 — Ship the corpus (wk 4–10), separable:** **N ≈ 30–50** CDK drift&debug tasks; if the window
   slips, cut to the **~30** floor, or drop to **proof-only** (private eval, skip the public leaderboard).
 - **3 — Lift demo (wk 8–12):** **SFT** on gold trajectories; **hard-gated on the RL/eval owner**; the
@@ -341,11 +343,11 @@ number without this rigor is dismissible by a post-training lead in 60 seconds �
   open parallel buyer paths.
 
 **Benchmark posture & the 12-month flywheel [locked — roadmap].** **D1=C — private now, publish
-gated:** the corpus/verifier/contracts are built **lab-agnostic from day one**, any first exclusive is
-**time-limited**, and public benchmark publication is decided right after the first Anthropic
-conversation (**gated on safety + whether the warm/Henry path materialized**). Never open-source the
-harness/verifier/corpus/site (I11). The roadmap also commits **three directional bets** beyond the
-proof — *distinct from the build-epics E1–E3* — (1) the **lab-agnostic / second-buyer** posture; (2) the
+gated:** public benchmark publication is decided right after the first Anthropic conversation (**gated on
+safety + whether the warm/Henry path materialized**); never open-source the harness/verifier/corpus/site
+(I11). The roadmap also commits **three directional bets** beyond the proof — *distinct from the
+build-epics E1–E3* — (1) the **lab-agnostic / second-buyer** posture (any first exclusive is
+**time-limited**); (2) the
 **ELT data-pipeline second act**, architecture-ready via the 6A adapters, built only **after** the cloud
 proof; (3) **publishing the verifier-isolation design** as thought-leadership — the safe category-stake
 (it leaks nothing, unlike the corpus) and the early-attention move. *Rejected:* leading with a public
@@ -386,10 +388,11 @@ appears to require breaking one, stop and flag it — don't code around it.**
       suite, eval-harness wiring, task corpus, account infra + guardrails. **Reuse, don't rebuild:**
       OpenEnv, Fleet Harbor (rollouts only), LocalStack, Daytona/Modal, Control Tower AFT, KMS + S3
       Object Lock, terraform/cdk CLIs. **[eng-arch]**
-- [ ] **The proof's training is SFT-only; the RL loop (GRPO) is a post-proof stretch, off the critical
-      path** — what's deferred is the *training loop*, **not** the RL infrastructure (the reward
-      ledger/verifier it would consume is core and built). Deferred too: migration/incident/cost task
-      families (after drift&debug) + the Pulumi adapter (cheap via 6A). **[eng-arch / proof-first]**
+- [ ] **The proof's training is SFT-only — do NOT build the RL/GRPO training loop before the proof**
+      (it's a post-proof stretch, off the critical path). The reward ledger/verifier an RL loop would
+      consume is **not** deferred — it's the core moat, built regardless. Deferred too:
+      migration/incident/cost task families (after drift&debug) + the Pulumi adapter (cheap via 6A).
+      **[eng-arch / proof-first]**
 - [ ] **Don't re-litigate a decision in this file.** It's settled — **flag, don't silently deviate.**
       For the deeper *why* beyond this floor, query the `assay-brain` skill (#73).
 
@@ -403,7 +406,7 @@ go deeper (via the `assay-brain` skill, #73). **On any conflict, the brain plans
 
 | Tag in this doc | Plan (in `brain/raw/plans/`) | Supplies |
 |---|---|---|
-| eng-arch | `assay-eng-architecture-2026-06-17.md` | Trust model, locked decisions 1C–T3, tasks T1–T13, the 14-vector threat table, eval design |
+| eng-arch | `assay-eng-architecture-2026-06-17.md` | Trust model, locked decisions 1C–T3, tasks T1–T13, the threat table (14 vectors; promoted to the 15-vector §5 bar here), eval design |
 | proof-first | `assay-proof-first-plan-2026-06-16.md` | The 5 phases (T0-relative), risks & kill-criteria R1–R6, pre-registered success criteria |
 | roadmap | `assay-strategic-roadmap-2026-06-17.md` | D1=C benchmark posture; the 12-month flywheel (lab-agnostic · ELT second act · published verifier-isolation) |
 | impl-plan | `assayops-implementation-plan-2026-06-17.md` | Implementation decisions I1–I11, T→Epic mapping, the 15th-vector promotion, this provenance convention |
