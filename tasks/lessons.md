@@ -15,5 +15,16 @@ Entry format:
 
 ---
 
-_No entries yet — this log accrues from real corrections, not pre-seeded guidance. Durable conventions
-that aren't tied to a specific mistake belong in `CLAUDE.md` (operating layer) or `DECISIONS.md` (rules)._
+## 2026-06-18 — claude-md-serves-all-agents-no-dedupe
+- **Mistake:** When porting Cleno's `CLAUDE.md`, trimmed the gstack skill list + routing out of the
+  project constitution, reasoning it duplicated `~/.claude/CLAUDE.md` and was context bloat — the exact
+  dedup Cleno's own lessons (`claude-md-serves-all-agents`) warn against.
+- **Rule:** Never dedupe the project `CLAUDE.md`/`AGENTS.md` against Claude-only global config or plugin
+  skills. `AGENTS.md` is read by non-Claude agents (Codex) that never load `~/.claude/CLAUDE.md`, so
+  anything every agent needs — the full gstack skill list + routing, the `/browse`-only rule, operating
+  rules — must live in this repo's file. When porting a template constitution, default to **completeness**
+  for cross-agent content; only omit what is genuinely specific to the other project's domain (fiscal,
+  shadcn/UI, that repo's machine-local gbrain config).
+- **Context:** E0-6 (#18) `CLAUDE.md`; the user caught the missing gstack section. The committed skill
+  *layer* (skills.sh / `skills-lock.json`) is separate and prefer-official (#85/#86) — that's not what was
+  missing; the per-developer gstack workflow layer was.

@@ -44,3 +44,20 @@ scaffold — mirroring Cleno's structure, adapted to AssayOps's polyglot, verifi
   `ISSUES.md`. `tasks/lessons.md` starts empty of entries (no real corrections yet to record).
 - **Verification:** `bun run verify` green (both lanes); `readlink AGENTS.md` → `CLAUDE.md`; no
   `HANDOFF.md`; stance banner present verbatim.
+
+### Review round 2 (user feedback — completeness pass)
+
+- [x] **Caught:** over-trimmed the gstack skill list/routing (deduped against Claude-global config) —
+      recorded in `tasks/lessons.md` (`claude-md-serves-all-agents-no-dedupe`).
+- [x] Added the full **gstack** section (browse-only rule + `never mcp__claude-in-chrome__*` + install +
+      complete skill list + cross-agent rationale) and adapted **Skill routing** (design/QA/Vercel →
+      `assay-web`).
+- [x] Added the **Skill layer** section (skills.sh + `skills-lock.json`, **prefer-official**) — maps
+      **E0-10 (#85)** + **E0-11 (#86, `AssayInc/skills`)**; mapped **`assay-brain` (E0-7, #73)** and
+      removed the "until #73 lands" hedges per user.
+- [x] Filled remaining Cleno-universal gaps: "never use Bash for communication", comments policy +
+      code-quality, `/review` each PR, read-official-docs-first, gstack `/learn` vs `lessons.md`, Karpathy
+      attribution.
+- [x] Held scope: did **not** create `.agents/skills/` or `skills-lock.json` (that's #85), nor `ci.yml`
+      (E0-2/#19). Kept omitted: shadcn/UI, Mastra/TanStack/Supabase preflight, machine-local gbrain config.
+- [x] Re-verified AC + `bun run verify`; updated `PROGRAM.md` / `ISSUES.md` to map #85/#86/#73.

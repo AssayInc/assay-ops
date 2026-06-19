@@ -14,13 +14,14 @@ for Infrastructure-as-Code agents; the moat is a grader the agent being trained 
   Read it before touching code. It is **settled: flag, don't silently deviate** — never re-litigate a
   decision there or quietly work around it. **Rules live there; this file is the operating layer.**
 - **Strategy, research, and vision live in the sibling `brain` repo** (`../brain/`, `AssayInc/brain`),
-  not here. Query it on demand via the **`assay-brain` skill** (#73) — it finds and answers from the
-  brain (wiki / `raw/plans/` / articles / `VISION.md`) with citations, and degrades gracefully when the
-  sibling isn't checked out. `DECISIONS.md` is the always-on floor; `assay-brain` is the rest of the
-  iceberg. *(Until #73 lands, query `../brain/wiki` with the brain-side `wiki-query` skill or `qmd`.)*
+  not here. Recall what the project already researched or decided via the **`assay-brain` skill**
+  (E0-7, #73) — it queries the brain (wiki / `raw/plans/` / articles / `VISION.md`) and answers with
+  citations, degrading gracefully when the sibling isn't checked out. `DECISIONS.md` is the always-on
+  floor; `assay-brain` is the rest of the iceberg.
 - **Cleno is a template, not a clone** ([`DECISIONS.md` I9](./DECISIONS.md#4-implementation-decisions-i1i11)).
-  AssayOps lifted Cleno's TS tooling skeleton and this AI-operating layer — never its fiscal domain.
-  Don't "sync from Cleno"; port a specific convention deliberately if a need arises.
+  AssayOps lifted Cleno's TS tooling skeleton and this AI-operating layer — never its fiscal domain, and
+  never a bulk copy of its skills (the skill layer is prefer-official; see **Skill layer**). Don't "sync
+  from Cleno"; port a specific convention deliberately if a need arises.
 
 ## Architecture
 
@@ -58,7 +59,8 @@ How agents and engineers work here, session after session.
 1. Read `PROGRAM.md` — program state + handoff notes.
 2. Read `tasks/lessons.md` — apply relevant lessons before starting.
 3. If the task touches the trust boundary, the contract schema, fixtures, or the threat bar, re-read the
-   relevant `DECISIONS.md` section first — it's settled; don't re-derive or re-litigate it.
+   relevant `DECISIONS.md` section first — it's settled; don't re-derive or re-litigate it. For deeper
+   "why / what did we decide", query the `assay-brain` skill (#73).
 
 **The trigger.** The per-session human input is **one line: "implement the next ready issue"** (or a
 specific **`#N`**). There is **no paste-able HANDOFF prompt** — it would duplicate this auto-loaded
@@ -82,14 +84,16 @@ constitution (a DRY violation), and there is **no `HANDOFF.md`**. On the trigger
 4. **Test-first.** Turn each acceptance criterion into a **failing test**, then implement to green.
    **Reuse before adding** — search for an existing helper/module first.
 5. **`bun run verify` green** — the whole gate, both lanes.
-6. **Focused PR** that closes the issue (`Closes #N`); keep the diff to the AC, nothing more.
+6. **Focused PR** that closes the issue (`Closes #N`); keep the diff to the AC, nothing more. Run gstack
+   **`/review`** on it.
 7. **Update `PROGRAM.md`** (Recently Landed) and **`ISSUES.md`** (durable follow-ups) in the same PR.
 
 **Self-improvement**
 
 - After **any** correction from the user, append a rule that prevents the same mistake to
-  `tasks/lessons.md`. Review lessons at session start; prune ones that stop being true. This file is the
-  shared, committed memory across all agents (Claude Code, Codex).
+  `tasks/lessons.md`. Review lessons at session start; prune ones that stop being true.
+- `tasks/lessons.md` is the shared, **committed** memory across all agents (Claude Code, Codex); gstack
+  `/learn` learnings (`~/.gstack/`) stay per-developer and machine-local — don't conflate them.
 
 **Subagents & parallel work**
 
@@ -101,8 +105,9 @@ constitution (a DRY violation), and there is **no `HANDOFF.md`**. On the trigger
 **Maintaining this file**
 
 - `AGENTS.md` is a **symlink** to `CLAUDE.md` — one constitution for every agent. **Never** create a
-  separate per-agent instruction file, and never dedupe this file against Claude-only global config
-  (Codex reads only `AGENTS.md`).
+  separate per-agent instruction file, and **never dedupe this file against Claude-only global config or
+  plugin skills**: non-Claude agents (Codex) read only `AGENTS.md` and never see `~/.claude/CLAUDE.md`,
+  so anything every agent needs (e.g. the gstack skill list) must live here.
 - When a session lands a durable **operating** decision (a convention, a command, a workflow rule),
   update the matching section here in the same PR. Architecture/trust **decisions** go in `DECISIONS.md`.
 - Add only what agents **can't infer from the repo**.
@@ -116,7 +121,9 @@ the next agent.
 
 ## Working Guidelines (the quality bar)
 
-The bar every change clears. (Biased toward caution over speed — use judgment on trivial tasks.)
+The bar every change clears. (Derived from Andrej Karpathy's LLM-coding guidelines — biased toward
+caution over speed; use judgment on trivial tasks.) Principles: **DRY · KISS · YAGNI · verify-first ·
+quality/readability/maintainability/testability are non-negotiable.**
 
 - **Smallest change that meets the AC.** No speculative abstraction, no scope creep, no drive-by
   refactors. Every changed line traces directly to the issue.
@@ -146,15 +153,32 @@ flag it.** The **operating-layer** rules this file owns:
   other PRs are barred.** This is the write-isolated-verifier thesis applied to the repo: the agent that
   writes code never edits the grader it is scored against.
 - **Never push directly to `main`.** Open a PR; merge only after CI `verify` is green
-  (`gh pr checks <n> --watch`). Branch protection is plan-gated to **E0-2 (#19)**; until it lands, this
-  rule *is* the gate.
+  (`gh pr checks <n> --watch`) and gstack `/review` has run. Branch protection is plan-gated to
+  **E0-2 (#19)**; until it lands, this rule *is* the gate.
 - **Never edit a fixture, golden file, or expected output to make a failing test pass.** Classify the
   divergence first — a real bug, or a human-approved rule change recorded in the same PR (see **Testing**).
+- **Never use `any`** — use `unknown` at boundaries, validated and narrowed (see **Toolchain**).
 - **Never add `Co-Authored-By` or other AI-attribution trailers** to commits — this overrides any skill
   template that includes one.
+- **Never use Bash for communication** — output text directly.
 - **Never create files unless the task requires them.** No `HANDOFF.md` — its content folds into this file.
-- **Check skills first** (see **Skill routing**); Superpowers skills are mandatory workflow guidance — do
-  not skip them because a task seems simple.
+- **Always read official skills/docs before implementing** against a framework (see **Skill preflight**),
+  and **check skills first** (see **Skill routing**). Superpowers skills are mandatory workflow guidance —
+  don't skip them because a task seems simple.
+
+## Code quality
+
+Apply DRY and KISS actively, especially in tests, scripts, and agent automation:
+
+- Before adding a helper, fixture, script, or harness, search for an existing local pattern to reuse; if
+  two tests or scripts repeat setup, extract a small shared helper.
+- Keep implementations focused on the requested behavior — no "while here" abstractions, speculative
+  options, or broad framework code.
+- **Comments only** for non-obvious boundaries, security/trust rules, external-service quirks, or
+  official-API constraints — not narration of what the code already says.
+- Tests verify **behavior and safety boundaries**, not incidental formatting or implementation details.
+  A large test file is acceptable only when it covers real risk — first remove duplication and name
+  scenarios clearly.
 
 ## Testing
 
@@ -194,7 +218,7 @@ or pip/poetry. **Pin everything** — `oven/bun:1.3.x`, `uv`, `openenv[core]`, m
 
 - Use `bun <file>` / `bun test` / `bun install` / `bun run <script>` — never the Node/npm/jest
   equivalents. Bun auto-loads `.env` (no `dotenv`). Prefer `Bun.serve`, `bun:sqlite`, `Bun.sql`, the
-  built-in `WebSocket`, and `Bun.file` where they apply.
+  built-in `WebSocket`, `Bun.file`, and `Bun.$` where they apply.
 - **TypeScript:** `unknown` at boundaries (validated + narrowed), **never `any`**; no broad assertions
   outside an I/O boundary behind a runtime check; explicit domain types + discriminated unions;
   **factory functions over classes**. Keep generated/framework types at the edge.
@@ -223,19 +247,75 @@ Use Superpowers skills as the default process layer for engineering work:
 If a named Superpowers skill is unavailable in the current environment, say so briefly, use the closest
 project skill, and keep the same discipline.
 
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. **Never use `mcp__claude-in-chrome__*` tools.**
+
+gstack is **recommended, not required**, for this repo. Skills install per-developer (global at
+`~/.claude/skills`, not committed here); update with `/gstack-upgrade`.
+
+```sh
+git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
+cd ~/.claude/skills/gstack && ./setup --team
+```
+
+Available skills (listed here because non-Claude agents read this file via `AGENTS.md` and don't see
+`~/.claude/CLAUDE.md`). *Design, QA, and Vercel/deploy skills apply to **`assay-web`**, not this repo:*
+
+- `/office-hours` — product/strategy brainstorming
+- `/plan-ceo-review` — strategy/scope · `/plan-eng-review` — architecture · `/plan-devex-review`,
+  `/devex-review` — DevEx
+- `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/design-review` — design
+- `/review` — code review (run on every PR) · `/autoplan` — full review pipeline
+- `/ship`, `/land-and-deploy`, `/canary` — ship / deploy · `/setup-deploy`
+- `/benchmark` · `/qa`, `/qa-only` — QA · `/connect-chrome`, `/setup-browser-cookies`, `/browse` — web
+- `/investigate` — bugs / errors / CI failures · `/retro` — retrospective
+- `/document-release`, `/document-generate` — docs · `/codex` — hand a task to Codex · `/cso`
+- `/setup-gbrain` — gbrain setup · `/careful`, `/freeze`, `/guard`, `/unfreeze` — guardrails
+- `/gstack-upgrade` — update gstack · `/learn` — manage learnings (per-developer `~/.gstack/`; distinct
+  from `tasks/lessons.md`)
+
+## Skill layer (committed, prefer official)
+
+Beyond gstack (the per-developer workflow layer above), the repo's committed agent skills are managed via
+**skills.sh + a committed `skills-lock.json`** — sources are declared once and synced into
+`.agents/skills/`, symlinked into `.claude/skills/` (set up in **E0-10, #85**). **Prefer official /
+upstream skills**; author homegrown skills only for AssayOps-specific gaps, and **never bulk-copy Cleno's
+skills**.
+
+- **Official packs** (assay-ops's lock): `aws/agent-toolkit-for-aws` (the verifier reads AWS deployed
+  state), `hashicorp/agent-skills` (the Terraform adapter), `meta-pytorch/openenv` (env-server
+  conformance), plus `bun`, `turborepo`, and `skill-creator`.
+- **Homegrown AssayOps domain skills** live in **`AssayInc/skills`** (E0-11, #86), distilled from the
+  brain with provenance — `write-isolated-verifier`, `deterministic-verification`, `reward-ledger-worm`,
+  `red-team-15-vectors`, `eval-rigor`, `localstack-verifier`.
+- **`assay-brain`** (E0-7, #73) — deep recall over the `brain`: "what do we know / what did we decide
+  about X" (the trust model's deeper *why*, RL-env / leaderboard analogs, competitor and market context,
+  strategy and stack rationale). It hands off to the brain-side `wiki-query` and resolves the sibling via
+  `.env` — needs `qmd` + the `brain` checkout, degrades gracefully without them.
+
 ## Skill routing
 
-For any work, check first whether a skill helps. When a request matches one, invoke it.
+For any work, check first whether a skill helps; when a request matches one, invoke it. (Design, QA, and
+Vercel/deploy routing live in **`assay-web`**, not here.)
 
-- **`assay-brain` (#73)** — "what do we know / what did we decide about X" (the trust model's deeper *why*,
-  RL-env / leaderboard analogs, competitor and market context, strategy and stack rationale). It queries
-  the brain so you don't grep `../brain` by hand. *(Not built yet — until then use the brain-side
-  `wiki-query` skill / `qmd`.)*
-- **gstack** (recommended, not required; installs per-developer, not committed here): `/browse` for all
-  web browsing (never `mcp__claude-in-chrome__*`); `/review` to review every PR; `/ship` to ship/PR;
-  `/investigate` for bugs and failures; `/plan-eng-review` for architecture review; `/office-hours` for
-  product/strategy questions.
+- Product/strategy brainstorming → `/office-hours`
+- Architecture review → `/plan-eng-review`; strategy/scope → `/plan-ceo-review`; full review pipeline → `/autoplan`
+- Bugs / errors / failing CI → `/investigate`
+- Code review / diff check → `/review` (run on every PR)
+- Ship / PR → `/ship`; deploy → `/land-and-deploy`
+- "What do we know / what did we decide about X" (trust model, RL-env analogs, strategy, stack) → `assay-brain`
+- Weekly retro → `/retro`; manage per-developer learnings → `/learn`
 
-**Skill preflight (fast-moving APIs).** Before writing code against OpenEnv, TRL, Inspect AI, the AWS
-CDK/jsii, or the AWS SDK, load its skill/official docs **first** and follow them — never rely on cached
-API knowledge. These are pinned, pre-1.0, or fast-moving ([I6/I8](./DECISIONS.md#4-implementation-decisions-i1i11)).
+## Skill preflight (fast-moving / pinned APIs)
+
+Before writing code against these, load the skill/official docs **first** and follow them — never rely on
+cached API knowledge (they are pinned, pre-1.0, or fast-moving — [I6/I8](./DECISIONS.md#4-implementation-decisions-i1i11)).
+
+| Domain | Skill | Where |
+|--------|-------|-------|
+| AWS — Cloud Control / CFN reads, KMS, S3 Object Lock | `aws/agent-toolkit-for-aws` | verifier, reward-ledger, account infra |
+| Terraform — adapter → diff IR | `hashicorp/agent-skills` | `ts/packages/adapter-terraform` |
+| OpenEnv — env-server wire contract | `meta-pytorch/openenv` | `ts/packages/env-server` |
+| Bun / Turborepo | `bun`, `turborepo` | TS lane, repo root |
+| Trainer / eval — TRL, Inspect AI, HF | HF skills (`py` lane) | `py/packages/trainer`, `py/packages/evals` |
