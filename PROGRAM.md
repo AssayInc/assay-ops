@@ -27,7 +27,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane). Vendored verbatim (byte-identical
   to upstream), symlinked into `.claude/`+`.hermes/`, hash-pinned in `skills-lock.json`; the off-target
   majority of each multi-skill repo excluded (prefer-official, smallest-change). Gap flagged: **Inspect AI
-  (E13) has no official eval-authoring skill** → official docs per `CLAUDE.md` preflight. (PR #PLACEHOLDER.)
+  (E13) has no official eval-authoring skill** → official docs per `CLAUDE.md` preflight. (PR #91.)
 
 - **E0-6 (#18): AI-operating layer.** `CLAUDE.md` (the single auto-loaded constitution) + `AGENTS.md`
   symlink, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`; the **`verify`-gate + locked-fixtures
