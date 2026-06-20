@@ -16,8 +16,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   and the **five homegrown AssayOps domain skills** (**E0-11 (#86)**, landed — `write-isolated-verifier` /
   `reward-ledger-worm` / `deterministic-verification` / `red-team-exit-bar` / `eval-rigor`, authored in
   `AssayInc/skills` and vendored here). **E0-5 board (#22)** and **E0-9 assay-web rename (#81)** are done
-  (verified + closed). **E0-3 LocalStack dev loop (#20)** is implemented + smoke-proven (in PR; needs the
-  `LOCALSTACK_AUTH_TOKEN` CI secret) — LocalStack retired its free tokenless edition, so the loop runs
+  (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
+  `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
   **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). Remaining
   ready E0 eng: two-lane CI (**E0-2, #19**) + repo hygiene (**E0-4, #21**). Phase-1 build proper starts at
   the contract-schema spine (**E1**), the join key for the whole system.
