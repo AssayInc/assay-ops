@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-20 — local-aws-emulator-must-prove-read-api
+- **Mistake:** Assumed the current `localstack/localstack` image still provided a free, tokenless
+  community dev loop for a commercial/private repo, then treated generic "LocalStack replacement"
+  options as plausible substitutes before proving the verifier's actual read path.
+- **Rule:** Before choosing or wiring a local AWS emulator, verify the exact API the verifier needs
+  against current primary docs and a smoke test. For AssayOps that means Cloud Control
+  `GetResource`/`ListResources` or the specific CloudFormation read/drift API in the AC, not just
+  "S3 works" or "Terraform/CDK compatible." Current LocalStack requires an auth token and commercial
+  use needs a paid plan; Moto, Floci, MiniStack, fakecloud, and Testcontainers are not drop-in
+  replacements unless they pass the exact read-path smoke. If cost-free conflicts with that, flag the
+  issue/decision instead of silently changing the substrate.
+- **Context:** E0-3 local AWS dev loop / issue #20; LocalStack 2026 single-image auth/licensing change;
+  Floci and MiniStack passed S3 smoke but failed Cloud Control `GetResource`.
+
 ## 2026-06-19 — shipped-docs-no-issue-numbers-no-narration
 - **Mistake:** The `AssayInc/skills` README (and the eval `RESULTS.md`) carried GitHub issue/PR numbers
   (`AssayInc/assay-ops#86`, `spike #61`) and status-log / AI-chat narration ("All five skills now live here",
