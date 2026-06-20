@@ -114,16 +114,47 @@ the closest project skill.
 
 ## gstack
 
-Use `/browse` for web browsing — **never `mcp__claude-in-chrome__*`**. gstack is **recommended, not
-required**; per-developer install (`garrytan/gstack` → `./setup --team`, not committed). Listed here
-because non-Claude agents read `AGENTS.md`, not `~/.claude/CLAUDE.md`:
+Use the `/browse` skill from gstack for all web browsing — **never `mcp__claude-in-chrome__*` tools**.
+gstack is a per-developer install (`garrytan/gstack` → `./setup --team`, not committed); the full skill set
+is listed here because non-Claude agents read `AGENTS.md` (this file), not `~/.claude/CLAUDE.md`.
 
-- **Plan / review:** `/office-hours` (product/strategy) · `/plan-eng-review` (architecture) ·
-  `/plan-ceo-review` (scope) · `/autoplan` (review pipeline) · `/review` (every PR) · `/investigate` (bugs/CI)
-- **Ship / ops:** `/ship` · `/land-and-deploy` · `/retro` · `/document-release` · `/codex` · `/benchmark` ·
-  `/learn` (per-developer) · `/gstack-upgrade` · `/careful` `/freeze` `/guard` `/unfreeze`
+Available skills:
 
-Design, QA, and Vercel/deploy skills belong to `assay-web`, not this repo.
+- `/office-hours` — product/strategy office hours
+- `/plan-ceo-review` — CEO/founder-mode plan review
+- `/plan-eng-review` — eng-manager-mode plan review
+- `/plan-design-review` — designer's-eye plan review
+- `/design-consultation` — research + propose a complete design system
+- `/design-shotgun` — generate and compare multiple design variants
+- `/design-html` — production-quality HTML/CSS finalization
+- `/review` — pre-landing PR review
+- `/ship` — ship workflow (tests, diff, version bump, PR)
+- `/land-and-deploy` — land and deploy
+- `/canary` — post-deploy canary monitoring
+- `/benchmark` — performance-regression detection
+- `/browse` — fast headless browser for QA + dogfooding
+- `/connect-chrome` — launch GStack Browser (AI-controlled Chromium)
+- `/qa` — QA a web app and fix the bugs found
+- `/qa-only` — report-only QA
+- `/design-review` — designer's-eye visual QA + fixes
+- `/setup-browser-cookies` — import real-browser cookies into the browse session
+- `/setup-deploy` — configure deploy settings for `/land-and-deploy`
+- `/setup-gbrain` — set up gbrain (CLI, brain, MCP, per-repo policy)
+- `/retro` — weekly engineering retrospective
+- `/investigate` — systematic debugging + root-cause analysis
+- `/document-release` — post-ship documentation update
+- `/document-generate` — generate missing docs from scratch
+- `/codex` — OpenAI Codex CLI wrapper
+- `/cso` — Chief Security Officer mode
+- `/autoplan` — auto-review pipeline (CEO/design/eng/DX)
+- `/plan-devex-review` — interactive developer-experience plan review
+- `/devex-review` — live developer-experience audit
+- `/careful` — destructive-command guardrails
+- `/freeze` — restrict edits to a directory for the session
+- `/guard` — full safety mode (warnings + scoped edits)
+- `/unfreeze` — clear the freeze boundary
+- `/gstack-upgrade` — upgrade gstack
+- `/learn` — manage project learnings
 
 ## Skills (committed layer)
 
