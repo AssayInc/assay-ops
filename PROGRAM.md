@@ -29,7 +29,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   diff-IR reward), `red-team-exit-bar` (the reward-channel red-team gate), `eval-rigor` (the
   eval-to-performance proof protocol). Each `SKILL.md` hash-pinned in `skills-lock.json`, symlinked into
   `.claude/`+`.hermes/`. Homegrown only where no official pack covers the AssayOps-specific need
-  (`localstack-verifier` folded into the official `localstack/skills` pack instead). _(fill PR # / merge commit on landing.)_
+  (`localstack-verifier` folded into the official `localstack/skills` pack instead). (PR #92; fill merge commit on landing.)
 
 - **E0-10 (#85): prefer-official skill packs.** 25 skills vendored into the committed layer (18 official-vendor +
   3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
