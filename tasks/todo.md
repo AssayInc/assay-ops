@@ -81,4 +81,5 @@ well-adopted **community** skills where no official exists (`wshobson/agents`) â
 - **Known limitation (fast-follow, noted in `ISSUES.md`):** `skills-lock.json` hashes only each `SKILL.md`,
   not `resources/`/`scripts/`; the [[skills-sync-hygiene]] manual `git diff` is the current guard; CI
   enforcement belongs to E0-2 (#19). The lock is restore-grade, not wired into `bun run verify`.
-- **Scope:** the six homegrown AssayOps domain skills remain **#86**; `assay-brain` (#73) already closed.
+- **Scope:** the five homegrown AssayOps domain skills are now authored + vendored (**E0-11 / #86**);
+  `assay-brain` (#73) already closed.
