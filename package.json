@@ -26,6 +26,7 @@
   "workspaces": [
     "ts/apps/*",
     "ts/packages/*",
-    "py/packages/*"
+    "py/packages/*",
+    "infra-local"
   ]
 }
