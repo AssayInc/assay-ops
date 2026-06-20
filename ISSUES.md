@@ -12,7 +12,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   direct push to `main`; the `CLAUDE.md` merge rule (**PR + verify-green + `/review`**) is the gate.
   E0-1 deliberately shipped no `ci.yml`, and E0-6 (#18) only *documents* the invariant — it does not
   author the workflow (that would poach E0-2's scope).
-- **The committed skill layer — #85 landed; #86 remains.** The skills.sh lock + consumer `.agents/skills/`
+- **The committed skill layer — #85 + #86 landed.** The skills.sh lock + consumer `.agents/skills/`
   wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 25
   skills (18 official-vendor + 3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
   `terraform-style-guide` / `terraform-test`, `openenv-cli` / `generate-openenv-env` (canonical
@@ -23,8 +23,10 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   `python-testing-patterns` / `python-type-safety` / `async-python-patterns` (well-adopted community `wshobson/agents`) — vendored verbatim and symlinked into
   `.claude/`+`.hermes/`, each `SKILL.md` hash-pinned in `skills-lock.json`. Each maps to a coding surface; off-target skills
   in each multi-skill repo were excluded. All `CLAUDE.md` preflight domains (AWS / Terraform / OpenEnv /
-  TRL / Inspect AI / LocalStack) now have a vendored skill. Still open: the six homegrown AssayOps domain skills
-  (`write-isolated-verifier`, …) in **#86**; the **`assay-brain`** recall skill (**#73 + #86**) is closed.
+  TRL / Inspect AI / LocalStack) now have a vendored skill. The five homegrown AssayOps domain skills
+  (`write-isolated-verifier` / `reward-ledger-worm` / `deterministic-verification` / `red-team-exit-bar` /
+  `eval-rigor`) are authored in `AssayInc/skills` and vendored here (**E0-11 / #86**); the **`assay-brain`**
+  recall skill (**#73**) is closed.
   `CLAUDE.md` documents the layer (prefer-official; author homegrown only for gaps). Recall also works from
   any repo via the per-developer `assay-brain` install (or `../brain/wiki` via `qmd` / the brain-side `wiki-query`).
 - **Skill-lock coverage is `SKILL.md`-only (fast-follow).** `skills-lock.json` hash-pins each vendored

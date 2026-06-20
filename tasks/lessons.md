@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-19 — shipped-docs-no-issue-numbers-no-narration
+- **Mistake:** The `AssayInc/skills` README (and the eval `RESULTS.md`) carried GitHub issue/PR numbers
+  (`AssayInc/assay-ops#86`, `spike #61`) and status-log / AI-chat narration ("All five skills now live here",
+  "more skills are being distilled"). The user cut it: don't mention issues inside READMEs, and remove
+  AI-chat/status narration from committed docs.
+- **Rule:** Shipped **reference** docs others read — READMEs, eval `RESULTS.md`, any doc that isn't a
+  work-tracker — stay clean and timeless: **no GitHub issue/PR numbers**, no changelog/status narration
+  ("now live here", "being distilled"), no conversational AI framing. State what *is*, factually; let the
+  table/content be the record. When a finding *is* that something leaked such refs, describe it generically.
+  **Distinction:** issue numbers DO belong in the **work-trackers** (`PROGRAM.md`, `ISSUES.md`, lessons) —
+  just not in shipped reference docs or `CLAUDE.md`. Extends [[claude-md-is-lean-no-issue-numbers]] beyond
+  the constitution.
+- **Context:** `AssayInc/skills` README + `evals/*/RESULTS.md` (the E0-11 / #86 homegrown skills).
+
 ## 2026-06-19 — claude-md-is-lean-no-issue-numbers
 - **Mistake:** Bloated `CLAUDE.md`'s skills section with a flat enumeration of every source repo + per-skill
   annotations + GitHub issue/epic numbers (`E0-10/#85, landed`, `#86`, `#73`, `T7`). The user cut it: issue/epic

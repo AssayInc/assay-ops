@@ -48,6 +48,18 @@
       "sourceType": "well-known",
       "computedHash": "3f507a4312969a2a27c547e6693c7a10f3454c8bff31144d0c15607ae03e33bb"
     },
+    "deterministic-verification": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "deterministic-verification/SKILL.md",
+      "computedHash": "1c433a582ca31f60ec765a38edd68d3ed3942ead62d9cead481f29b64de33265"
+    },
+    "eval-rigor": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "eval-rigor/SKILL.md",
+      "computedHash": "7eceb0c6016c5f3b2b9b4e2c085d690c6648f8323fb22998a6b5dceb9396b92f"
+    },
     "generate-openenv-env": {
       "source": "huggingface/OpenEnv",
       "sourceType": "github",
@@ -126,6 +138,18 @@
       "skillPath": "plugins/inspect-skills/skills/reading-logs/SKILL.md",
       "computedHash": "61709e76c301230b6843bfa84f09201e4ca9501ce83845ce2a02bc21914b53e8"
     },
+    "red-team-exit-bar": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "red-team-exit-bar/SKILL.md",
+      "computedHash": "18fc7bcd18b15681827d4dd821e601814ecf78236bf9d5a83ae31db62331ea53"
+    },
+    "reward-ledger-worm": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "reward-ledger-worm/SKILL.md",
+      "computedHash": "61883416956cf0ece851cbb2b2ba7017e24417ab8c1ceaa3c2ab8af58b3dff2a"
+    },
     "ruff": {
       "source": "astral-sh/claude-code-plugins",
       "sourceType": "github",
@@ -173,6 +197,12 @@
       "sourceType": "github",
       "skillPath": "plugins/astral/skills/uv/SKILL.md",
       "computedHash": "b1ca9e9826d906f6ee6ea172da50018ec13bb622ac9ba7204bda8b10e7fc8d0a"
+    },
+    "write-isolated-verifier": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "write-isolated-verifier/SKILL.md",
+      "computedHash": "a268afb98736a2917f81f23cc33c99fb3ea6b4362059cdc4aec6c91200af5beb"
     }
   }
 }

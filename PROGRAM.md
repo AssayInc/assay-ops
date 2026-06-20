@@ -9,17 +9,27 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   and the frozen floor ([`DECISIONS.md`](./DECISIONS.md)) are in; the AI-operating layer lands with
   **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
   wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
-  symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73 + #86**, closed)
-  plus the **prefer-official cloud/IaC/training/eval/dev-loop packs** (**E0-10 (#85)**, landed — 25 skills:
+  symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73**, closed),
+  the **prefer-official cloud/IaC/training/eval/dev-loop packs** (**E0-10 (#85)**, landed — 25 skills:
   18 official-vendor (AWS / Terraform / OpenEnv / TRL / Python-UV / LocalStack + `skill-creator`), 3 Inspect AI
-  (maintainer-authored, `meridianlabs-ai`), and 4 well-adopted community (`wshobson/agents` — TS/Python craft)).
-  Still open: the six homegrown
-  AssayOps domain skills (**#86**). Other ready E0 work: two-lane CI + branch
+  (maintainer-authored, `meridianlabs-ai`), and 4 well-adopted community (`wshobson/agents` — TS/Python craft)),
+  and the **five homegrown AssayOps domain skills** (**E0-11 (#86)**, landed — `write-isolated-verifier` /
+  `reward-ledger-worm` / `deterministic-verification` / `red-team-exit-bar` / `eval-rigor`, authored in
+  `AssayInc/skills` and vendored here). Other ready E0 work: two-lane CI + branch
   protection (**E0-2, #19**), the LocalStack dev loop (**E0-3, #20**), repo hygiene (**E0-4, #21**), and the
   Project v2 board (**E0-5, #22**). Phase-1 build proper starts at the contract-schema spine (**E1**), the
   join key for the whole system.
 
 ## Recently Landed
+
+- **E0-11 (#86): homegrown AssayOps domain skills.** Five brain-distilled skills authored in `AssayInc/skills`
+  (each provenance-cited to a brain page/plan, `skill-creator`-authored, independently reviewed by Codex
+  `gpt-5.5 xhigh` two-pass and A/B-evaluated) and vendored into the committed layer: `write-isolated-verifier`
+  (the trust boundary), `reward-ledger-worm` (the WORM/KMS reward record), `deterministic-verification` (the
+  diff-IR reward), `red-team-exit-bar` (the reward-channel red-team gate), `eval-rigor` (the
+  eval-to-performance proof protocol). Each `SKILL.md` hash-pinned in `skills-lock.json`, symlinked into
+  `.claude/`+`.hermes/`. Homegrown only where no official pack covers the AssayOps-specific need
+  (`localstack-verifier` folded into the official `localstack/skills` pack instead). _(fill PR # / merge commit on landing.)_
 
 - **E0-10 (#85): prefer-official skill packs.** 25 skills vendored into the committed layer (18 official-vendor +
   3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
@@ -54,15 +64,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   arrive with E0-2. Until then, the **PR + verify-green + `/review`** convention in `CLAUDE.md` is the
   merge gate. E0-1 deliberately shipped no CI; E0-6 documents the invariant, E0-2 implements it.
 - **Brain sibling + skill layer.** Strategy/research/vision live in `../brain/` (`AssayInc/brain`);
-  recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73 + #86**, closed). As of PR #89
+  recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73**, closed). As of PR #89
   it's **committed into this repo's skill layer** (`.agents/skills/assay-brain`, symlinked into
   `.claude/`+`.hermes/`, `SKILL.md` hash-pinned in `skills-lock.json`), so every agent here — Codex, CI, a fresh clone —
   gets it with zero setup. It also still ships as a **per-developer install** (`AssayInc/skills` →
   `./install.sh`, symlinked into `~/.claude/skills`) that makes recall work from *any* Assay repo; on a dev
   machine that global copy shadows the committed one (same content). Both resolve `../brain` with zero config
   and degrade gracefully when the brain is absent. The prefer-official cloud/IaC/training/eval packs landed
-  in **#85** (PR #91 — 25 skills, each `SKILL.md` hash-pinned in `skills-lock.json`); the six homegrown
-  domain skills remain **#86**. `CLAUDE.md` documents the layer as the design.
+  in **#85** (PR #91 — 25 skills, each `SKILL.md` hash-pinned in `skills-lock.json`); the five homegrown
+  domain skills are authored + vendored (**E0-11 / #86**). `CLAUDE.md` documents the layer as the design.
 - **Read order for a new agent:** `CLAUDE.md`/`AGENTS.md` (operating layer) → `DECISIONS.md` (why/rules)
   → `docs/ARCHITECTURE.md` (how/where). The build spine is the `contracts/` schema (E1) — built first
   because it is the join key both lanes and a buying lab verify against.
