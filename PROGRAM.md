@@ -29,7 +29,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   diff-IR reward), `red-team-exit-bar` (the reward-channel red-team gate), `eval-rigor` (the
   eval-to-performance proof protocol). Each `SKILL.md` hash-pinned in `skills-lock.json`, symlinked into
   `.claude/`+`.hermes/`. Homegrown only where no official pack covers the AssayOps-specific need
-  (`localstack-verifier` folded into the official `localstack/skills` pack instead). (PR #92; fill merge commit on landing.)
+  (`localstack-verifier` folded into the official `localstack/skills` pack instead). (PR #92, `330d340`.)
 
 - **E0-10 (#85): prefer-official skill packs.** 25 skills vendored into the committed layer (18 official-vendor +
   3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
@@ -49,8 +49,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 - **E0-6 (#18): AI-operating layer.** `CLAUDE.md` (the single auto-loaded constitution) + `AGENTS.md`
   symlink, `PROGRAM.md`, `ISSUES.md`, `tasks/{todo,lessons}.md`; the **`verify`-gate + locked-fixtures
   loop**, the "implement the next ready issue" trigger, and the quality bar — adapted to the polyglot,
-  verification-infra domain. No `HANDOFF.md` (folded into `CLAUDE.md`); no `ci.yml` (that is E0-2/#19).
-  _(fill PR # / merge commit on landing.)_
+  verification-infra domain. No `HANDOFF.md` (folded into `CLAUDE.md`); no `ci.yml` (that is E0-2/#19). (PR #84, `4d3fdf7`.)
 - **E0-8 (#74): `DECISIONS.md`** — the frozen floor (trust model, locked decisions 1C–T3, I1–I11, the
   15-vector threat bar, eval rigor) ported from the `brain` plans so the repo stands alone. (PR #82.)
 - **E0-1 (#17): bootstrap polyglot monorepo skeleton** — Bun + Turborepo TS lane (`ts/**`), UV Python
