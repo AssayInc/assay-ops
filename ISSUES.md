@@ -6,6 +6,14 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **LocalStack now needs a commercial license + auth token (E0-3 / #20).** The free tokenless community
+  edition was retired in the 2026-03-23 single-image change; the `infra-local` dev loop + the smoke CI run
+  the licensed **LocalStack for AWS** image, which needs `LOCALSTACK_AUTH_TOKEN` (a secret, never committed —
+  local `.env`, CI repo secret). **Action (human):** assign a LocalStack license (commercial — Base/Ultimate;
+  the non-commercial Hobby/OSS tiers don't fit a private commercial repo) and add the `LOCALSTACK_AUTH_TOKEN`
+  **CI auth token** as a GitHub Actions secret. Staying on LocalStack (vs moto/Floci/MiniStack, which
+  empirically don't serve Cloud Control `GetResource`) + the substrate qualifier are recorded in #20 + DECISIONS.md.
+
 - **CI + branch protection are E0-2 (#19).** `bun run verify` is the canonical gate and runs locally,
   but the two-lane GitHub Actions workflow (turbo + uv, independent cache-keyed lanes) that runs it on
   every PR — and branch protection on `main` — land in E0-2. Until then nothing *technically* blocks a
