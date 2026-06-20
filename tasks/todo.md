@@ -6,11 +6,12 @@ when done.
 
 ---
 
-## E0-10 (#85) — assay-ops skills layer: the prefer-official cloud/IaC packs
+## E0-10 (#85) — assay-ops skills layer: the prefer-official cloud/IaC packs — DONE (PR #91)
 
-**Goal:** finish #85 by adding the remaining **official** skill packs to the committed skills.sh layer
-(lock + `.agents/skills/` → `.claude/`+`.hermes/` symlinks), then close it. The lock mechanism +
-`assay-brain` already landed (PR #89). What's left: the cloud/IaC/training/Python/eval packs.
+**Goal (met):** added the **official** skill packs to the committed skills.sh layer (lock +
+`.agents/skills/` → `.claude/`+`.hermes/` symlinks) and closed #85. The lock mechanism + `assay-brain`
+landed in PR #89; the prefer-official packs in PR #91. Follow-on: the five homegrown domain skills are now
+vendored too (E0-11 / #86, PR #92).
 
 **Selection (25 skills; each maps to a coding surface — prefer-official, reviewed per-repo, not bulk-added):**
 - `skill-creator` ← `anthropics/skills` — author homegrown skills (#86)
@@ -81,4 +82,5 @@ well-adopted **community** skills where no official exists (`wshobson/agents`) �
 - **Known limitation (fast-follow, noted in `ISSUES.md`):** `skills-lock.json` hashes only each `SKILL.md`,
   not `resources/`/`scripts/`; the [[skills-sync-hygiene]] manual `git diff` is the current guard; CI
   enforcement belongs to E0-2 (#19). The lock is restore-grade, not wired into `bun run verify`.
-- **Scope:** the six homegrown AssayOps domain skills remain **#86**; `assay-brain` (#73) already closed.
+- **Scope:** the five homegrown AssayOps domain skills are now authored + vendored (**E0-11 / #86**);
+  `assay-brain` (#73) already closed.
