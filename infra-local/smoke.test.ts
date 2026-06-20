@@ -8,17 +8,24 @@ const region = "us-east-1";
 const credentials = { accessKeyId: "test", secretAccessKey: "test" };
 const bucketName = "assayops-smoke-bucket";
 
-// Cloud Control GetResource can briefly fail while LocalStack warms the service after the gateway
-// reports healthy; retry a few times so a cold CI start does not flake the smoke.
-async function getResourceWithRetry(
-  client: CloudControlClient,
-  input: { TypeName: string; Identifier: string },
-  attempts = 6,
-) {
+// Drive retry timing from this script, not the SDK: one attempt + a bounded socket timeout, so a hung
+// (vs refused) LocalStack cannot stack the SDK's default 3 retries against the test budget.
+const clientConfig = {
+  endpoint,
+  region,
+  credentials,
+  maxAttempts: 1,
+  requestHandler: { requestTimeout: 5000 },
+};
+
+// LocalStack can briefly fail while it warms a service after the gateway reports healthy; retry the
+// whole step a few times so a cold CI start does not flake. Always rethrows the last error, so a
+// genuine failure still fails the test (never a false pass).
+async function withRetry<T>(operation: () => Promise<T>, attempts = 6): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
-      return await client.send(new GetResourceCommand(input));
+      return await operation();
     } catch (error) {
       lastError = error;
       if (attempt < attempts - 1) {
@@ -36,22 +43,25 @@ async function getResourceWithRetry(
 test(
   "Cloud Control GetResource reads a deployed S3 bucket from LocalStack",
   async () => {
-    const s3 = new S3Client({ endpoint, region, credentials, forcePathStyle: true });
-    try {
-      await s3.send(new CreateBucketCommand({ Bucket: bucketName }));
-    } catch (error) {
-      // Idempotent against a warm stack: a re-owned/existing bucket is fine, anything else is real.
-      const name = error instanceof Error ? error.name : "";
-      if (name !== "BucketAlreadyOwnedByYou" && name !== "BucketAlreadyExists") {
-        throw error;
+    const s3 = new S3Client({ ...clientConfig, forcePathStyle: true });
+    await withRetry(async () => {
+      try {
+        await s3.send(new CreateBucketCommand({ Bucket: bucketName }));
+      } catch (error) {
+        // Idempotent against a warm stack: a re-owned/existing bucket is fine, anything else retries.
+        const name = error instanceof Error ? error.name : "";
+        if (name !== "BucketAlreadyOwnedByYou" && name !== "BucketAlreadyExists") {
+          throw error;
+        }
       }
-    }
-
-    const cloudControl = new CloudControlClient({ endpoint, region, credentials });
-    const { ResourceDescription } = await getResourceWithRetry(cloudControl, {
-      TypeName: "AWS::S3::Bucket",
-      Identifier: bucketName,
     });
+
+    const cloudControl = new CloudControlClient(clientConfig);
+    const { ResourceDescription } = await withRetry(() =>
+      cloudControl.send(
+        new GetResourceCommand({ TypeName: "AWS::S3::Bucket", Identifier: bucketName }),
+      ),
+    );
 
     expect(ResourceDescription?.Identifier).toBe(bucketName);
     const properties = JSON.parse(ResourceDescription?.Properties ?? "{}") as {

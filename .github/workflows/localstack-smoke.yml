@@ -1,31 +1,29 @@
 name: localstack-smoke
 
-# The infra-local LocalStack dev loop, run in CI. LocalStack for AWS is licensed, so this needs a
-# CI auth token in the LOCALSTACK_AUTH_TOKEN repo secret (Settings -> Secrets -> Actions). Scoped to
-# the dev-loop paths so unrelated PRs do not consume metered LocalStack CI usage.
+# The infra-local LocalStack dev loop, run in CI. LocalStack for AWS is licensed, so this needs the
+# LOCALSTACK_AUTH_TOKEN repo secret (Settings -> Secrets -> Actions).
+#
+# Secret-backed, so it deliberately does NOT run on pull_request: that would put the token in the
+# environment of PR-controlled code (`just up`), which a branch could exfiltrate. It runs on push to
+# main (post-merge, trusted) and on manual workflow_dispatch. Validate a branch pre-merge with a local
+# `just up`/`just smoke` or a manual dispatch. (Pre-merge PR validation behind a protected Environment
+# with required reviewers is a follow-up for the two-lane CI hardening.)
 on:
-  pull_request:
-    paths:
-      - "infra-local/**"
-      - "justfile"
-      - ".github/workflows/localstack-smoke.yml"
-      - "bun.lock"
   push:
     branches: [main]
     paths:
       - "infra-local/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
+      - "package.json"
       - "bun.lock"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   smoke:
-    # Only run the secret-backed smoke on trusted refs (pushes + same-repo PRs). Fork PRs never
-    # receive the token secret, so skip them: no token in untrusted PR code, no permanently-red check.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
