@@ -6,6 +6,42 @@ when done.
 
 ---
 
+## E0-4 (#21) — Repo hygiene (CODEOWNERS, PR template, secret scanning, CONTRIBUTING) — IN PR (branch `chore/e0-4-repo-hygiene`)
+
+**Goal (AC):** CODEOWNERS + PR template + secret-scanning push protection enabled (a planted secret is
+blocked on push); the `Closes #` convention documented in the PR template; a `CONTRIBUTING.md` with the
+contributor workflow + a pointer to the quality bar, linking (not duplicating) the README **Get started**.
+
+**Validation (issue vs. code):**
+- #21 is open, unblocked, Phase 0 — the last ready E0 eng issue (PROGRAM.md). Accurate, not already done.
+- Sole collaborator is `@samuelcastro` (no org teams) → CODEOWNERS can only name him; a global rule is the
+  right scope. The locked-grader paths (`contracts/vectors` #28, `tools/red-team` #56) **don't exist yet**
+  (ISSUES.md) → no speculative per-path rules; they land in those epics' `fixture-change` PRs.
+- The org has GitHub Advanced Security → secret scanning + push protection are enable-able on the private
+  repo (unlike rulesets, which needed the paid plan).
+
+**Design:**
+- `.github/CODEOWNERS`: `* @samuelcastro`; header notes it's the DECISIONS.md §8 trust-rule enforcement arm.
+- `.github/pull_request_template.md`: a `Closes #` line (documents the convention) + a lean quality-bar checklist.
+- `CONTRIBUTING.md` (root): branch → focused PR (`Closes #`) → `bun run verify` → `/review` → merge on the
+  maintainer's explicit go; trust-boundary + secrets sections; links README Get started + DECISIONS.md §8.
+- Secret scanning + push protection enabled via the repo API; proven by a planted-secret push (blocked).
+- Deferred (flagged in ISSUES.md): require-code-owner-review in the `main` ruleset (single collaborator →
+  would deadlock solo PRs) + the per-path grader CODEOWNERS rules (land with #28 / #56).
+
+**Steps (test-first via the planted-secret push + the gate):**
+- [x] Enable secret scanning + push protection (repo API); resolve fabricated test alerts.
+- [x] Add `.github/CODEOWNERS`, `.github/pull_request_template.md`, `CONTRIBUTING.md`.
+- [x] `bun run verify` green (docs/config — no verify-graph impact; FULL TURBO).
+- [ ] Prove: a planted (fabricated) secret is blocked on push.
+- [ ] Update `PROGRAM.md` + `ISSUES.md`; PR "Closes #21"; `/review`.
+
+### Review
+
+_(added on completion)_
+
+---
+
 ## E0-2 (#19) — Two-lane CI (turbo + uv) + branch protection — IN PROGRESS (branch `feat/two-lane-ci`)
 
 **Goal (AC):** `.github/workflows/ci.yml` runs the canonical `verify` gate on every PR across both

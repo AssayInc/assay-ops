@@ -1,0 +1,6 @@
+# CODEOWNERS — default review routing for assay-ops.
+# The enforcement arm of the DECISIONS.md §8 trust rule "the agent that writes code
+# never edits what scores it": when a ruleset requires code-owner review, the listed
+# owner must approve changes to the matched paths.
+
+* @samuelcastro
