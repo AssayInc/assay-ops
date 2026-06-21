@@ -1,13 +1,8 @@
 name: localstack-smoke
 
-# The infra-local LocalStack dev loop in CI. Licensed LocalStack needs the LOCALSTACK_AUTH_TOKEN repo
-# secret (Settings -> Secrets -> Actions), scoped to only the `just up` step.
-#
-# Runs on same-repo PRs (pre-merge validation), pushes to main, and manual dispatch; fork PRs are skipped
-# (GitHub never passes secrets to fork runs, so they would only fail). The trigger is a validation choice,
-# not secret protection: per GitHub, any user with write access can already read every repo secret, so a
-# same-repo PR exposes nothing new. To actually gate the token from collaborators, promote it to an
-# Environment secret with required reviewers (works with this pull_request trigger).
+# The infra-local LocalStack dev loop in CI. Needs the LOCALSTACK_AUTH_TOKEN repo secret (scoped to the
+# `just up` step below). Runs on PRs (validation), pushes to main, and manual dispatch. No fork-PR gate:
+# the repo is private (no forks), and write access already grants repo-secret access anyway.
 on:
   pull_request:
     paths:
@@ -31,8 +26,6 @@ permissions:
 
 jobs:
   smoke:
-    # Skip fork PRs (no secret -> would only fail); same-repo PRs, pushes, and manual dispatch run.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
