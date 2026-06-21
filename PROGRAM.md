@@ -19,10 +19,19 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
   `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
   **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). Remaining
-  ready E0 eng: two-lane CI (**E0-2, #19**) + repo hygiene (**E0-4, #21**). Phase-1 build proper starts at
+  ready E0 eng: repo hygiene (**E0-4, #21**). Phase-1 build proper starts at
   the contract-schema spine (**E1**), the join key for the whole system.
 
 ## Recently Landed
+
+- **E0-2 (#19): two-lane CI + branch protection.** `.github/workflows/ci.yml` runs the canonical
+  `verify` gate (`turbo run typecheck lint test`) on every PR as two parallel, independently
+  cache-keyed lanes that don't block each other — **`ts`** (bun/turbo, `--filter='!./py/**'`) and
+  **`py`** (uv + turbo, `--filter='./py/**'`); the two filters partition all packages, so the union is
+  exactly `bun run verify`. `permissions: contents: read`, no secrets/OIDC — **zero account-B creds**
+  (DECISIONS.md §1/§8). Branch protection on `main` requires the `ts` + `py` checks. The **codegen-parity
+  gate (#29)** is deferred — it's blocked-by #27/#28 and there's no `contracts/` schema yet (a parity
+  check against nothing would be an empty verifier). (PR #101.)
 
 - **E0-11 (#86): homegrown AssayOps domain skills.** Five brain-distilled skills authored in `AssayInc/skills`
   (each provenance-cited to a brain page/plan, `skill-creator`-authored, independently reviewed by Codex
@@ -60,10 +69,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Handoff Notes
 
-- **CI is E0-2 (#19), not yet landed.** `bun run verify` is the gate and is green locally; the two-lane
-  GitHub Actions workflow that runs it per PR (turbo + uv, cache-keyed) and branch protection on `main`
-  arrive with E0-2. Until then, the **PR + verify-green + `/review`** convention in `CLAUDE.md` is the
-  merge gate. E0-1 deliberately shipped no CI; E0-6 documents the invariant, E0-2 implements it.
+- **CI landed (E0-2, #19).** `.github/workflows/ci.yml` runs `bun run verify` per PR as two parallel,
+  independently cache-keyed lanes (`ts` = bun/turbo, `py` = uv + turbo) that don't block each other,
+  with zero account-B creds. Branch protection on `main` (require a PR + the `ts` + `py` checks) is
+  applied via `gh api` once the checks have a green history — admin-only, tracked in `ISSUES.md`. The
+  **codegen-parity gate (#29)** is deferred (blocked-by #27/#28; no `contracts/` schema yet).
 - **Brain sibling + skill layer.** Strategy/research/vision live in `../brain/` (`AssayInc/brain`);
   recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73**, closed). As of PR #89
   it's **committed into this repo's skill layer** (`.agents/skills/assay-brain`, symlinked into
