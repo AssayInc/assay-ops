@@ -58,8 +58,9 @@ lanes, independently cache-keyed + non-blocking, holding zero account-B creds; b
 ### Follow-up — xhigh re-review (branch `chore/e0-2-xhigh-review`)
 
 The first `/review` Codex pass ran at `high` (the gstack skill hardcodes `-c model_reasoning_effort=high`,
-overriding the repo's `gpt-5.5 xhigh` standard). Re-ran at **xhigh**; added two lessons. Re-examined the
-three findings against the **official turbo docs + skill** — none warranted a code change:
+overriding the repo's `gpt-5.5 xhigh` standard). Re-ran at **xhigh**; added three lessons (incl.
+verify-against-official-docs-and-skills, the rule from this episode). Re-examined the three findings
+against the **official turbo docs + skill** — none warranted a code change:
 - **P1** `infra-local#test` `<NONEXISTENT>` → **non-issue** (E0-3 keeps the LocalStack smoke out of the
   Docker-free gate; typecheck+lint still run; the smoke lives in `localstack-smoke.yml`).
 - **P2** `bunx turbo` "could fetch registry turbo" → **moot.** `bun install --frozen-lockfile` guarantees

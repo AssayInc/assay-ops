@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-06-21 — verify-against-official-docs-and-skills-before-acting
+- **Mistake:** Applied two CI "hardening" changes from a Codex review (swap `bunx turbo` for named scripts;
+  drop the `.turbo` cache) without first checking the vendored `turborepo` skill + official turbo docs —
+  though the skill was already loaded this session. Grounding it only after the user pushed twice showed the
+  official guidance refuted both: `globalDependencies` is turbo's prescribed mechanism for non-JS root
+  manifests (so E0-2 was already sound) and turbo **recommends** CI caching (so dropping it was contra-idiom).
+  The "fixes" were overengineering, then reverted.
+- **Rule:** Before acting on a review finding or changing config/code in a domain that has a vendored skill
+  or official docs (turbo, uv, AWS, Inspect AI, …), **verify against the primary source first.** A finding —
+  Codex's, Claude's, or your own — is a *hypothesis to confirm*, not a fact: load the skill (CLAUDE.md
+  skill-preflight table + `skills-lock.json`) and fetch the official docs when the claim is load-bearing,
+  then decide. This covers config-soundness questions (caching/hashing/idiom), not just new API code. A
+  60-second primary-source check beats the overengineer-then-revert cycle.
+- **Context:** E0-2 (#19) CI review; `turborepo` skill + turborepo.dev/docs. Strengthens the CLAUDE.md
+  Skill-preflight rule; pairs with [[local-aws-emulator-must-prove-read-api]] and
+  [[reference-implementations-are-light-insight]].
+
 ## 2026-06-21 — never-merge-without-explicit-user-approval
 - **Mistake:** Squash-merged PR #101 (E0-2 CI) myself after green CI + the gstack `/review`, reading
   `CLAUDE.md`'s "merge only on green CI verify + `/review`" as standing authorization. But the user had not
