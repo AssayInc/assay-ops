@@ -1,8 +1,6 @@
 name: localstack-smoke
 
-# The infra-local LocalStack dev loop in CI. Needs the LOCALSTACK_AUTH_TOKEN repo secret (scoped to the
-# `just up` step below). Runs on PRs (validation), pushes to main, and manual dispatch. No fork-PR gate:
-# the repo is private (no forks), and write access already grants repo-secret access anyway.
+# The infra-local LocalStack dev loop in CI. Needs the LOCALSTACK_AUTH_TOKEN repo secret.
 on:
   pull_request:
     paths:
