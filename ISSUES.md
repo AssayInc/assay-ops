@@ -14,14 +14,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   Staying on LocalStack (vs moto/Floci/MiniStack, which empirically don't serve Cloud Control `GetResource`)
   + the substrate qualifier are in #20 + DECISIONS.md; the broader secret-management decision is spike #96.
 
-- **CI landed; branch protection + the parity gate are the open tails of E0-2 (#19).** The two-lane
+- **CI + branch protection landed; the parity gate is the open tail of E0-2 (#19).** The two-lane
   `ci.yml` (turbo + uv, independent cache-keyed lanes, zero account-B creds) runs `bun run verify` on
-  every PR. **Branch protection on `main`** (require a PR + the `ts` + `py` checks) is applied via
-  `gh api` once the checks have a green history — admin-only, so it's tracked here; until it's on,
-  nothing *technically* blocks a direct push to `main` and the `CLAUDE.md` **PR + verify-green +
-  `/review`** rule is the gate. The **codegen-parity gate (#29)** is deferred to its own issue
-  (blocked-by #27/#28; no `contracts/` schema exists yet), and the **`fixture-change` guard** activates
-  when `contracts/vectors` (#28) / `tools/red-team` (#56) land.
+  every PR. **Branch protection on `main` is applied** — a repository ruleset requires the `ts` + `py`
+  checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
+  gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
+  ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is deferred to its own issue
+  (blocked-by #27/#28; no `contracts/` schema exists yet), and the **`fixture-change` guard** (a CI
+  path+label check or a CODEOWNERS rule on the ruleset) activates when `contracts/vectors` (#28) /
+  `tools/red-team` (#56) land.
 - **The committed skill layer — #85 + #86 landed.** The skills.sh lock + consumer `.agents/skills/`
   wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 25
   skills (18 official-vendor + 3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,

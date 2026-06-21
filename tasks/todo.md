@@ -30,12 +30,27 @@ lanes, independently cache-keyed + non-blocking, holding zero account-B creds; b
 - Actions SHA-pinned (checkout v7.0.0, setup-bun v2.2.0, setup-uv v8.2.0, cache v5.0.5); uv pinned 0.11.8.
 
 **Steps (test-first via the gate + actionlint):**
-- [ ] Author `.github/workflows/ci.yml` (two lanes).
-- [ ] Validate: `actionlint` clean; YAML parses; both lane commands green locally; no creds in the workflow.
-- [ ] Update `PROGRAM.md` + `ISSUES.md` (CI landed; parity #29 + fixture-guard deferred; protection state).
-- [ ] PR "Closes #19"; `/review`.
-- [ ] Branch protection on `main` via `gh api` once `ci` is green (require a PR + the `ts` + `py` checks).
+- [x] Author `.github/workflows/ci.yml` (two lanes).
+- [x] Validate: `actionlint` clean; YAML parses; both lane commands green locally; no creds in the workflow.
+- [x] Update `PROGRAM.md` + `ISSUES.md` (CI landed; parity #29 + fixture-guard deferred; protection state).
+- [x] PR "Closes #19" (#101); `/review` (3 cross-model findings fixed).
+- [x] Branch protection on `main` via a repository ruleset (require a PR + the `ts` + `py` checks; block force-push/deletion).
 
 ### Review
 
-_(filled on completion)_
+- **Done + proven:** `.github/workflows/ci.yml` runs the canonical `turbo run typecheck lint test` as two
+  parallel lanes — `ts` (`--filter='!./py/**'`) and `py` (`uv sync --locked` + `--filter='./py/**'`); the
+  filters are a complement partition (verified by `--dry`: union = all 5 packages / 8 tasks = `bun run verify`).
+  Green in real CI (run 27907919479: `ts` 12s, `py` 20s). `actionlint` clean; zero account-B creds
+  (`permissions: contents: read`, no secrets/OIDC). Branch protection applied as ruleset `17947941`.
+- **/review fixed 3 cross-model findings:** (1) `turbo.json` `globalDependencies` (`bun.lock`/`uv.lock`/
+  `pyproject.toml`/`.python-version`) — without it a persisted `.turbo` cache could replay a stale pass and
+  skip the Python checks after a dep bump (false green in a gate); fixes local `bun run verify` too.
+  (2) `persist-credentials: false` on checkout. (3) `concurrency` + `cancel-in-progress`.
+- **Scoped out (flagged, not faked):** the codegen-parity gate (AC#2) → #29 (blocked-by #27/#28; no
+  `contracts/` schema yet); the `fixture-change` guard → activates when `contracts/vectors` (#28) /
+  `tools/red-team` (#56) exist. A parity/guard against non-existent paths would be an empty verifier.
+- **Surprise:** branch protection (classic AND rulesets) is gated behind a paid GitHub plan on private
+  repos; going public is barred by DECISIONS.md §8. Founder upgraded the plan → ruleset applied. Recorded
+  as a plan dependency in `ISSUES.md`.
+- **Left:** merge #101 (green + reviewed + ruleset-compliant) → auto-closes #19.

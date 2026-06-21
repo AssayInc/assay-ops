@@ -29,9 +29,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   cache-keyed lanes that don't block each other — **`ts`** (bun/turbo, `--filter='!./py/**'`) and
   **`py`** (uv + turbo, `--filter='./py/**'`); the two filters partition all packages, so the union is
   exactly `bun run verify`. `permissions: contents: read`, no secrets/OIDC — **zero account-B creds**
-  (DECISIONS.md §1/§8). Branch protection on `main` requires the `ts` + `py` checks. The **codegen-parity
-  gate (#29)** is deferred — it's blocked-by #27/#28 and there's no `contracts/` schema yet (a parity
-  check against nothing would be an empty verifier). (PR #101.)
+  (DECISIONS.md §1/§8). Branch protection on `main` is **applied** — a repository ruleset requires the
+  `ts` + `py` checks + a PR and blocks force-push/deletion. The **codegen-parity gate (#29)** is deferred —
+  it's blocked-by #27/#28 and there's no `contracts/` schema yet (a parity check against nothing would be
+  an empty verifier). (PR #101.)
 
 - **E0-11 (#86): homegrown AssayOps domain skills.** Five brain-distilled skills authored in `AssayInc/skills`
   (each provenance-cited to a brain page/plan, `skill-creator`-authored, independently reviewed by Codex
@@ -71,9 +72,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 - **CI landed (E0-2, #19).** `.github/workflows/ci.yml` runs `bun run verify` per PR as two parallel,
   independently cache-keyed lanes (`ts` = bun/turbo, `py` = uv + turbo) that don't block each other,
-  with zero account-B creds. Branch protection on `main` (require a PR + the `ts` + `py` checks) is
-  applied via `gh api` once the checks have a green history — admin-only, tracked in `ISSUES.md`. The
-  **codegen-parity gate (#29)** is deferred (blocked-by #27/#28; no `contracts/` schema yet).
+  with zero account-B creds. Branch protection on `main` is **applied** — a repository ruleset requires
+  the `ts` + `py` checks + a PR and blocks force-push/deletion (rulesets need the repo's paid GitHub plan;
+  tracked in `ISSUES.md`). The **codegen-parity gate (#29)** is deferred (blocked-by #27/#28; no
+  `contracts/` schema yet).
 - **Brain sibling + skill layer.** Strategy/research/vision live in `../brain/` (`AssayInc/brain`);
   recall via the **`assay-brain`** skill, built in `AssayInc/skills` (**#73**, closed). As of PR #89
   it's **committed into this repo's skill layer** (`.agents/skills/assay-brain`, symlinked into
