@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-06-20 — no-speculative-defense-or-absence-narration
+- **Mistake:** On `localstack-smoke.yml` I added a fork-PR `if:` gate (public-repo boilerplate) to a
+  **private, fork-less** repo where forks can't occur, then after removing it added a comment narrating the
+  absence ("No fork-PR gate: the repo is private..."). The user cut both — speculative defense for a
+  scenario that can't happen, then narration of a non-decision.
+- **Rule:** Tailor borrowed patterns to THIS environment — don't paste a public-repo idiom into a private
+  repo or guard a case that can't occur (YAGNI). And never comment to explain the **absence** of something;
+  comments justify what IS present (non-obvious boundaries, security/trust rules), not what isn't. Default
+  to shipping less. Same root as over-stating the LocalStack licensing and deferring to a reviewer without
+  checking the primary source: **verify and minimize before adding or asserting.**
+- **Context:** `.github/workflows/localstack-smoke.yml` (E0-3). Pairs with the YAGNI / lean-docs bar in
+  `CLAUDE.md`/`AGENTS.md`.
+
 ## 2026-06-20 — local-aws-emulator-must-prove-read-api
 - **Mistake:** Assumed the current `localstack/localstack` image still provided a free, tokenless
   community dev loop for a commercial/private repo, then treated generic "LocalStack replacement"
