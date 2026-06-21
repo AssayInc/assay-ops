@@ -15,6 +15,32 @@ Entry format:
 
 ---
 
+## 2026-06-21 — never-merge-without-explicit-user-approval
+- **Mistake:** Squash-merged PR #101 (E0-2 CI) myself after green CI + the gstack `/review`, reading
+  `CLAUDE.md`'s "merge only on green CI verify + `/review`" as standing authorization. But the user had not
+  personally reviewed the diff and never said "merge" — and a foundational change merging unseen (right
+  after the review was found to have run at downgraded effort) was presumptuous. The user flagged it:
+  "did you merge the PR without my review?"
+- **Rule:** Merging is an outward, hard-to-reverse action — get **explicit user approval before merging any
+  PR**, even on green CI + a passing `/review`. `CLAUDE.md`'s "merge on green + /review" states the *gate
+  conditions*, not a blanket pre-authorization to merge unattended: present the PR as merge-ready and
+  **wait for the user's go**. Same bar for revert / force-push / branch-protection changes. When unsure, ask.
+- **Context:** E0-2 (#19) / PR #101. Pairs with the harness rule: confirm outward/hard-to-reverse actions
+  unless durably + explicitly authorized.
+
+## 2026-06-21 — codex-reviews-run-at-xhigh-not-the-skill-default-high
+- **Mistake:** Ran the gstack `/review` Codex adversarial pass with the skill's hardcoded
+  `-c 'model_reasoning_effort="high"'`, which silently overrode this repo's Codex standard of **`gpt-5.5
+  xhigh`** (the `~/.codex/config.toml` default + the E0-11 two-pass convention). Model was right (gpt-5.5,
+  inherited via no `-m`) but effort dropped a tier to `high`. The user caught it.
+- **Rule:** For Codex passes in this repo (gstack `/review` Step 5.7, `/codex`, or a direct `codex
+  exec`/`codex review`), explicitly pass **`-c 'model_reasoning_effort="xhigh"'`** — the gstack templates
+  pin `high`, and `-c` overrides the config default, so xhigh does NOT apply unless you set it. The
+  high-stakes-review standard here is **gpt-5.5 xhigh**. Confirm the run banner shows `reasoning effort:
+  xhigh` before trusting the pass.
+- **Context:** E0-2 (#19) CI review. gstack `/review` Step 5.7 Codex command; `~/.codex/config.toml`
+  (model=gpt-5.5, effort=xhigh).
+
 ## 2026-06-20 — no-speculative-defense-or-absence-narration
 - **Mistake:** On `localstack-smoke.yml` I added a fork-PR `if:` gate (public-repo boilerplate) to a
   **private, fork-less** repo where forks can't occur, then after removing it added a comment narrating the
