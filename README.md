@@ -12,14 +12,40 @@ with a single `verify` gate spanning both lanes.
 - **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** — the structural map: where each package
   lives and how an episode flows (env-server → verifier → reward ledger → trainer).
 
-## Setup
+## Get started
+
+**Prerequisites** (install once):
+
+| Tool | Install (macOS) | Used for |
+|------|-----------------|----------|
+| [Docker](https://docs.docker.com/get-docker/) | Docker Desktop, or `brew install colima && colima start` | the LocalStack dev loop (any container runtime works) |
+| [Bun](https://bun.sh) | `brew install oven-sh/bun/bun` | the TypeScript lane (runtime + package manager, pinned `1.3.14`) |
+| [uv](https://docs.astral.sh/uv/) | `brew install uv` | the Python lane |
+| [just](https://just.systems) | `brew install just` | the task runner for the dev loop |
+
+Install dependencies and run the gate:
 
 ```sh
-bun install && uv sync     # TS deps (Bun) + Python env (UV); or: bun run setup
+bun run setup     # TS deps (Bun) + Python env (UV) — = bun install && uv sync
+bun run verify    # the single gate: turbo run typecheck lint test, both lanes
 ```
 
-## Verify (the single gate)
+### Local dev loop (LocalStack)
+
+The verifier grades against a local LocalStack instead of real AWS. Put a LocalStack token in a
+gitignored `.env` at the repo root (free Hobby tier — create one at app.localstack.cloud, Auth Tokens):
 
 ```sh
-bun run verify             # turbo run typecheck lint test, across the TS + Python lanes
+# .env
+LOCALSTACK_AUTH_TOKEN=<your token>
 ```
+
+Then:
+
+```sh
+just up      # start LocalStack and wait for it to report healthy
+just smoke   # seed an S3 bucket, read it back via Cloud Control GetResource
+just down    # stop LocalStack and remove its volumes
+```
+
+Details: [`infra-local/README.md`](./infra-local/README.md). Why licensed LocalStack: [`DECISIONS.md`](./DECISIONS.md).
