@@ -178,12 +178,13 @@ T10→E10, T11→E13, T13→E11** — plus the env-server (E5), trainer (E12), a
 > resources, silent until the bill. **No real-AWS episode runs until T7 (SCP + budget + region
 > caps) exists; until then, all A/C work runs on LocalStack only.**
 
-> **LocalStack now requires a commercial license [2026-03-23 single-image change].** The free tokenless
+> **LocalStack now requires an auth token [2026-03-23 single-image change].** The free tokenless
 > community edition was retired; the licensed "LocalStack for AWS" image needs `LOCALSTACK_AUTH_TOKEN`
 > (a CI/local **secret, never committed**). This does **not** change the **LocalStack-first /
-> bulk-on-LocalStack** substrate (8A / T3 / T9) — but its cost is now a license fee, folded into the
-> **T7 budget** and the **LocalStack↔real-CFN drift / unit-economics spike**. Commercial, private use
-> needs a paid plan (Base/Ultimate/Enterprise), not the non-commercial Hobby/OSS tiers. Free-emulator
+> bulk-on-LocalStack** substrate (8A / T3 / T9). The free **Hobby** tier (non-commercial use, includes
+> CI) covers the current R&D stage — the choice for now; clearly-commercial / production use moves to a
+> paid plan (Base+), whose cost folds into the **T7 budget** and the **LocalStack↔real-CFN drift /
+> unit-economics spike**. Free-emulator
 > alternatives (moto/Floci/MiniStack) were rejected: they don't serve the Cloud Control `GetResource`
 > read path the verifier (T1) grades against.
 
