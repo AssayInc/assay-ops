@@ -53,4 +53,21 @@ lanes, independently cache-keyed + non-blocking, holding zero account-B creds; b
 - **Surprise:** branch protection (classic AND rulesets) is gated behind a paid GitHub plan on private
   repos; going public is barred by DECISIONS.md §8. Founder upgraded the plan → ruleset applied. Recorded
   as a plan dependency in `ISSUES.md`.
-- **Left:** merge #101 (green + reviewed + ruleset-compliant) → auto-closes #19.
+- **Landed:** #101 merged (`009643e`); #19 closed; `main` ruleset-protected.
+
+### Follow-up — xhigh re-review (branch `chore/e0-2-xhigh-review`)
+
+The first `/review` Codex pass ran at `high` (the gstack skill hardcodes `-c model_reasoning_effort=high`,
+overriding the repo's `gpt-5.5 xhigh` standard). Re-ran at **xhigh**; added three lessons (incl.
+verify-against-official-docs-and-skills, the rule from this episode). Re-examined the three findings
+against the **official turbo docs + skill** — none warranted a code change:
+- **P1** `infra-local#test` `<NONEXISTENT>` → **non-issue** (E0-3 keeps the LocalStack smoke out of the
+  Docker-free gate; typecheck+lint still run; the smoke lives in `localstack-smoke.yml`).
+- **P2** `bunx turbo` "could fetch registry turbo" → **moot.** `bun install --frozen-lockfile` guarantees
+  turbo is present, so `bunx turbo run` never fetches; turbo's CI rule only requires `turbo run` (which it is).
+- **P3** `.turbo` cache "could replay a stale pass" → **already handled.** E0-2's `globalDependencies`
+  (`uv.lock`/`pyproject.toml`/`.python-version`; the lockfile is auto-hashed) is turbo's prescribed fix —
+  confirmed via `turbo --dry` (all four manifests are in the global hash) and the official caching docs.
+  Turbo **recommends** CI caching, so dropping it would be contra-guidance.
+
+Net: the merged E0-2 was already sound + turbo-idiomatic; this follow-up adds only the two lessons.

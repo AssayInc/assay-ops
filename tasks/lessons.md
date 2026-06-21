@@ -15,6 +15,49 @@ Entry format:
 
 ---
 
+## 2026-06-21 — verify-against-official-docs-and-skills-before-acting
+- **Mistake:** Applied two CI "hardening" changes from a Codex review (swap `bunx turbo` for named scripts;
+  drop the `.turbo` cache) without first checking the vendored `turborepo` skill + official turbo docs —
+  though the skill was already loaded this session. Grounding it only after the user pushed twice showed the
+  official guidance refuted both: `globalDependencies` is turbo's prescribed mechanism for non-JS root
+  manifests (so E0-2 was already sound) and turbo **recommends** CI caching (so dropping it was contra-idiom).
+  The "fixes" were overengineering, then reverted.
+- **Rule:** Before acting on a review finding or changing config/code in a domain that has a vendored skill
+  or official docs (turbo, uv, AWS, Inspect AI, …), **verify against the primary source first.** A finding —
+  Codex's, Claude's, or your own — is a *hypothesis to confirm*, not a fact: load the skill (CLAUDE.md
+  skill-preflight table + `skills-lock.json`) and fetch the official docs when the claim is load-bearing,
+  then decide. This covers config-soundness questions (caching/hashing/idiom), not just new API code. A
+  60-second primary-source check beats the overengineer-then-revert cycle.
+- **Context:** E0-2 (#19) CI review; `turborepo` skill + turborepo.dev/docs. Strengthens the CLAUDE.md
+  Skill-preflight rule; pairs with [[local-aws-emulator-must-prove-read-api]] and
+  [[reference-implementations-are-light-insight]].
+
+## 2026-06-21 — never-merge-without-explicit-user-approval
+- **Mistake:** Squash-merged PR #101 (E0-2 CI) myself after green CI + the gstack `/review`, reading
+  `CLAUDE.md`'s "merge only on green CI verify + `/review`" as standing authorization. But the user had not
+  personally reviewed the diff and never said "merge" — and a foundational change merging unseen (right
+  after the review was found to have run at downgraded effort) was presumptuous. The user flagged it:
+  "did you merge the PR without my review?"
+- **Rule:** Merging is an outward, hard-to-reverse action — get **explicit user approval before merging any
+  PR**, even on green CI + a passing `/review`. `CLAUDE.md`'s "merge on green + /review" states the *gate
+  conditions*, not a blanket pre-authorization to merge unattended: present the PR as merge-ready and
+  **wait for the user's go**. Same bar for revert / force-push / branch-protection changes. When unsure, ask.
+- **Context:** E0-2 (#19) / PR #101. Pairs with the harness rule: confirm outward/hard-to-reverse actions
+  unless durably + explicitly authorized.
+
+## 2026-06-21 — codex-reviews-run-at-xhigh-not-the-skill-default-high
+- **Mistake:** Ran the gstack `/review` Codex adversarial pass with the skill's hardcoded
+  `-c 'model_reasoning_effort="high"'`, which silently overrode this repo's Codex standard of **`gpt-5.5
+  xhigh`** (the `~/.codex/config.toml` default + the E0-11 two-pass convention). Model was right (gpt-5.5,
+  inherited via no `-m`) but effort dropped a tier to `high`. The user caught it.
+- **Rule:** For Codex passes in this repo (gstack `/review` Step 5.7, `/codex`, or a direct `codex
+  exec`/`codex review`), explicitly pass **`-c 'model_reasoning_effort="xhigh"'`** — the gstack templates
+  pin `high`, and `-c` overrides the config default, so xhigh does NOT apply unless you set it. The
+  high-stakes-review standard here is **gpt-5.5 xhigh**. Confirm the run banner shows `reasoning effort:
+  xhigh` before trusting the pass.
+- **Context:** E0-2 (#19) CI review. gstack `/review` Step 5.7 Codex command; `~/.codex/config.toml`
+  (model=gpt-5.5, effort=xhigh).
+
 ## 2026-06-20 — no-speculative-defense-or-absence-narration
 - **Mistake:** On `localstack-smoke.yml` I added a fork-PR `if:` gate (public-repo boilerplate) to a
   **private, fork-less** repo where forks can't occur, then after removing it added a comment narrating the
