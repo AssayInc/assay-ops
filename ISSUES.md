@@ -14,12 +14,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   Staying on LocalStack (vs moto/Floci/MiniStack, which empirically don't serve Cloud Control `GetResource`)
   + the substrate qualifier are in #20 + DECISIONS.md; the broader secret-management decision is spike #96.
 
-- **CI + branch protection are E0-2 (#19).** `bun run verify` is the canonical gate and runs locally,
-  but the two-lane GitHub Actions workflow (turbo + uv, independent cache-keyed lanes) that runs it on
-  every PR — and branch protection on `main` — land in E0-2. Until then nothing *technically* blocks a
-  direct push to `main`; the `CLAUDE.md` merge rule (**PR + verify-green + `/review`**) is the gate.
-  E0-1 deliberately shipped no `ci.yml`, and E0-6 (#18) only *documents* the invariant — it does not
-  author the workflow (that would poach E0-2's scope).
+- **CI + branch protection landed; the parity gate is the open tail of E0-2 (#19).** The two-lane
+  `ci.yml` (turbo + uv, independent cache-keyed lanes, zero account-B creds) runs `bun run verify` on
+  every PR. **Branch protection on `main` is applied** — a repository ruleset requires the `ts` + `py`
+  checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
+  gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
+  ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is deferred to its own issue
+  (blocked-by #27/#28; no `contracts/` schema exists yet), and the **`fixture-change` guard** (a CI
+  path+label check or a CODEOWNERS rule on the ruleset) activates when `contracts/vectors` (#28) /
+  `tools/red-team` (#56) land.
 - **The committed skill layer — #85 + #86 landed.** The skills.sh lock + consumer `.agents/skills/`
   wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 25
   skills (18 official-vendor + 3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
@@ -41,8 +44,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   `SKILL.md` but **not** its `resources/`/`scripts/` (e.g. skill-creator's executable `scripts/*.py`). A
   future `npx skills` sync could alter a script without changing the lock — the [[skills-sync-hygiene]] rule
   (manual `git diff` of the full vendored skill dir — all non-`SKILL.md` files, especially executable `scripts/*` —
-  after any sync) is the current guard. Wiring a full-dir hash check into
-  the `verify` gate belongs to **E0-2 (#19)** CI; the lock today is restore-grade, not part of `bun run verify`.
+  after any sync) is the current guard. A full-dir hash check in CI is a **fast-follow on top of the
+  two-lane gate** (out of E0-2's ACs); the lock today is restore-grade, not part of `bun run verify`.
 - **Locked-fixtures directories don't exist yet.** `contracts/vectors` (#28, E1-3) and `tools/red-team`
   (#56, E10-1) are scaffolded by their owning epics; the locked-fixtures rule in
   `CLAUDE.md`/`DECISIONS.md` binds the moment they do. Listed so the rule isn't mistaken for stale config

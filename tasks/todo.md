@@ -6,48 +6,51 @@ when done.
 
 ---
 
-## E0-3 (#20) — LocalStack dev loop via `just up` — IN PROGRESS (branch `feat/localstack-dev-loop`)
+## E0-2 (#19) — Two-lane CI (turbo + uv) + branch protection — IN PROGRESS (branch `feat/two-lane-ci`)
 
-**Goal (AC, revised):** `infra-local/docker-compose` brings LocalStack up via `just up`; a smoke test
-issues a Cloud Control `GetResource` and reads a known resource. **No real AWS; licensed LocalStack**
-(`LOCALSTACK_AUTH_TOKEN` as a CI/local secret); runs in CI.
+**Goal (AC):** `.github/workflows/ci.yml` runs the canonical `verify` gate on every PR across both
+lanes, independently cache-keyed + non-blocking, holding zero account-B creds; branch protection on `main`.
 
-**Resolved blocker — LocalStack licensing (founder decision = keep LocalStack):**
-- The free tokenless community edition was retired in the **2026-03-23 single-image change**; current
-  `localstack/localstack` requires `LOCALSTACK_AUTH_TOKEN` (empirically: exits 55 without one).
-- Free Cloud-Control-capable alternatives don't exist: moto has no Cloud Control; Floci + MiniStack
-  empirically 404 on `GetResource` (S3 create passes). The verifier (T1) grades the Cloud Control read
-  path, so LocalStack is the only fit. AC changed "cost-free" -> "no real AWS; licensed LocalStack."
-- Recorded: #20 AC, DECISIONS.md substrate qualifier, ISSUES.md follow-up (license + CI secret).
+**Validation (issue vs. code + dependency graph):**
+- #19 has **no blocked-by deps**; project status Todo — ready.
+- **Codegen-parity gate (AC#2) deferred to #29**, which is itself blocked-by #27 (codegen wiring) +
+  #28 (golden vectors); no top-level `contracts/` schema exists yet. A regenerate-and-diff / byte-parity
+  check against a non-existent schema would be an empty verifier — out of scope here (flag, don't fake).
+- **Fixture-change guard deferred:** `contracts/vectors` (#28) + `tools/red-team` (#56) don't exist;
+  ISSUES.md says "no action until those epics run." Branch protection records the intent now.
+- `bun run verify` (= `turbo run typecheck lint test`) green locally; turbo drives BOTH lanes
+  (TS via tsc/biome/`bun test`; Python via `uv run --frozen` mypy/ruff/pytest).
 
-**Wiring (keeps `bun run verify` Docker-free):**
-- `infra-local/` workspace member: `typecheck` + `lint` + `smoke` (NO `test`), so `verify` lints/typechecks
-  the smoke but never runs it. Image pinned by digest; `LOCALSTACK_AUTH_TOKEN` via env or gitignored `.env`.
-- Smoke (`infra-local/smoke.test.ts`): seed S3 bucket (`@aws-sdk/client-s3`), read via
-  `@aws-sdk/client-cloudcontrol` `GetResource` (`AWS::S3::Bucket`). The E2 verifier read pattern, minimal.
+**Design — two parallel lanes (drift-proof complement partition):**
+- `ts` lane: `bunx turbo run typecheck lint test --filter='!./py/**'` (bun/turbo) — every non-py package.
+- `py` lane: `uv sync --locked` then `bunx turbo run typecheck lint test --filter='./py/**'` (bun + uv).
+- Verified via `--dry`: `./py/**` = py-contracts only; `!./py/**` = the 4 non-py packages; union = all 5.
+- Independent per-lane `.turbo` caches + uv `enable-cache`; no `needs` edge (lanes don't block each other).
+- `permissions: contents: read`; no secrets / no OIDC — zero account-B creds (DECISIONS.md §1, §8).
+- Actions SHA-pinned (checkout v7.0.0, setup-bun v2.2.0, setup-uv v8.2.0, cache v5.0.5); uv pinned 0.11.8.
 
-**Env:** Docker UP · LocalStack CLI 2026.5.4 · `just` 1.53.0 · image pulled · **token: NOT yet set (blocks proof).**
-
-**Steps (TDD):**
-- [x] Branch `feat/localstack-dev-loop`; pin image by digest.
-- [x] Author `infra-local/{docker-compose.yml,package.json,tsconfig.json,smoke.test.ts}` + `justfile`;
-      `infra-local` in workspaces; `infra-local/**` in biome includes.
-- [x] `bun add --exact @aws-sdk/client-s3 @aws-sdk/client-cloudcontrol` (3.1073.0); lockfile updated.
-- [x] Rework for licensed LocalStack: compose token, `just up` token-load, `.env.example`, AC, DECISIONS.md, ISSUES.md.
-- [ ] **BLOCKED on token:** user adds `LOCALSTACK_AUTH_TOKEN` to `.env` -> `just up` healthy -> `just smoke` GREEN.
-- [ ] `bun run verify` green + Docker-free.
-- [ ] `.github/workflows/localstack-smoke.yml` (`secrets.LOCALSTACK_AUTH_TOKEN`; pinned action SHAs).
-- [ ] PR "Closes #20"; `/review`; user adds the `LOCALSTACK_AUTH_TOKEN` GH secret; watch CI green; update `PROGRAM.md`.
+**Steps (test-first via the gate + actionlint):**
+- [x] Author `.github/workflows/ci.yml` (two lanes).
+- [x] Validate: `actionlint` clean; YAML parses; both lane commands green locally; no creds in the workflow.
+- [x] Update `PROGRAM.md` + `ISSUES.md` (CI landed; parity #29 + fixture-guard deferred; protection state).
+- [x] PR "Closes #19" (#101); `/review` (3 cross-model findings fixed).
+- [x] Branch protection on `main` via a repository ruleset (require a PR + the `ts` + `py` checks; block force-push/deletion).
 
 ### Review
 
-- **Done + proven:** `just up` (licensed LocalStack 2026.5.4 activates + healthy), `just smoke` GREEN
-  (Cloud Control `GetResource` reads a seeded S3 bucket — the T1 verifier read path), `just down`/`logs`,
-  `bun run verify` green + Docker-free (smoke typechecked/linted, never executed). Full down→up→smoke→down
-  cycle re-verified after fixing the down/logs token-interpolation bug (compose `:?` → `:-`; `up` enforces).
-- **Pivot:** LocalStack retired its free tokenless community edition (2026-03-23 single image); free
-  alternatives (moto/Floci/MiniStack) empirically don't serve Cloud Control `GetResource`. Founder chose
-  licensed LocalStack; AC changed cost-free → no-real-AWS/licensed; recorded in #20 + DECISIONS.md + ISSUES.md.
-- **CI:** `.github/workflows/localstack-smoke.yml` (pinned action SHAs, path-scoped). Needs the human to add
-  the `LOCALSTACK_AUTH_TOKEN` GH **CI auth token** secret before the smoke job goes green.
-- **Left:** open PR "Closes #20" + `/review`; user adds the GH secret; then merge. Remaining E0 eng: #19, #21.
+- **Done + proven:** `.github/workflows/ci.yml` runs the canonical `turbo run typecheck lint test` as two
+  parallel lanes — `ts` (`--filter='!./py/**'`) and `py` (`uv sync --locked` + `--filter='./py/**'`); the
+  filters are a complement partition (verified by `--dry`: union = all 5 packages / 8 tasks = `bun run verify`).
+  Green in real CI (run 27907919479: `ts` 12s, `py` 20s). `actionlint` clean; zero account-B creds
+  (`permissions: contents: read`, no secrets/OIDC). Branch protection applied as ruleset `17947941`.
+- **/review fixed 3 cross-model findings:** (1) `turbo.json` `globalDependencies` (`bun.lock`/`uv.lock`/
+  `pyproject.toml`/`.python-version`) — without it a persisted `.turbo` cache could replay a stale pass and
+  skip the Python checks after a dep bump (false green in a gate); fixes local `bun run verify` too.
+  (2) `persist-credentials: false` on checkout. (3) `concurrency` + `cancel-in-progress`.
+- **Scoped out (flagged, not faked):** the codegen-parity gate (AC#2) → #29 (blocked-by #27/#28; no
+  `contracts/` schema yet); the `fixture-change` guard → activates when `contracts/vectors` (#28) /
+  `tools/red-team` (#56) exist. A parity/guard against non-existent paths would be an empty verifier.
+- **Surprise:** branch protection (classic AND rulesets) is gated behind a paid GitHub plan on private
+  repos; going public is barred by DECISIONS.md §8. Founder upgraded the plan → ruleset applied. Recorded
+  as a plan dependency in `ISSUES.md`.
+- **Left:** merge #101 (green + reviewed + ruleset-compliant) → auto-closes #19.
