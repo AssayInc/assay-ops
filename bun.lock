@@ -30,6 +30,10 @@
       "name": "@assayops/py-contracts",
       "version": "0.0.0",
     },
+    "py/packages/env-server": {
+      "name": "@assayops/py-env-server",
+      "version": "0.0.0",
+    },
     "ts/packages/biome-config": {
       "name": "@assayops/biome-config",
       "version": "0.0.0",
@@ -75,6 +79,8 @@
     "@assayops/logger": ["@assayops/logger@workspace:ts/packages/logger"],
 
     "@assayops/py-contracts": ["@assayops/py-contracts@workspace:py/packages/contracts"],
+
+    "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
 
     "@assayops/typescript-config": ["@assayops/typescript-config@workspace:ts/packages/typescript-config"],
 

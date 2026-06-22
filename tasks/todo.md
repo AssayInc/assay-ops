@@ -6,6 +6,120 @@ when done.
 
 ---
 
+## E17-S1 (#114) — OpenEnv-native Python env-server feasibility spike — IN PROGRESS (branch `spike/114-openenv-env-server`)
+
+**Goal (AC — the spike, not the E5 build):** a **minimal runnable** OpenEnv-native Python env-server
+(`create_app`/FastAPI) + a recorded **go/no-go** (OpenEnv-native Python vs. a TS wire-only server), proving
+**4 things** and documenting the reward-boundary wiring (in a #114 comment and/or `DECISIONS.md`):
+1. **Concurrent sessions isolated** over HTTP + `/ws`.
+2. **Delayed/terminal reward shape** — episode ends → grade fetched from the (mock) account-B verifier, **not** `step()`.
+3. **TRL drives the env** via the OpenEnv integration path at the versions we pin.
+4. **Reward-boundary preserved** (non-waivable, `DECISIONS.md` §8 + I5): the A-side env-server **never** computes the graded reward.
+
+**Validation (issue vs. DECISIONS + brain + official docs — don't trust the AI-written issue blindly):**
+- Grounded in `DECISIONS.md` §1 / I5 / §8 (the non-waivable invariant) + #113/#114 + a brain recall. Brain
+  is **stale on "TS env-server"** (pre-E17) — ignore that label; the wire contract + seam port unchanged.
+- **Official-docs-first (founder standing rule):** OpenEnv + TRL shapes verified against the **pinned source**
+  (`openenv[core]==0.3.1`, `trl==1.6.0` tags), not cached knowledge:
+  - `create_app(env_factory, action_cls, obs_cls, env_name=, max_concurrent_envs=)` → FastAPI; per-WS-session
+    env instance is the isolation mechanism (`SUPPORTS_CONCURRENT_SESSIONS=True` required for `>1`).
+  - `Environment.reset(seed,episode_id,**kw)→Obs` / `step(action,timeout_s,**kw)→Obs` / `@property state`;
+    `Observation.reward: bool|int|float|None` (freely settable A-side) — we pin it to **`0.0`** (zero shaping).
+  - `EnvClient[Action,Obs,State]` over **WebSocket** (`reset`/`step`/`state` async); endpoints `/health`,`/metadata`,`/schema`,`/ws`.
+  - **TRL reward seam:** `GRPOTrainer(rollout_func=…, reward_funcs=…)`; TRL **never auto-reads** `env.step().reward` —
+    `rollout_func` forwards extra columns (e.g. `trajectory_id`) to `reward_funcs` as `**reward_kwargs`. → the
+    graded reward is supplied **out-of-band by `trajectory_id`**, never from the env. (trl `grpo_trainer.py` L1719-1726/L2153.)
+- **Pin call:** `openenv[core]==0.3.1` (canonical PyPI dist `openenv` + `core` extra; `openenv-core` is the
+  stale alias stuck at 0.3.0; 0.3.1 clears the TRL doc floor `>=0.3.1` and satisfies I8's `0.3.x`).
+
+**Design (minimal, faithful, provable — `py/packages/env-server`, uv workspace, mypy --strict + Pydantic v2):**
+- **A-side env-server ONLY in `src/assayops_env_server/`** (the agent-reachable surface; provably no grade/sign code):
+  `models.py` (`DeployAction`/`DeployObservation`/`EnvState`), `environment.py`
+  (`DeployVerifyEnv`, `SUPPORTS_CONCURRENT_SESSIONS=True`, mints `trajectory_id` at `reset`, **`reward` always 0.0**,
+  no `rubric`), `app.py` (`create_app(…, max_concurrent_envs=N)`), `client.py` (`EnvClient` subclass).
+- **B-side is MOCKED, and lives under `tests/` (proof harness, not the shipped surface):**
+  `tests/account_b_mock.py` — write-isolated verifier + reward ledger: `grade(trajectory_id, state)→reward∈{0,1}`,
+  ECDSA **P-256** sign (KMS analog, I3) over canonical JSON of a faithful local `RewardRecord` (mirrors
+  `@assayops/contracts`; canonical type stays there), **WORM** append-only keyed by `(trajectory_id, attempt)`,
+  read-only `fetch`. The **private key lives only here**; the A-side holds nothing.
+  `tests/trl_drive.py` — the trl-1.6.0-shaped `rollout_func`(returns a `trajectory_id` column, **not** `env_reward`)
+  + `reward_funcs(*, trajectory_id, …)` that fetches + signature-verifies the account-B record out-of-band.
+- **Out of spike scope (note as E5 follow-ups):** Dockerfile/`openenv.yaml`/HF push; `/schema` serving the real
+  `@assayops/contracts` artifacts (I5); real KMS/S3 Object-Lock (E4/#115); full GPU GRPO step (vLLM-bound —
+  the boundary lives in the rollout/reward seam, which we exercise CPU-only); the heavy `openenv[core]` footprint
+  (gradio/pandas/numpy) — flag for E5 to slim.
+
+**Steps (TDD — each AC = a failing test first, watched fail, then minimal green):**
+- [x] Scaffold `py/packages/env-server` (pyproject pin `openenv[core]==0.3.1`; thin `package.json` turbo wrapper); `uv lock` + `uv sync`.
+- [x] RED→GREEN **A** `test_environment.py`: env `reset` mints `trajectory_id`, `step` reward **always 0.0**, terminal sets `done`.
+- [x] RED→GREEN **C** `test_concurrent_sessions.py` (**AC#1**): N async WS clients → isolated state + distinct `trajectory_id`; HTTP `/health`,`/metadata`,`/schema`.
+- [x] RED→GREEN **D** `test_terminal_reward.py` (**AC#2**): drive to terminal, env reward 0.0 throughout; graded reward fetched out-of-band from mock account-B by `trajectory_id`.
+- [x] RED→GREEN **E** `test_reward_boundary.py` (**AC#4**): A-side import graph has no grade/sign capability; fuzzed actions never yield reward∈{0,1}; a forged record fails B's signature; WORM append-only.
+- [x] RED→GREEN **F** `test_trl_drive.py` (**AC#3**): `rollout_func` drives real env → `trajectory_id` column; `reward_funcs` returns the **out-of-band** {0,1}, ≠ env `step` 0.0; (skip-if-absent) trl `GRPOTrainer` accepts `rollout_func`.
+- [x] `bun run verify` green (14/14, both lanes); README + go/no-go recorded; `PROGRAM.md`/`ISSUES.md` updated.
+- [ ] Focused PR **`Closes #114`** (single-deliverable spike → `Closes` is correct; #114 is a sub-issue, not the epic); record go/no-go in a **#114 comment**; `/review` (Claude + Codex gpt-5.5 xhigh); **await explicit merge approval**.
+
+### Review (the spike — `bun run verify` green 14/14)
+
+- **GO — OpenEnv-native Python env-server** (vs. a TS wire-only server). Built `py/packages/env-server`:
+  a minimal runnable `create_app`/FastAPI env (`DeployVerifyEnv`) + WS `EnvClient`, with the B-side
+  **mocked** in `tests/` (write-isolated verifier + ECDSA-P256-signed WORM ledger) and a trl-1.6.0-shaped
+  `rollout_func`/`reward_funcs` drive. All 4 ACs proven by passing tests against a **real uvicorn server +
+  real WebSocket clients** (13 passed, 1 skipped — the optional trl-installed binding).
+- **The reward boundary holds and is natural, not fought.** Grounded against the **pinned source**
+  (`openenv[core]==0.3.1`, `trl==1.6.0`): OpenEnv by design "does not dictate rewards" (RFC 006/004), and
+  TRL **never auto-reads** `env.step().reward` — reward is user-supplied via `reward_funcs`, and
+  `rollout_func` forwards an arbitrary `trajectory_id` column to it (`grpo_trainer.py` L1719-1726/L2153). So
+  the graded `reward∈{0,1}` stays out-of-band, joined by `trajectory_id` — exactly `DECISIONS.md` I5 + §8,
+  **zero floor deviation** (the spike confirms the locked decision). A TS wire-only server would
+  hand-reimplement the OpenEnv HTTP/WS contract **and** still need a Python TRL bridge → strictly more work,
+  more drift, no benefit.
+- **Grounding caught a pin error** (founder docs-first rule): `openenv-core` tops out at 0.3.0; the TRL
+  doc's `openenv[core]>=0.3.1` is a **different** dist (`openenv` + `core` extra) → pinned `openenv[core]==0.3.1`.
+- **Caveats flagged (not papered over; E5/E4/E2 follow-ups):** full GPU GRPO step deferred (TRL's generation
+  hard-imports vLLM; the boundary lives in the rollout→reward seam, exercised CPU-only); `openenv[core]` is a
+  heavy ~100-dep install (web UI off by default — slim in E5); openenv 0.3.1 ships no `py.typed` → mypy-strict
+  needs `ignore_missing_imports` + a few `# type: ignore[misc]` subclass seams; the B-side mock stands in for
+  real KMS/JCS (#28)/Object-Lock (#115)/regenerated-golden + boto3 read (#80). The `area:env-server` label
+  still reads "OpenEnv **TS** env-server" (pre-E17 stale) — board-hygiene nit.
+
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — fixes applied
+
+The cross-model review confirmed **no A-side path emits a graded reward** (the core boundary holds), and
+caught real strengthening work (applied, re-verified green 16 passed / 1 skipped):
+- **Independent read (Codex Critical):** the proof originally fed the agent-reachable
+  `observation.deployed_state` into the grader — tautological. Added `cloud_state.CLOUD` (a ground-truth
+  deploy substrate); **account-B now reads `CLOUD` by `trajectory_id` independently**, never the agent's
+  observation. This makes "the agent cannot forge the grade / the read is independent" actually demonstrated.
+- **AC#3 framing (both):** `trl` is not a runtime dep (the real-symbol test skips), so the headline was
+  softened to "the rollout→reward **seam** is reproduced and run against the real env; the real
+  `trl.GRPOTrainer` binding is opt-in (kept out of the gate to avoid torch/vLLM)."
+- **Real bugs:** `verify()` now safely rejects malformed-hex signatures (caught `ValueError`) instead of
+  raising; terminal is **latched** + the env mints `trajectory_id` in `__init__` (no empty-id / post-commit
+  mutation); `cryptography`/`httpx` moved out of the A-side **runtime** deps into the workspace dev group
+  (the env-server package now depends on `openenv[core]` only); `max_concurrent_envs` 8→16 (headroom);
+  added tamper-after-signing + malformed-signature + terminal-latch tests; dropped one tautological assert.
+- Left as documented low-risk: the `_free_port` TOCTOU (session-scoped, startup failures surface as a
+  readiness timeout) and the single-threaded mock ledger's non-atomic write (real E4 uses conditional writes).
+
+### Post-fix re-review (founder asked: "did you re-review with Codex xhigh + ground everything?")
+
+Re-ran **Codex `gpt-5.5` xhigh on the FIXED code** + a fresh Claude adversarial pass + **grounded the
+`cryptography` ECDSA-P256 signing against the official cryptography.io docs** (the one primitive I'd
+written from memory — confirmed correct/idiomatic on `cryptography==49.0.0`). Both re-reviews confirmed the
+tautology is genuinely fixed and no A-side path emits/forges the reward; applied the residual hardening:
+- **`CLOUD` is now lock-guarded** (`threading.Lock`) — atomic read under the thread-pooled server.
+- **Divergence test** added (Codex "request changes"): account-B grades the ground-truth substrate and
+  **ignores a fabricated observation** — locks the anti-tautology so it can't regress.
+- **Out-of-band join key** (Claude HIGH): the harness now mints `trajectory_id` and passes it via
+  `reset(episode_id=...)`, grading by the harness id — never read back from the agent's observation (also
+  fixes the silently-ignored `episode_id`).
+- **Honest scope** on `cloud_state` (lossless echo, no deploy-vs-requested divergence, test-lifetime),
+  serial-execution note on the isolation fixture, and the verify-comment precision fix. `bun run verify`
+  green (14/14); env-server **18 passed / 1 skipped**.
+
+---
+
 ## E17 (#113) — Rebaseline to a Python-first proof-critical core — IN PROGRESS (branch `feat/e17-python-first-rebaseline`)
 
 **Goal (AC):** a focused **decision PR** that locks **Python-first proof-critical core** (TS kept for

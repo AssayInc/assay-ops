@@ -1,0 +1,11 @@
+{
+  "name": "@assayops/py-env-server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "uv run --frozen ruff check .",
+    "format": "uv run --frozen ruff format .",
+    "typecheck": "uv run --frozen mypy src tests",
+    "test": "uv run --frozen pytest -q"
+  }
+}

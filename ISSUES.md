@@ -6,15 +6,30 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **OpenEnv env-server spike (#114) — GO; E5 (#6) inputs surfaced.** The E17-S1 feasibility spike
+  (`py/packages/env-server`) recorded **GO on OpenEnv-native Python** (vs. a TS wire-only server): a
+  runnable `create_app`/FastAPI env proves concurrent-session isolation over HTTP + `/ws`, the
+  delayed/terminal reward shape, and the TRL drive — with the **reward boundary held** via the
+  trl-1.6.0 `rollout_func`→`reward_funcs` seam joined by `trajectory_id` (confirms `DECISIONS.md` I5 +
+  §8, no floor change). **E5 follow-ups the spike flagged:** `openenv[core]` is a heavy ~100-dep install
+  (web UI off by default — slim it in E5); openenv 0.3.1 ships no `py.typed` (mypy-strict needs
+  `ignore_missing_imports` + a few subclass `# type: ignore[misc]` — vendor/contribute stubs); the
+  **B-side was mocked** (real KMS asymmetric signing + RFC 8785 JCS (#28), S3 Object Lock (#115), an
+  independently regenerated golden + cross-account boto3 read (#80) are the production pieces). The spike
+  models the **independent read** via `cloud_state.CLOUD` and mints the join key **out-of-band**
+  (`reset(episode_id=...)`), but `CLOUD` is a lossless **echo** — modeling deploy-vs-requested divergence
+  is the real boto3 read's job (#80). Board nit: the `area:env-server` label still reads "OpenEnv **TS**
+  env-server" (pre-E17 stale).
 - **E17 Python-first rebaseline (#113) — decision PR landed; migration follow-ups open.** The
   proof-critical core is rebaselined TypeScript → **Python** (verifier, diff/reward, adapters, ledger,
   replay, env-server, orchestration → `py/packages/*`); TS stays for the public/web/tooling surface. The
   decision PR changed the **floor only** (`DECISIONS.md` I1–I7 + §8 + the §1 diagram labels,
   `docs/ARCHITECTURE.md` package map + episode flow, `CLAUDE.md` top-line + the skill-preflight AWS-read
   row) and **preserved the trust floor untouched**; the **OpenEnv reward-boundary invariant is locked
-  non-waivable** (§8). **E2–E7 (#3–#8) are re-scoped to Python and blocked on the decision + the
-  scheduled feasibility spikes** (OpenEnv/TRL spike, ledger spike; verifier-read = #80, re-scoped to
-  boto3). **Open migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
+  non-waivable** (§8). **E2–E7 (#3–#8) are re-scoped to Python and gated on the feasibility spikes** —
+  the **OpenEnv/TRL spike (#114) is delivered: GO on OpenEnv-native Python → E5 (#6) unblocked** (see
+  below); the **ledger spike (#115, gates E4)** + **verifier-read (#80, boto3)** remain. **Open
+  migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
   built TS** — `@assayops/logger` (retire vs keep) + a Python structured-logging story, and a **boto3
   counterpart** to the `infra-local` LocalStack smoke; (2) **brain/wiki sync** — the raw plans
   (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) + wiki pages still

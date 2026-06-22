@@ -13,17 +13,19 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   reward-boundary invariant** is locked **non-waivable** (§8): the A-side env-server never computes the
   graded reward — the **verifier (T1) computes** `reward∈{0,1}`, the **reward ledger (T4) signs +
   WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
-- **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes **#114** (OpenEnv/TRL,
-  gates E5), **#115** (ledger rfc8785/KMS/Object-Lock, gates E4), **#80** (boto3 read coverage) + **account
-  infra T7 (P1-BLOCKING)** + LocalStack — **no proof-critical code starts on stale TS assumptions**. The
-  contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) then
-  **#29** (CI parity).
+- **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes: **#114 (OpenEnv/TRL,
+  gates E5) is delivered — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, awaiting review);
+  **#115** (ledger
+  rfc8785/KMS/Object-Lock, gates E4), **#80** (boto3 read coverage) + **account infra T7 (P1-BLOCKING)** +
+  LocalStack remain — **no proof-critical code starts on stale TS assumptions**. The contracts spine
+  continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) then **#29** (CI parity).
 - **Type checker:** `mypy --strict` is the bridge; **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
   (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
 - **Next ready work:** **#28** (contract-spine JCS canonicalization + golden vectors) — and, to unblock
-  E2–E7, the feasibility spikes (#114/#115, #80). **T0 team gate (#25) closed** (founder interim RL/eval
-  owner; Phase 3 hard-gated on the permanent owner).
+  E2–E7, the remaining feasibility spikes **#115** (ledger) + **#80** (boto3 read); **E5/#6** is now
+  unblocked (#114 GO). **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated
+  on the permanent owner).
 
 ## Recently Landed
 
