@@ -1,4 +1,4 @@
 {
   "extends": "@assayops/typescript-config/bun.json",
-  "include": ["src/**/*", "tests/**/*"]
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*"]
 }

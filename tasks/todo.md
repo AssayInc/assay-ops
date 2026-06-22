@@ -6,6 +6,103 @@ when done.
 
 ---
 
+## E1-2 (#27) — Codegen wiring (quicktype + datamodel-code-generator) — IN PROGRESS (branch `feat/e1-2-codegen-wiring`)
+
+**Goal (AC):** a root **`just codegen`** regenerates **committed** TS types (quicktype) + Pydantic v2
+models (datamodel-code-generator) from `contracts/schemas/`; both generators **pinned** + **fixed flags**
+→ deterministic (re-run = no diff, the #29 precondition); a **semantic** reward-record round-trip test
+(TS serialize → Pydantic parse → Py serialize → deep-equal); `bun run verify` green (tsc strict + Biome;
+mypy --strict + ruff).
+
+**Validation (issue vs. DECISIONS + brain + code — don't trust the AI-written issue blindly):**
+- Grounded in `DECISIONS.md` **I3 / 5A / §8**: one JSON-Schema source → quicktype (TS) +
+  datamodel-code-generator→Pydantic v2 (Py); **never hand-maintain dual types**; artifacts committed.
+  assay-brain adds no deeper locked codegen detail (rationale lives in I3). 0 open blockers (#26 landed).
+- **Scope = codegen + semantic round-trip ONLY.** JCS canonicalization + golden vectors = **#28**; the CI
+  regenerate-and-diff / byte-parity gate = **#29**. Keep both out. **Do not touch `contracts/vectors`**
+  (locked, #28) — the round-trip uses a **synthetic inline** instance.
+- **Empirical grounding caught two issue errors** (verified vs. the pinned tools' `--help` + output, not
+  the issue prose — the skill-preflight rule):
+  1. The issue's Python snippet `--input contracts/schemas … --output …/models.py` **fails** ("Modular
+     references require an output directory, not a file") — directory input forces **modular dir output**
+     → output to `…/assayops_contracts/models/` (4 `*_schema.py` modules + header `__init__.py`).
+  2. `datamodel-codegen` default `constr()`/`conint()` annotations **fail `mypy --strict`** → add
+     **`--use-annotated`** (emits `Annotated[str, Field(...)]`; verified Success). Ruff-clean wants the
+     **`ruff-check ruff-format`** formatters (docs), not just `ruff-format`.
+
+**Design:**
+- **`just codegen`** (root justfile recipe; the placeholder comment already anticipates it), fixed flags:
+  - TS: `quicktype -s schema --lang typescript --just-types <4 schemas, fixed order> -o
+    ts/packages/contracts/src/generated.ts` (pinned `quicktype@23.2.6` → bun.lock).
+  - Py: `datamodel-codegen --input contracts/schemas --input-file-type jsonschema --output-model-type
+    pydantic_v2.BaseModel --use-annotated --disable-timestamp --formatters ruff-check ruff-format
+    --target-python-version 3.12 --output …/assayops_contracts/models` (pinned
+    `datamodel-code-generator[ruff]` + `pydantic` → uv.lock). `--disable-timestamp` = no header stamp
+    (determinism).
+- **Generated `any` (TS) — the #26-deferred call.** quicktype has **no `unknown` option** (confirmed:
+  `--help` + README). Open fields (`observation`/`action` → `{[k]:any}`, `expected`/`actual` → `any`)
+  emit `any`, which Biome `noExplicitAny:error` rejects. **Decision = option (a):** exclude the generated
+  file from Biome (`!…/src/generated.ts` in root `biome.json`); **`tsc` strict still typechecks it.**
+  (Rejected (b) refine-schema: touches the #26 source of truth + ripples to #28/#29, and an open/union
+  JSON-value schema still emits `any` in quicktype; rejected a regex any→unknown post-process: fragile
+  over the "any JSON" comments, a determinism risk for the #29 gate.)
+- **Generated lint carve-out (Py).** Long schema-description strings → ruff **E501** (unwrappable);
+  mypy --strict passes. → carve the generated `models/` out of ruff **lint** while datamodel's ruff-format
+  owns its formatting; **mypy --strict still checks it.** (Symmetric with the TS Biome exclusion — the
+  standard treatment for generated code.)
+- **Layout / placeholders.** TS: `src/generated.ts` (generated) + `src/index.ts` re-exports it (replaces
+  `PLACEHOLDER`); drop placeholder `smoke.test.ts` (round-trip + real types supersede it); `schemas.test.ts`
+  (ajv) stays. Py: generated `models/` subpackage + a **hand-written** `assayops_contracts/__init__.py`
+  re-export (stable; codegen writes only under `models/`); replace placeholder `test_smoke.py`.
+- **Round-trip test (AC behavior).** Cross-language ⇒ runs in the **py lane** (only CI lane with bun+uv).
+  `py/packages/contracts/tests/test_roundtrip.py`: `bun run` a tsc-checked emitter
+  (`ts/packages/contracts/scripts/emit-reward-record.ts`: `const r: RewardRecord = {…synthetic…}` →
+  `JSON.stringify`) → `RewardRecord.model_validate_json` → `model_dump_json` → `json.loads` deep-equal the
+  TS emission. The emitter compiling under tsc proves the TS type accepts the instance; the cross-lang
+  parse + re-serialize proves the Pydantic model agrees + round-trips.
+
+**Steps (TDD):**
+- [ ] Branch `feat/e1-2-codegen-wiring`.
+- [ ] Pin generators: quicktype → `ts/packages/contracts` devDeps (`bun install`);
+  `datamodel-code-generator[ruff]` + `pydantic` → py deps (`uv sync`).
+- [ ] Add `just codegen` recipe (fixed flags, both lanes).
+- [ ] RED: `test_roundtrip.py` (+ the emitter) → fails (no generated types).
+- [ ] GREEN: run `just codegen` (commit artifacts); emitter + index/`__init__` re-exports; Biome exclude +
+  ruff carve-out; drop placeholders/smoke. Round-trip green.
+- [ ] `bun run verify` green (both lanes); re-run `just codegen` → `git diff` empty (determinism).
+- [ ] Update `PROGRAM.md` (+ `docs/ARCHITECTURE.md` codegen sketch → justfile, drop the never-built
+  `contracts/codegen.config`); PR "Closes #27"; `/review`.
+
+### Review
+
+- **Done + proven:** root **`just codegen`** regenerates committed TS interfaces (`quicktype@23.2.6` →
+  `ts/packages/contracts/src/generated.ts`) + Pydantic v2 models (`datamodel-code-generator 0.65.0` →
+  `py/packages/contracts/src/assayops_contracts/models/`) from `contracts/schemas/`. **`bun run verify`
+  green (11/11, FULL TURBO)**; the cross-language reward-record round-trip test passes (TS-serialize →
+  Pydantic-parse → Py-serialize → deep-equal). **Deterministic:** re-running `just codegen` is
+  byte-identical (sha256-verified) — the #29 gate's precondition.
+- **AC coverage:** `just codegen` regenerates both lanes, artifacts committed ✓; both generators pinned
+  (`bun.lock` / `uv.lock`) + fixed flags → no-diff re-gen ✓; semantic round-trip test ✓; verify green —
+  tsc strict + Biome (TS), mypy --strict + ruff (Py) ✓.
+- **Grounding caught two issue errors** (verified vs. the pinned tools, not the issue prose): (1) the
+  issue's `--output …/models.py` fails on directory input → **modular dir output** (`models/` package);
+  (2) default `constr()`/`conint()` annotations fail `mypy --strict` → **`--use-annotated`** (and ruff
+  formatters are `ruff-check ruff-format`, not just `ruff-format`).
+- **Decisions settled (the #26-deferred codegen-policy calls):** generated **`any`** (open diff-IR /
+  trajectory fields; quicktype has no `unknown` option per `--help` + README) → **Biome exclude** for
+  `src/generated.ts` (tsc strict still typechecks). Generated Python **E501** (unwrappable
+  description strings) → ruff **per-file-ignore** for `models/*.py` (mypy --strict still typechecks).
+  Layout: generated `models/` subpackage + hand-written re-export `__init__.py`; `src/generated.ts` +
+  re-export `index.ts`; placeholders + smoke tests dropped (round-trip + real types supersede them).
+- **Scope discipline:** codegen + semantic round-trip only. JCS/byte-parity (#28), the CI parity gate
+  (#29) **not** pulled in; `contracts/vectors` (locked, #28) **untouched** — the round-trip uses a
+  synthetic inline instance.
+- **Flagged (out of #27 scope, not silently fixed):** `docs/ARCHITECTURE.md` §spine still says "rewards as
+  **bounded doubles**" — stale since #26 landed `reward ∈ {0,1}` (a `DECISIONS.md` §8 non-negotiable). A
+  one-line follow-up (or fold into #28, which edits the same JCS prose).
+
+---
+
 ## E1-1 (#26) — Author the 4 JSON Schemas — IN PROGRESS (branch `feat/e1-1-json-schemas`)
 
 **Goal (AC):** `reward-record`, `trajectory`, `diff-ir`, `task-spec` JSON Schemas (Draft 2020-12) exist;

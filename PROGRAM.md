@@ -24,8 +24,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build has opened at the
   **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** — the four JSON
   Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
-  test — **landed** (PR #109). **Next: E1-2 codegen wiring (#27)** (quicktype + datamodel-code-generator),
-  now unblocked.
+  test — **landed** (PR #109). **E1-2 codegen wiring (#27)** — the root `just codegen` spine (quicktype → committed TS types;
+  datamodel-code-generator → committed Pydantic v2 models), a semantic reward-record round-trip test, and
+  deterministic re-generation — is **implemented (PR open)**. **Next: #28** (JCS canonicalization + golden
+  vectors), then **#29** (CI regenerate-and-diff parity gate).
 
 ## Recently Landed
 

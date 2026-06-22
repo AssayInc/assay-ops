@@ -41,14 +41,14 @@ assay-ops/
 │
 ├─ contracts/ ................. ◻ E1 — THE SPINE: JSON Schema (Draft 2020-12) source of truth [5A/I3]
 │  ├─ schemas/ ................ ◻ reward-record · trajectory · diff-ir · task-spec
-│  ├─ vectors/ ................ ◻ golden JCS byte-parity fixtures — fixture-change only (#28)
-│  └─ codegen.config .......... ◻ quicktype (TS) + datamodel-code-generator (Pydantic v2)
+│  └─ vectors/ ................ ◻ golden JCS byte-parity fixtures — fixture-change only (#28)
+│     (codegen = the root `just codegen` recipe: quicktype (TS) + datamodel-code-generator (Py) [#27])
 │
 ├─ ts/                          # ── Bun + Turborepo ──────────────────────────────────
 │  ├─ packages/
 │  │  ├─ typescript-config/ ... ✅ shared tsconfig (base + bun)
 │  │  ├─ biome-config/ ........ ✅ shared lint/format
-│  │  ├─ contracts/ ........... ✅ shell → ◻ E1 generated TS types (quicktype) + JCS canonicalize
+│  │  ├─ contracts/ ........... ✅ E1 generated TS types (quicktype) [#27]; ◻ JCS canonicalize [#28]
 │  │  ├─ diff-ir/ ............. ◻ E3 normalized diff IR + shared reward core [6A]
 │  │  ├─ adapter-terraform/ ... ◻ E3 Terraform → diff IR (the A-spike engine) [T2]
 │  │  ├─ adapter-cdk/ ......... ◻ E3 CDK adapter [T3]
@@ -62,7 +62,7 @@ assay-ops/
 │
 ├─ py/                          # ── UV workspace (each pkg: thin package.json wrapper → uv) ──
 │  └─ packages/
-│     ├─ contracts/ ........... ✅ shell → ◻ E1 generated Pydantic v2 + rfc8785 canonicalize
+│     ├─ contracts/ ........... ✅ E1 generated Pydantic v2 (datamodel-codegen) [#27]; ◻ rfc8785 canon. [#28]
 │     ├─ trainer/ ............. ◻ E12 SFT pipeline (TRL v1.0 + LoRA) [I6]
 │     └─ evals/ ............... ◻ E13 Inspect AI harness (deploy-verifier as Scorer) [T11]
 │
