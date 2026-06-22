@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from uuid import uuid4
 
 from account_b_mock import MockAccountBVerifierLedger
 
@@ -47,13 +48,14 @@ class OpenEnvRolloutHarness:
 
     def rollout_func(self, prompts: list[str], trainer: Any = None) -> dict[str, Any]:
         async def drive(prompt: str) -> str:
+            # The trajectory_id is minted HERE (trusted harness side) and propagated into the env
+            # out-of-band via reset(episode_id=...) — never read back from the agent's observation.
+            trajectory_id = uuid4().hex
             async with DeployVerifyEnvClient(base_url=self._server_url) as env:
-                await env.reset()
-                result: Any = None
+                await env.reset(episode_id=trajectory_id)
                 for action in _policy_actions(prompt):
-                    result = await env.step(action)
-                trajectory_id: str = result.observation.trajectory_id
-                return trajectory_id
+                    await env.step(action)
+            return trajectory_id
 
         async def drive_all() -> list[str]:
             return await asyncio.gather(*(drive(prompt) for prompt in prompts))
@@ -61,7 +63,7 @@ class OpenEnvRolloutHarness:
         trajectory_ids = asyncio.run(drive_all())
 
         # The account-B verifier reads each trajectory's GROUND-TRUTH deployed state (CLOUD) itself,
-        # out-of-band, and writes a signed WORM record. It is never handed the agent's observation.
+        # out-of-band by the harness-minted trajectory_id, and writes a signed WORM record.
         for trajectory_id in trajectory_ids:
             self._account_b.grade_and_record(trajectory_id, nonce=f"nonce-{trajectory_id}")
 

@@ -37,10 +37,11 @@ class DeployVerifyEnv(Environment):  # type: ignore[misc]
         super().__init__()
         self._start_episode()
 
-    def _start_episode(self) -> None:
-        # Mint here (not lazily) so the env is always in a valid state — a step before reset still
-        # has a real trajectory_id rather than an empty one.
-        self._trajectory_id = uuid4().hex
+    def _start_episode(self, trajectory_id: str | None = None) -> None:
+        # The harness can supply the trajectory_id out-of-band (episode_id) so the join key
+        # originates trusted-side; otherwise mint one. Minting here (not lazily) keeps the env
+        # always in a valid state — a step before reset still has a real trajectory_id, not empty.
+        self._trajectory_id = trajectory_id or uuid4().hex
         self._step_count = 0
         self._done = False
 
@@ -50,7 +51,9 @@ class DeployVerifyEnv(Environment):  # type: ignore[misc]
         episode_id: str | None = None,
         **kwargs: Any,
     ) -> DeployObservation:
-        self._start_episode()
+        # seed is accepted for OpenEnv-signature compatibility but not modeled (no stochastic
+        # dynamics to seed). episode_id, when supplied, becomes the trajectory_id join key.
+        self._start_episode(episode_id)
         return self._observe()
 
     def step(

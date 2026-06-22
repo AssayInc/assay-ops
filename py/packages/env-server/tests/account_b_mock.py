@@ -124,6 +124,7 @@ class MockAccountBVerifierLedger:
             )
             return True
         except (InvalidSignature, ValueError):
-            # Malformed signature bytes (e.g. non-hex) must fail verification safely, never raise —
-            # the agent controls the bytes submitted, so "malformed" must mean "does not verify".
+            # The agent controls the submitted bytes, so anything malformed must mean "does not
+            # verify": verify() raises InvalidSignature for a bad/non-DER signature, and
+            # bytes.fromhex raises ValueError for non-hex input; both are caught and return False.
             return False

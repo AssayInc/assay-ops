@@ -33,6 +33,14 @@ def test_each_reset_generates_a_fresh_trajectory_id() -> None:
     assert first != second
 
 
+def test_reset_honors_an_externally_supplied_episode_id_as_the_trajectory_id() -> None:
+    env = DeployVerifyEnv()
+    obs = env.reset(episode_id="harness-minted-id")
+    # The join key can originate out-of-band (trusted harness side), not the agent-reachable env.
+    assert obs.trajectory_id == "harness-minted-id"
+    assert env.state.trajectory_id == "harness-minted-id"
+
+
 def test_step_applies_action_keeps_reward_zero_and_is_not_terminal() -> None:
     env = DeployVerifyEnv()
     env.reset()

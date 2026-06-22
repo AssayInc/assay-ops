@@ -102,6 +102,22 @@ caught real strengthening work (applied, re-verified green 16 passed / 1 skipped
 - Left as documented low-risk: the `_free_port` TOCTOU (session-scoped, startup failures surface as a
   readiness timeout) and the single-threaded mock ledger's non-atomic write (real E4 uses conditional writes).
 
+### Post-fix re-review (founder asked: "did you re-review with Codex xhigh + ground everything?")
+
+Re-ran **Codex `gpt-5.5` xhigh on the FIXED code** + a fresh Claude adversarial pass + **grounded the
+`cryptography` ECDSA-P256 signing against the official cryptography.io docs** (the one primitive I'd
+written from memory — confirmed correct/idiomatic on `cryptography==49.0.0`). Both re-reviews confirmed the
+tautology is genuinely fixed and no A-side path emits/forges the reward; applied the residual hardening:
+- **`CLOUD` is now lock-guarded** (`threading.Lock`) — atomic read under the thread-pooled server.
+- **Divergence test** added (Codex "request changes"): account-B grades the ground-truth substrate and
+  **ignores a fabricated observation** — locks the anti-tautology so it can't regress.
+- **Out-of-band join key** (Claude HIGH): the harness now mints `trajectory_id` and passes it via
+  `reset(episode_id=...)`, grading by the harness id — never read back from the agent's observation (also
+  fixes the silently-ignored `episode_id`).
+- **Honest scope** on `cloud_state` (lossless echo, no deploy-vs-requested divergence, test-lifetime),
+  serial-execution note on the isolation fixture, and the verify-comment precision fix. `bun run verify`
+  green (14/14); env-server **18 passed / 1 skipped**.
+
 ---
 
 ## E17 (#113) — Rebaseline to a Python-first proof-critical core — IN PROGRESS (branch `feat/e17-python-first-rebaseline`)

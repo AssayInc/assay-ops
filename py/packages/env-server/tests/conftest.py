@@ -21,7 +21,8 @@ from assayops_env_server.cloud_state import CLOUD
 
 @pytest.fixture(autouse=True)
 def _isolate_cloud_state() -> Iterator[None]:
-    # CLOUD is a module-global substrate; clear it around every test so episodes never bleed.
+    # CLOUD is a module-global substrate; clear it around every test so episodes never bleed. This
+    # assumes serial execution (no in-process pytest-xdist parallelism) — fine for the spike.
     CLOUD.clear()
     yield
     CLOUD.clear()

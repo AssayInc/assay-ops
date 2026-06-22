@@ -34,8 +34,9 @@ The env-server runs **A-side** (agent-reachable), so it **never computes the gra
    reward supplied out-of-band. (Binding to the real `trl.GRPOTrainer` symbol is an opt-in test that
    runs only when `trl` is installed — kept out of the default gate to avoid torch/vLLM.)
 4. **Reward boundary preserved** — the A-side package declares no signing dependency and no account-B
-   reference (AST import scan); fuzzed actions never yield a graded reward; a record tampered after
-   signing (or by a wrong key, or with malformed bytes) fails account-B's signature; the ledger is WORM.
+   reference (AST import scan); account-B grades the ground-truth substrate independently and **ignores
+   a fabricated observation** (the read is not tautological); fuzzed actions never yield a graded reward;
+   a record tampered after signing (or by a wrong key, or malformed bytes) fails the signature; WORM.
 
 ## Run
 

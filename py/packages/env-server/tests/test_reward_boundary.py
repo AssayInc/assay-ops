@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 import assayops_env_server
 from assayops_env_server.client import DeployVerifyEnvClient
 from assayops_env_server.cloud_state import CLOUD
-from assayops_env_server.models import COMMIT_RESOURCE_TYPE, DeployAction
+from assayops_env_server.models import COMMIT_RESOURCE_TYPE, DeployAction, DeployObservation
 
 
 def _imported_roots(package: ModuleType) -> set[str]:
@@ -115,6 +115,21 @@ def test_a_malformed_signature_fails_verification_without_raising() -> None:
     malformed = record.model_copy(update={"signature": "not-hex-zz"})
     # The agent controls the bytes submitted, so malformed must mean "does not verify", never raise.
     assert account_b.verify(malformed) is False
+
+
+def test_account_b_grades_ground_truth_and_ignores_a_fabricated_observation() -> None:
+    # Ground truth: a golden bucket is deployed under this trajectory.
+    CLOUD.deploy("traj-divergent", "AWS::S3::Bucket", {"VersioningEnabled": True})
+    # The agent fabricates an observation claiming an EMPTY (failing) state for the same trajectory.
+    fabricated = DeployObservation(
+        done=True, reward=0.0, trajectory_id="traj-divergent", step_count=1, deployed_state={}
+    )
+    assert fabricated.deployed_state == {}  # the agent's claim — which B never consults
+    account_b = MockAccountBVerifierLedger()
+    record = account_b.grade_and_record("traj-divergent", nonce="n")
+    # B grades the GROUND TRUTH (golden → 1), ignoring the agent's fabricated observation — the old
+    # tautology (grading the agent-reported state) cannot re-enter.
+    assert record.reward == 1
 
 
 def test_reward_ledger_is_worm_append_only_and_prior_attempts_are_immutable() -> None:
