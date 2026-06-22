@@ -172,10 +172,14 @@ and auto-loaded by name/description — the lock is the source of truth for what
 - **Source bar:** prefer official/first-party; a well-adopted, maintained community skill is an acceptable
   fallback only where none official exists. Homegrown AssayOps skills → `AssayInc/skills`; **`assay-brain`** = brain recall.
 
-## Skill preflight (fast-moving APIs)
+## Skill preflight (ground in official docs FIRST)
 
-Before writing code against a fast-moving API/framework, load its skill (or the official docs) FIRST and follow
-it — never cached API knowledge.
+Before writing code against **any external library, API, or framework** — including a "stable" one you think
+you know (a validator like `ajv`, a logger like `pino`, an SDK) — load its **skill (or the official docs)
+FIRST** and follow them. Verify **config, idioms, and test tooling** against the primary source, **never
+cached knowledge**. Hand-rolling what a library already provides (redaction, validation) is a defect magnet.
+*(A repeated correction — see `tasks/lessons.md`.)* The table below maps the project's fast-moving domains to
+their vendored skills; the rule applies beyond it.
 
 | Domain | Skill(s) | Surface |
 |--------|----------|---------|
