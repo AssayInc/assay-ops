@@ -1,0 +1,46 @@
+[project]
+name = "assayops-env-server"
+version = "0.0.0"
+description = "E17-S1 (#114) spike: OpenEnv-native Python env-server feasibility — create_app/FastAPI proving concurrent-session isolation, terminal/delayed reward shape, the TRL OpenEnv drive path, and the non-waivable reward boundary (the A-side env-server never computes the graded reward; account B does, joined by trajectory_id)."
+requires-python = ">=3.12"
+dependencies = [
+    # Canonical OpenEnv dist is `openenv` + the `core` extra (the `openenv-core` alias is stale at 0.3.0).
+    # 0.3.1 clears the TRL-doc floor (>=0.3.1) and satisfies DECISIONS.md I8 (openenv[core]==0.3.x).
+    "openenv[core]==0.3.1",
+    # Mock account-B KMS analog: asymmetric ECDSA P-256 signing (DECISIONS.md I3). Also a transitive openenv dep.
+    "cryptography>=42",
+    # HTTP-endpoint assertions (/health, /metadata, /schema) in the spike tests.
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# OpenEnv (0.3.1) ships no py.typed marker, so its base classes (Environment / Action / Observation
+# / EnvClient) are untyped. We subclass them at a few unavoidable seams, each marked
+# `# type: ignore[misc]`. Tracked as an E5 typing follow-up (upstream stubs or a vendored stub).
+module = ["openenv.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+filterwarnings = [
+    # Upstream deprecations from uvicorn's bundled websockets impl + openenv server (not our code).
+    "ignore:websockets.legacy is deprecated.*:DeprecationWarning",
+    "ignore:websockets.server.WebSocketServerProtocol is deprecated:DeprecationWarning",
+    "ignore:remove second argument of ws_handler:DeprecationWarning",
+]
