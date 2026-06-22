@@ -22,6 +22,12 @@ codegen:
       contracts/schemas/reward-record.schema.json \
       contracts/schemas/task-spec.schema.json \
       contracts/schemas/trajectory.schema.json
+    # quicktype widens the binary `reward` (schema enum [0,1]) to `number` — it cannot emit a numeric
+    # literal union (verified). Pin the DECISIONS.md §8 invariant into the public TS type with one
+    # targeted, anchored rewrite (a single unique field, not a blanket pass), and assert it landed so a
+    # quicktype-format change can't silently drop it. The Python `Reward` enum already encodes the same.
+    perl -i -pe 's/\breward: number;/reward: 0 | 1;/' ts/packages/contracts/src/generated.ts
+    grep -q 'reward: 0 | 1;' ts/packages/contracts/src/generated.ts || { echo 'codegen: reward 0|1 rewrite did not apply (quicktype output changed?)' >&2; exit 1; }
     # Python: --use-annotated emits Annotated[str, Field(...)] (mypy --strict-valid; the default
     # constr()/conint() are not valid type expressions); --disable-timestamp drops the header stamp so
     # output is reproducible. Directory input -> a modular `models/` package. The long schema-description

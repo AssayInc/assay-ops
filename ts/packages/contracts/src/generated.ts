@@ -93,7 +93,7 @@ export interface RewardRecord {
      * number. The enum admits only 0 and 1 — rejecting NaN/Infinity and any partial-credit
      * (0.0–1.0) value.
      */
-    reward: number;
+    reward: 0 | 1;
     /**
      * Join key for the whole system; a string so large opaque ids never lose precision under
      * JCS.

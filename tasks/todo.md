@@ -101,11 +101,13 @@ mypy --strict + ruff).
   (1) **prune** the `datamodel-codegen --output` dir before regen — it doesn't self-clean, so a removed
   schema left an orphan module the #29 gate would pass green (verified add→appears, remove→pruned);
   (2) the stale "bounded doubles" line in `docs/ARCHITECTURE.md` → binary `{0,1}` (§8); (3) emitter-comment
-  precision (`tsc`, not the round-trip, proves TS-type acceptance). **Accepted + documented:** the generated
-  types are **structural shapes, not validators** — quicktype/datamodel-codegen can't express the diff-ir
-  `if/then` conditional or a TS `0|1` enum; the reward invariant is enforced by the schema + ajv + the
-  Pydantic `Reward` enum + the verifier **computing** (never parsing) reward (`DECISIONS.md` §1/§8), not the
-  codegen'd type. A note for #28/E2/E3. `bun run verify` green (11/11); CI green (ts/py/smoke).
+  precision (`tsc`, not the round-trip, proves TS-type acceptance); (4) **`reward: number` → `0 | 1`** — a
+  guarded post-process in `just codegen` pins the §8 binary invariant into the public TS type (quicktype
+  can't emit a numeric literal union — verified 4 ways; proven: `reward: 2` is now a tsc error; the Python
+  `Reward` enum already encoded it). **Still documented (inherent codegen limit, not a defect):** the
+  diff-ir `modified ⟺ propertyDiffs` cross-field conditional is inexpressible in any generated type —
+  enforced by ajv (#26) + the reward core (E3); generated types are structural shapes, not full validators.
+  `bun run verify` green (11/11); CI green (ts/py/smoke).
 
 ---
 
