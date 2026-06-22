@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-06-21 — secret-scanning-detection-is-not-push-protection
+- **Mistake:** Tested GitHub push protection with a planted `google_api_key`. The push wasn't blocked
+  (only an alert was created), so I concluded push-protection *enforcement* had a multi-day propagation
+  lag — misreading GitHub's 2024 free-user **account**-rollout note ("a week or two") as repo-level — and
+  proposed adding gitleaks / marking the AC pending. Wrong premise: `google_api_key` is **detection-only**
+  (`hasPushProtection: false` in GitHub's supported-pattern data), so it was *expected* to land and alert.
+  Push protection was active the whole time; the test **pattern** was the bug, not the config.
+- **Rule:** **Secret-scanning detection ≠ push protection.** Not every detected secret type is
+  push-protection-enforced — GitHub's supported-secret-patterns data carries a per-type `hasPushProtection`
+  flag (`google_api_key` = false; Stripe / SendGrid / Slack / AWS = true). To prove push protection, plant
+  a fabricated secret of a **push-protection-supported** type (checksum-free ones fabricate cleanly: Stripe
+  `sk_live_…`, SendGrid `SG.…`, Slack `xoxb-…`) and capture the `GH013 … Push cannot contain secrets`
+  rejection (push exit 1, ref rejected). An **alert being created means the secret landed** — that is
+  detection, the *opposite* of a blocked push. Verify the per-pattern flag against GitHub's
+  supported-patterns docs before testing; don't read the free-user account-rollout "week or two" as
+  repo-level enforcement lag.
+- **Context:** E0-4 (#21) secret-scanning AC; GitHub push-protection + supported-secret-scanning-patterns
+  docs. Reinforces [[verify-against-official-docs-and-skills-before-acting]] and
+  [[diagnose-unfamiliar-api-errors-before-theorizing]].
+
 ## 2026-06-21 — verify-against-official-docs-and-skills-before-acting
 - **Mistake:** Applied two CI "hardening" changes from a Codex review (swap `bunx turbo` for named scripts;
   drop the `.turbo` cache) without first checking the vendored `turborepo` skill + official turbo docs —

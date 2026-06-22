@@ -23,6 +23,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   (blocked-by #27/#28; no `contracts/` schema exists yet), and the **`fixture-change` guard** (a CI
   path+label check or a CODEOWNERS rule on the ruleset) activates when `contracts/vectors` (#28) /
   `tools/red-team` (#56) land.
+- **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are
+  **enabled** repo-side (GitHub-native; the org has Advanced Security) — proven by a planted
+  push-protection-supported secret rejected on push (`google_api_key` is detection-only, so it doesn't test
+  push protection). `.github/CODEOWNERS` (global owner), the PR template (documents `Closes #`), and
+  `CONTRIBUTING.md` ship in PR #108. Two deferrals: (1) **require-code-owner-review is not wired into the
+  `main` ruleset** — a single collaborator would deadlock every solo PR (no one else can approve); enable it
+  with a second reviewer. (2) The **per-path CODEOWNERS rules for the locked grader** (`contracts/vectors`
+  #28 / `tools/red-team` #56) land in those epics' `fixture-change` PRs — the dirs don't exist yet (see
+  below). Together these complete the `fixture-change` guard noted above.
 - **The committed skill layer — #85 + #86 landed.** The skills.sh lock + consumer `.agents/skills/`
   wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 25
   skills (18 official-vendor + 3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,

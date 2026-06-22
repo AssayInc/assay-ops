@@ -18,11 +18,20 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `AssayInc/skills` and vendored here). **E0-5 board (#22)** and **E0-9 assay-web rename (#81)** are done
   (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
   `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
-  **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). Remaining
-  ready E0 eng: repo hygiene (**E0-4, #21**). Phase-1 build proper starts at
-  the contract-schema spine (**E1**), the join key for the whole system.
+  **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). **Phase-0
+  scaffolding is complete** — the last E0 eng issue (repo hygiene, E0-4) just landed; **Phase-1 build
+  proper starts at the contract-schema spine (E1)**, the join key for the whole system.
 
 ## Recently Landed
+
+- **E0-4 (#21): repo hygiene.** `.github/CODEOWNERS` (global owner; the DECISIONS.md §8 enforcement arm —
+  no speculative locked-grader rules, those land with #28/#56), `.github/pull_request_template.md`
+  (documents the `Closes #` convention), and `CONTRIBUTING.md` (branch → focused PR → `bun run verify` →
+  `/review` → merge-on-explicit-go; links the README Get started). **Secret scanning + push protection
+  enabled** repo-side (the org has GitHub Advanced Security) — proven by a planted push-protection-supported
+  secret (Stripe/SendGrid/Slack) **rejected on push** (`GH013`); `google_api_key` is detection-only, so it
+  doesn't test push protection. Deferred (ISSUES.md): require-code-owner-review on the `main` ruleset (a
+  single collaborator would deadlock solo PRs) + the per-path grader CODEOWNERS rules (#28/#56). (PR #108.)
 
 - **E0-2 (#19): two-lane CI + branch protection.** `.github/workflows/ci.yml` runs the canonical
   `verify` gate (`turbo run typecheck lint test`) on every PR as two parallel, independently
