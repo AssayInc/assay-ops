@@ -15,6 +15,22 @@ Entry format:
 
 ---
 
+## 2026-06-22 — new-issues-must-join-the-board-and-parent-epic
+- **Mistake:** Created the E17 follow-up issues (#114–#117) with `gh issue create` and stopped there —
+  they landed with **no Projects v2 board membership and `parent: null`**, off the AssayOps board and
+  outside the E17 epic. The founder caught it ("#116 is not under any project … should be under the
+  correct epic").
+- **Rule:** An issue isn't tracked until it's **on the board AND parented**. After every `gh issue create`
+  here (`DECISIONS.md` I4 = GitHub Issues + Projects v2, epics-as-sub-issues), do three steps and verify:
+  (1) **add to the org project** — `gh project item-add 1 --owner AssayInc --url <issue-url>`; (2) **parent
+  under the right epic** via GraphQL **`addSubIssue`** (`gh issue edit` has **no** parent flag) — the
+  `E{N}-*` title prefix dictates the parent (`E17-*` → the E17 epic **#113**, itself under **#1/E0**);
+  (3) **set the board single-selects** (Status/Lane/Epic) with `gh project item-edit` to **mirror the
+  parent epic** (a bare item shows in "No Status"/no epic swimlane). Confirm with a `subIssues` /
+  `projectItems` GraphQL read before claiming done. Project #1 = `PVT_kwDOEYppDc4BbCzj`.
+- **Context:** E17 (#113) follow-ups #114–#117. Extends the CLAUDE.md task-loop "update PROGRAM/ISSUES +
+  GitHub issues" step — "create the issue" is not done at `gh issue create`.
+
 ## 2026-06-22 — use-the-librarys-official-mechanism-not-a-hand-roll
 - **Mistake:** Built `@assayops/logger` from cached pino knowledge instead of the official docs: (1) a
   hand-rolled recursive `formatters.log` redactor that **leaked base/child bindings** and **flattened
