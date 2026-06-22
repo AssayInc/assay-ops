@@ -6,6 +6,61 @@ when done.
 
 ---
 
+## E1-1 (#26) — Author the 4 JSON Schemas — IN PROGRESS (branch `feat/e1-1-json-schemas`)
+
+**Goal (AC):** `reward-record`, `trajectory`, `diff-ir`, `task-spec` JSON Schemas (Draft 2020-12) exist;
+large IDs/nonces/ns-timestamps modeled as **strings**, rewards as **bounded doubles**, NaN/Infinity
+**rejected** (validation test).
+
+**Validation (issue vs. code + deps):**
+- #26 was `blocked_by` #25 (T0 team gate); #25 **closed** (founder = interim RL/eval owner + hire opened) →
+  #26 now ready (0 open blockers). Within E1: #26 → {#27, #28} → #29 (#29 `blocked_by` #27/#28); #27/#28
+  logically need #26's schemas.
+- No top-level `contracts/` exists yet (only per-lane shell pkgs). ARCHITECTURE.md §spine: schemas live at
+  `contracts/schemas/*.schema.json` (neutral source of truth); `contracts/vectors` = #28, codegen = #27.
+- **Scope = schemas + a validation test ONLY.** Codegen (#27), JCS/golden vectors (#28), CI parity (#29)
+  are separate issues — don't pull them in (smallest change that meets the AC).
+
+**Design:**
+- `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json` — Draft 2020-12, each with
+  `$id` + `additionalProperties:false`. Field shapes grounded in the `reward-ledger-worm` +
+  `deterministic-verification` skills. Modeling rules (JCS-forced, ARCHITECTURE.md §spine): IDs / nonces /
+  ns-timestamps = `string`; reward = `{type:number, minimum:0, maximum:1}` (bounded double, finite).
+- Validation test (TS lane, ajv Draft-2020-12) at `ts/packages/contracts/tests/schemas.test.ts`: every
+  schema compiles; a good instance validates; reward NaN / Infinity / out-of-range rejected; a numeric ID
+  rejected (string rule); an unknown property rejected (tight contract). ajv = dev-only test dep.
+- **TS lane chosen** for #26's test: ajv's bounded min/max robustly rejects NaN/±Inf; cross-language
+  byte-parity is #28/#29's job, not this issue's.
+
+**Steps (TDD):**
+- [ ] Add `ajv` dev dep to `ts/packages/contracts`; `bun install`.
+- [ ] Write failing `tests/schemas.test.ts` (schemas absent → RED).
+- [ ] Author the 4 schemas → GREEN.
+- [ ] `bun run verify` green (both lanes).
+- [ ] Update `PROGRAM.md`; PR "Closes #26"; `/review`.
+
+### Review
+
+- **Done + proven:** `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json` (Draft
+  2020-12, `$id` + `additionalProperties:false`) authored as the neutral source of truth. Modeling rules
+  applied uniformly: ids / nonces / timestamps / seeds / digests = `string`; `reward` = bounded double
+  `[0,1]`. Validation test `ts/packages/contracts/tests/schemas.test.ts` (ajv Draft-2020-12) — TDD RED→GREEN,
+  16 tests. `bun run verify` green (8/8 tasks, both lanes).
+- **AC coverage:** schemas exist ✓; large ids/nonces/ns-timestamps as strings ✓ (test rejects numeric ids);
+  rewards as bounded doubles ✓; NaN/Infinity rejected ✓ (probed ajv: bounded `min/max` rejects NaN/±Inf +
+  out-of-range; test asserts it).
+- **Design calls (flagged for review):** `reward` is a bounded *double* `[0,1]` per the written rule
+  (ARCHITECTURE.md §spine / the issue), **not** an `enum {0,1}` — binary-ness is a verifier-compute
+  invariant, the schema rule is JCS number-safety. `tool` enum = terraform | cdk | cloudformation (the IaC
+  set in the architecture). Field shapes are a coherent v1 grounded in the `reward-ledger-worm` +
+  `deterministic-verification` skills.
+- **Scope discipline:** schemas + validation only. Codegen (#27), JCS canonicalization + golden vectors
+  (#28, the locked `contracts/vectors`), CI parity (#29) are their own issues — not pulled in. `contracts/`
+  is the neutral source (not a workspace pkg), so it's outside the lint/typecheck graph by design.
+- **Validation:** #26 was `blocked_by` #25 (T0 gate) → closed (founder interim owner + hire opened) → ready.
+
+---
+
 ## E0-4 (#21) — Repo hygiene (CODEOWNERS, PR template, secret scanning, CONTRIBUTING) — LANDED (PR #108)
 
 **Goal (AC):** CODEOWNERS + PR template + secret-scanning push protection enabled (a planted secret is

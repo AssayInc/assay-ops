@@ -13,6 +13,7 @@
     "@assayops/biome-config": "workspace:*",
     "@assayops/typescript-config": "workspace:*",
     "@types/bun": "^1.3.14",
+    "ajv": "^8.17.1",
     "typescript": "^6.0.3"
   },
   "exports": {

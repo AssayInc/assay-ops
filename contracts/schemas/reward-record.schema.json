@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.ai/schemas/reward-record.schema.json",
+  "title": "RewardRecord",
+  "description": "The reward record keyed by trajectory_id. This is the canonical payload that is RFC 8785 (JCS) canonicalized and KMS-signed in account B; the signature envelope is added by the reward ledger (E4). A buying lab verifies it offline against the public key.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "trajectory_id",
+    "attempt",
+    "reward",
+    "reportDigest",
+    "graderVersion",
+    "gradedAt",
+    "nonce"
+  ],
+  "properties": {
+    "trajectory_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Join key for the whole system; a string so large opaque ids never lose precision under JCS."
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Re-grade counter. A divergent re-grade appends a new record (a new attempt), never an overwrite."
+    },
+    "reward": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Execution-grounded reward — a bounded, finite double in [0,1]. The bound rejects NaN/Infinity, which are not valid JCS numbers."
+    },
+    "reportDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 (lowercase hex) of the diff report the reward was read from."
+    },
+    "graderVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Pins which grader/vectors produced this reward."
+    },
+    "gradedAt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Grading timestamp; a string (RFC 3339 or integer nanoseconds) so ns precision never collides with IEEE-754 number limits."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Verifier-issued episode nonce; binds the record to this run so a signed reward cannot be replayed."
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.ai/schemas/diff-ir.schema.json",
+  "title": "DiffIR",
+  "description": "Tool-agnostic normalized diff between read-back deployed state and the regenerated golden target. A per-tool adapter (E3) produces this IR; the shared reward core reads it. Reward 1 = zero normalized diff (every resource unchanged).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resources"],
+  "properties": {
+    "resources": {
+      "type": "array",
+      "description": "One entry per golden/deployed resource, after normalization (canonical order; AWS-assigned ids/timestamps/suffixes dropped).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["address", "type", "change"],
+        "properties": {
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Normalized structural/logical address (never a physical AWS id)."
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Resource type, e.g. AWS::S3::Bucket."
+          },
+          "change": {
+            "type": "string",
+            "enum": ["unchanged", "added", "removed", "modified"],
+            "description": "Diff status against the golden."
+          },
+          "propertyDiffs": {
+            "type": "array",
+            "description": "Per-property differences (present when change is \"modified\").",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Dotted property path, e.g. VersioningConfiguration.Status."
+                },
+                "expected": {
+                  "description": "Golden value (absent when the property was added in deployed state)."
+                },
+                "actual": {
+                  "description": "Deployed value (absent when the property is missing from deployed state)."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.ai/schemas/trajectory.schema.json",
+  "title": "Trajectory",
+  "description": "An episode's observation/action trace, keyed by trajectory_id. The trainer joins reward records to trajectories on trajectory_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["trajectory_id", "task_id", "createdAt", "steps"],
+  "properties": {
+    "trajectory_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Join key shared with the reward record; a string so large opaque ids never lose precision under JCS."
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The task-spec this episode ran."
+    },
+    "createdAt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Episode start timestamp; a string (RFC 3339 or integer nanoseconds)."
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered observation/action steps.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "observation", "action"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based step index."
+          },
+          "observation": {
+            "type": "object",
+            "description": "Environment observation at this step."
+          },
+          "action": {
+            "type": "object",
+            "description": "Agent action taken at this step."
+          }
+        }
+      }
+    }
+  }
+}
