@@ -16,6 +16,7 @@
   "devDependencies": {
     "@assayops/biome-config": "workspace:*",
     "@biomejs/biome": "2.4.14",
+    "quicktype": "23.2.6",
     "turbo": "^2.9.14",
     "typescript": "^6.0.3"
   },

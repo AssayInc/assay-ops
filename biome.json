@@ -10,7 +10,8 @@
       "infra-local/**",
       "!**/node_modules",
       "!**/dist",
-      "!**/.turbo"
+      "!**/.turbo",
+      "!ts/packages/contracts/src/generated.ts"
     ]
   }
 }

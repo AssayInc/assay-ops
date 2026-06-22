@@ -24,10 +24,26 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build has opened at the
   **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** — the four JSON
   Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
-  test — **landed** (PR #109). **Next: E1-2 codegen wiring (#27)** (quicktype + datamodel-code-generator),
-  now unblocked.
+  test — **landed** (PR #109); **E1-2 codegen wiring (#27)** (`just codegen` → quicktype TS +
+  datamodel-code-generator Pydantic v2, a semantic round-trip, deterministic) — **landed** (PR #112), see
+  Recently Landed. **Next: #28** (JCS canonicalization + golden vectors), then **#29** (CI
+  regenerate-and-diff parity gate).
 
 ## Recently Landed
+
+- **E1-2 (#27): codegen wiring.** Root **`just codegen`** regenerates the committed contract types from
+  `contracts/schemas/` — **quicktype** → `ts/packages/contracts/src/generated.ts` (interfaces) +
+  **datamodel-code-generator** → `py/packages/contracts/src/assayops_contracts/models/` (Pydantic v2,
+  `--use-annotated` for mypy-strict, modular package re-exported via a hand-written `__init__.py`). Both
+  generators pinned (`bun.lock`/`uv.lock`) + fixed flags → **deterministic** (byte-identical re-gen; the
+  #29 precondition). A cross-language **reward-record round-trip test** (TS serialize → Pydantic parse →
+  Py serialize → semantic deep-equal) runs in the py lane via a tsc-checked emitter. Generated `any` (the
+  open diff-IR/trajectory fields) excluded from Biome; generated `E501` excluded from ruff
+  (`per-file-ignore`) — `tsc` / `mypy --strict` still typecheck both. A guarded post-process pins
+  **`reward: 0|1`** into the TS type (quicktype can't emit a numeric literal union; the `DECISIONS.md` §8
+  binary invariant — `reward: 2` is a tsc error); the Python `Reward` enum already encoded it. Cross-model
+  `/review` (Claude + Codex `gpt-5.5 xhigh`) caught the orphan-module prune + the reward-type gap. JCS +
+  golden vectors (#28), CI parity (#29) follow. (PR #112.)
 
 - **E1-1 (#26): the 4 contract JSON Schemas.** `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json`
   (Draft 2020-12, `additionalProperties:false`) as the neutral source of truth, + an ajv validation test in

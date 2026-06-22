@@ -1,4 +1,4 @@
-// E0-1 bootstrap shell. The real contract types are generated here in E1 (the contract-schema
-// spine) from `contracts/schemas/*.schema.json` via quicktype — see docs/ARCHITECTURE.md.
-// This placeholder only exists to prove the TS lane (tsc + biome + bun test) is wired.
-export const PLACEHOLDER = "assayops-contracts"
+// The contract types are generated from contracts/schemas/*.schema.json by `just codegen` (quicktype) —
+// see docs/ARCHITECTURE.md. This file is the package's public entry point; src/generated.ts is the
+// generated source (carved out of Biome lint; tsc still typechecks it). Regenerate with `just codegen`.
+export * from "./generated"
