@@ -11,69 +11,54 @@ export const LOG_LEVELS = [
   "silent",
 ] as const satisfies readonly LevelWithSilent[]
 
-// Field names redacted at ANY depth (including inside arrays), matched case-insensitively and ignoring
-// `-`/`_` separators — so `secretAccessKey`, `secret_access_key`, and `x-api-key` all match. pino's
-// path-based `redact` only matches a fixed depth, which silently leaks nested creds; this repo's verifier
-// and ledger touch AWS credentials and KMS signing material across the account-A/B boundary, so the
-// redactor walks the whole object. This is defense-in-depth — the primary rule is still: don't log secrets.
-export const DEFAULT_REDACT_KEYS = [
-  "authorization",
-  "cookie",
-  "setcookie",
+const SECRET_KEYS = [
   "password",
   "secret",
   "token",
-  "accesstoken",
-  "refreshtoken",
-  "sessiontoken",
-  "apikey",
-  "xapikey",
-  "accesskeyid",
-  "secretaccesskey",
-  "clientsecret",
-  "privatekey",
+  "accessToken",
+  "refreshToken",
+  "sessionToken",
+  "apiKey",
+  "accessKeyId",
+  "secretAccessKey",
+  "clientSecret",
+  "privateKey",
+  "authorization",
+  "cookie",
 ] as const
 
-const REDACTED = "[redacted]"
-
-function normalizeKey(key: string): string {
-  return key.toLowerCase().replace(/[-_]/g, "")
-}
-
-function redactInto(value: unknown, keys: ReadonlySet<string>, seen: WeakSet<object>): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => redactInto(item, keys, seen))
-  }
-  if (value !== null && typeof value === "object") {
-    if (seen.has(value)) {
-      return value
-    }
-    seen.add(value)
-    const out: Record<string, unknown> = {}
-    for (const [key, child] of Object.entries(value)) {
-      out[key] = keys.has(normalizeKey(key)) ? REDACTED : redactInto(child, keys, seen)
-    }
-    return out
-  }
-  return value
-}
-
-function redactKeySet(extraKeys: readonly string[]): ReadonlySet<string> {
-  return new Set([...DEFAULT_REDACT_KEYS, ...extraKeys.map(normalizeKey)])
-}
-
-// Deep-redact an arbitrary value by key name (DEFAULT_REDACT_KEYS plus any extras). Returns a redacted
-// copy; the input is not mutated. Cycles are left intact (not re-walked).
-export function redact(value: unknown, extraKeys: readonly string[] = []): unknown {
-  return redactInto(value, redactKeySet(extraKeys), new WeakSet())
-}
+// pino's built-in `redact` (fast-redact): path-based, single-level `*` wildcard, `[*]` for arrays, bracket
+// notation for hyphenated keys. Redaction runs at serialization, so it also covers base + child bindings
+// and does not flatten Error objects (a hand-rolled formatter does both). Paths are case-sensitive and
+// must be init-time constants — never user input (fast-redact syntax-checks them in a VM; see the official
+// pino redaction docs). This is defense-in-depth for the credential shapes the verifier and ledger touch
+// (AWS creds, KMS material, auth headers) at the common nesting; pino's path model does NOT cover arbitrary
+// depth or arrays-of-credentials, so the primary rule remains: don't log secrets.
+export const DEFAULT_REDACT_PATHS: readonly string[] = [
+  ...SECRET_KEYS.flatMap((key) => [key, `*.${key}`]),
+  "credentials.accessKeyId",
+  "credentials.secretAccessKey",
+  "credentials.sessionToken",
+  "*.credentials.accessKeyId",
+  "*.credentials.secretAccessKey",
+  "*.credentials.sessionToken",
+  "headers.authorization",
+  "headers.cookie",
+  'headers["x-api-key"]',
+  'headers["set-cookie"]',
+  "*.headers.authorization",
+  "*.headers.cookie",
+  '*.headers["x-api-key"]',
+  '*.headers["set-cookie"]',
+]
 
 export interface CreateLoggerOptions {
   bindings?: Bindings
   level?: LevelWithSilent
   name?: string
   pretty?: boolean
-  redactKeys?: readonly string[]
+  // Additional fast-redact paths. Init-time constants only — never user input (see DEFAULT_REDACT_PATHS).
+  redactPaths?: readonly string[]
 }
 
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
@@ -85,20 +70,19 @@ export function createLoggerOptions({
   level,
   name,
   pretty = process.env.LOG_PRETTY === "true",
-  redactKeys = [],
+  redactPaths = [],
 }: CreateLoggerOptions = {}): LoggerOptions {
-  const keys = redactKeySet(redactKeys)
   // Never pretty-print in production, even if a caller passes pretty: true.
   const prettyEnabled = pretty && process.env.NODE_ENV !== "production"
   return {
     base: bindings,
     level: level ?? resolveLogLevel(process.env.LOG_LEVEL),
     name,
-    formatters: {
-      log(object) {
-        return redactInto(object, keys, new WeakSet()) as Record<string, unknown>
-      },
+    redact: {
+      paths: [...DEFAULT_REDACT_PATHS, ...redactPaths],
+      censor: "[redacted]",
     },
+    serializers: { err: pino.stdSerializers.err },
     timestamp: pino.stdTimeFunctions.isoTime,
     transport: prettyEnabled
       ? {
