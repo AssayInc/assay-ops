@@ -97,9 +97,15 @@ mypy --strict + ruff).
 - **Scope discipline:** codegen + semantic round-trip only. JCS/byte-parity (#28), the CI parity gate
   (#29) **not** pulled in; `contracts/vectors` (locked, #28) **untouched** — the round-trip uses a
   synthetic inline instance.
-- **Flagged (out of #27 scope, not silently fixed):** `docs/ARCHITECTURE.md` §spine still says "rewards as
-  **bounded doubles**" — stale since #26 landed `reward ∈ {0,1}` (a `DECISIONS.md` §8 non-negotiable). A
-  one-line follow-up (or fold into #28, which edits the same JCS prose).
+- **Cross-model `/review` (Claude + Codex gpt-5.5 xhigh) — 3 fixes + 1 documented decision (PR #112):**
+  (1) **prune** the `datamodel-codegen --output` dir before regen — it doesn't self-clean, so a removed
+  schema left an orphan module the #29 gate would pass green (verified add→appears, remove→pruned);
+  (2) the stale "bounded doubles" line in `docs/ARCHITECTURE.md` → binary `{0,1}` (§8); (3) emitter-comment
+  precision (`tsc`, not the round-trip, proves TS-type acceptance). **Accepted + documented:** the generated
+  types are **structural shapes, not validators** — quicktype/datamodel-codegen can't express the diff-ir
+  `if/then` conditional or a TS `0|1` enum; the reward invariant is enforced by the schema + ajv + the
+  Pydantic `Reward` enum + the verifier **computing** (never parsing) reward (`DECISIONS.md` §1/§8), not the
+  codegen'd type. A note for #28/E2/E3. `bun run verify` green (11/11); CI green (ts/py/smoke).
 
 ---
 
