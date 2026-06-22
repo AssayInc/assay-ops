@@ -33,7 +33,8 @@
           "index": {
             "type": "integer",
             "minimum": 0,
-            "description": "Zero-based step index."
+            "maximum": 9007199254740991,
+            "description": "Zero-based step index (≤ 2^53−1 to stay JCS-exact)."
           },
           "observation": {
             "type": "object",

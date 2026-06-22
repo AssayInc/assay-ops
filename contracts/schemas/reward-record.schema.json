@@ -23,13 +23,13 @@
     "attempt": {
       "type": "integer",
       "minimum": 0,
-      "description": "Re-grade counter. A divergent re-grade appends a new record (a new attempt), never an overwrite."
+      "maximum": 9007199254740991,
+      "description": "Re-grade counter (≤ 2^53−1 to stay JCS-exact). A divergent re-grade appends a new record (a new attempt), never an overwrite."
     },
     "reward": {
       "type": "number",
-      "minimum": 0,
-      "maximum": 1,
-      "description": "Execution-grounded reward — a bounded, finite double in [0,1]. The bound rejects NaN/Infinity, which are not valid JCS numbers."
+      "enum": [0, 1],
+      "description": "Execution-grounded reward ∈ {0,1}: binary (zero normalized diff = 1), a finite JCS-safe number. The enum admits only 0 and 1 — rejecting NaN/Infinity and any partial-credit (0.0–1.0) value."
     },
     "reportDigest": {
       "type": "string",

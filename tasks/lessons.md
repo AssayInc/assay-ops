@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-06-21 — frozen-floor-invariants-beat-issue-phrasing
+- **Mistake:** Authored the `reward` field of the contract spine (E1-1 / #26) as a continuous bounded
+  double `{type:number, minimum:0, maximum:1}`, following the issue + `ARCHITECTURE.md` phrasing "rewards as
+  bounded doubles" — and rationalized it in the PR ("binary-ness is a verifier-compute invariant, the schema
+  rule is JCS number-safety"). But `DECISIONS.md` locks **`reward ∈ {0,1}`** in three places incl. the **§8
+  non-negotiables checklist**, and the cited `deterministic-verification` skill names a continuous
+  "0.0–1.0 similarity score" as the **gameable anti-pattern**. The schema as written encoded that
+  anti-pattern into the spine. The cross-model `/review` (Claude conf 9 + Codex gpt-5.5 xhigh) caught it.
+- **Rule:** When a schema / type / constant encodes a domain invariant, ground the *value constraint*
+  against `DECISIONS.md`'s frozen floor (especially the **§8 non-negotiables**) and the domain skills — not
+  just the issue's or `ARCHITECTURE.md`'s prose. When the issue phrasing seems to *relax* a frozen-floor
+  invariant ("bounded double" vs "∈ {0,1}"), the floor wins: encode the **stricter** constraint
+  (`enum:[0,1]` is still a finite JCS-safe number, so it satisfies both — reconcile, don't pick one source).
+  A PR "design call" that deviates from a §8 non-negotiable is a flag-and-confirm item, not a silent choice.
+- **Context:** E1-1 (#26) reward-record schema; `DECISIONS.md` §1/§2A/§8; `deterministic-verification` +
+  `reward-ledger-worm` skills. Pairs with [[verify-against-official-docs-and-skills-before-acting]] and the
+  CLAUDE.md "settled — flag, don't silently deviate" rule.
+
 ## 2026-06-21 — secret-scanning-detection-is-not-push-protection
 - **Mistake:** Tested GitHub push protection with a planted `google_api_key`. The push wasn't blocked
   (only an alert was created), so I concluded push-protection *enforcement* had a multi-day propagation

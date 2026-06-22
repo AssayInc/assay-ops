@@ -33,27 +33,32 @@ large IDs/nonces/ns-timestamps modeled as **strings**, rewards as **bounded doub
   byte-parity is #28/#29's job, not this issue's.
 
 **Steps (TDD):**
-- [ ] Add `ajv` dev dep to `ts/packages/contracts`; `bun install`.
-- [ ] Write failing `tests/schemas.test.ts` (schemas absent → RED).
-- [ ] Author the 4 schemas → GREEN.
-- [ ] `bun run verify` green (both lanes).
-- [ ] Update `PROGRAM.md`; PR "Closes #26"; `/review`.
+- [x] Add `ajv` dev dep to `ts/packages/contracts`; `bun install`.
+- [x] Write failing `tests/schemas.test.ts` (schemas absent → RED).
+- [x] Author the 4 schemas → GREEN.
+- [x] `bun run verify` green (both lanes).
+- [x] Update `PROGRAM.md`; PR "Closes #26"; `/review`.
 
 ### Review
 
 - **Done + proven:** `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json` (Draft
   2020-12, `$id` + `additionalProperties:false`) authored as the neutral source of truth. Modeling rules
-  applied uniformly: ids / nonces / timestamps / seeds / digests = `string`; `reward` = bounded double
-  `[0,1]`. Validation test `ts/packages/contracts/tests/schemas.test.ts` (ajv Draft-2020-12) — TDD RED→GREEN,
-  16 tests. `bun run verify` green (8/8 tasks, both lanes).
+  applied uniformly: ids / nonces / timestamps / seeds / digests = `string`; `reward` = `enum {0,1}`
+  (binary, finite). Validation test `ts/packages/contracts/tests/schemas.test.ts` (ajv Draft-2020-12) — TDD
+  RED→GREEN, 16 tests. `bun run verify` green (8/8 tasks, both lanes).
 - **AC coverage:** schemas exist ✓; large ids/nonces/ns-timestamps as strings ✓ (test rejects numeric ids);
-  rewards as bounded doubles ✓; NaN/Infinity rejected ✓ (probed ajv: bounded `min/max` rejects NaN/±Inf +
-  out-of-range; test asserts it).
-- **Design calls (flagged for review):** `reward` is a bounded *double* `[0,1]` per the written rule
-  (ARCHITECTURE.md §spine / the issue), **not** an `enum {0,1}` — binary-ness is a verifier-compute
-  invariant, the schema rule is JCS number-safety. `tool` enum = terraform | cdk | cloudformation (the IaC
-  set in the architecture). Field shapes are a coherent v1 grounded in the `reward-ledger-worm` +
-  `deterministic-verification` skills.
+  reward ∈ {0,1} (binary, finite double) ✓; NaN/Infinity + partial-credit rejected ✓ (enum admits only 0/1;
+  test asserts 0.5 / 2 / −0.5 / NaN / ±Inf all rejected).
+- **Cross-model `/review` fixes applied (Claude conf 9 + Codex gpt-5.5 xhigh):** (1) **`reward` →
+  `enum:[0,1]`.** First modeled as a continuous bounded double `[0,1]`; `DECISIONS.md` §8 (non-negotiables)
+  locks `reward ∈ {0,1}` and `deterministic-verification` names a 0.0–1.0 score as the gameable
+  anti-pattern — the continuous form was a silent frozen-floor deviation. Corrected (still a finite JCS-safe
+  number). (2) **`attempt`/`index` capped at 2^53−1** (the same >IEEE-754 hazard the string-id rule
+  prevents). (3) **`diff-ir` `expected`/`actual`** documented as a deliberate any-JSON boundary (precise
+  value typing deferred to where the IR is produced). Deferred (flagged, not silent): strict
+  timestamp-format patterns + `diff-ir` cross-field semantics (modified⟹diffs, unique addresses).
+- **Other design calls:** `tool` enum = terraform | cdk | cloudformation; field shapes a coherent v1
+  grounded in the `reward-ledger-worm` + `deterministic-verification` skills.
 - **Scope discipline:** schemas + validation only. Codegen (#27), JCS canonicalization + golden vectors
   (#28, the locked `contracts/vectors`), CI parity (#29) are their own issues — not pulled in. `contracts/`
   is the neutral source (not a workspace pkg), so it's outside the lint/typecheck graph by design.

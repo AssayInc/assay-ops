@@ -95,13 +95,14 @@ describe("contract schemas (E1-1)", () => {
       expect(validate({ ...base, reward: Number.NEGATIVE_INFINITY })).toBe(false)
     })
 
-    test("rejects a reward outside [0, 1]", () => {
+    test("rejects non-binary rewards — partial credit and out-of-range", () => {
       const validate = validatorFor("reward-record")
+      expect(validate({ ...base, reward: 0.5 })).toBe(false)
       expect(validate({ ...base, reward: 2 })).toBe(false)
       expect(validate({ ...base, reward: -0.5 })).toBe(false)
     })
 
-    test("rejects a numeric trajectory_id — large ids are modeled as strings", () => {
+    test("rejects a numeric trajectory_id (ids are strings, not numbers)", () => {
       const validate = validatorFor("reward-record")
       expect(validate({ ...base, trajectory_id: 123456789 })).toBe(false)
     })

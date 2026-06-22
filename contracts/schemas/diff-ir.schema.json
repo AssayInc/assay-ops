@@ -44,10 +44,10 @@
                   "description": "Dotted property path, e.g. VersioningConfiguration.Status."
                 },
                 "expected": {
-                  "description": "Golden value (absent when the property was added in deployed state)."
+                  "description": "Golden value — any JSON. Intentionally unconstrained here; the per-resource value shape and number normalization (including the large-number-as-string rule) are fixed where the diff IR is produced. Absent when the property was added in deployed state."
                 },
                 "actual": {
-                  "description": "Deployed value (absent when the property is missing from deployed state)."
+                  "description": "Deployed value — any JSON, same caveat as `expected`. Absent when the property is missing from deployed state."
                 }
               }
             }
