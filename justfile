@@ -26,6 +26,9 @@ codegen:
     # constr()/conint() are not valid type expressions); --disable-timestamp drops the header stamp so
     # output is reproducible. Directory input -> a modular `models/` package. The long schema-description
     # strings trip ruff E501 (no formatter wraps them), so the generated package is carved out of ruff lint.
+    # datamodel-codegen does not prune its --output dir, so wipe it first — a removed/renamed schema must
+    # not leave an orphan module (the hand-written assayops_contracts/__init__.py one level up is untouched).
+    rm -rf py/packages/contracts/src/assayops_contracts/models
     uv run --frozen datamodel-codegen \
       --input contracts/schemas --input-file-type jsonschema \
       --output-model-type pydantic_v2.BaseModel \
