@@ -49,13 +49,13 @@ When a decision and the brain plan ever conflict, **the brain plans win** — fi
    │ Daytona sandbox / LocalStack-in-container per episode            ║
    │ (real-AWS sandbox account from the Orgs pool for the eval slice) ║
    ▼                                                                  ║
- OpenEnv env server (TS) ◀─ step/reset/state ─▶ Agent (policy)        ║
+ OpenEnv env server (Python) ◀─ step/reset/state ─▶ Agent (policy)    ║
    │ agent deploys; agent synth/plan runs HERE, in a disposable       ║
    │ sandbox, treated as untrusted data  [T1]                         ║
    ▼                                                                  ║
  DEPLOYED resource state (just cloud resources = data)                ║
    │                                                                  ║
-   └── deployed state ── READ-ONLY cross-account ───────────────────▶ ║  WRITE-ISOLATED VERIFIER (TS)  [1C, T1]
+   └── deployed state ── READ-ONLY cross-account ───────────────────▶ ║  WRITE-ISOLATED VERIFIER (Python)  [1C, T1]
         (agent has no path here)                                      ║    • regenerate AssayOps golden target (code+seed) [2A]
                                                                       ║    • per-tool adapter → normalized diff IR [6A]
                                                                       ║    • NEVER runs agent synth/plan; reads state only [T1]
@@ -192,46 +192,69 @@ T10→E10, T11→E13, T13→E11** — plus the env-server (E5), trainer (E12), a
 
 ## 4. Implementation decisions (I1–I11)
 
-**[impl — implementation-plan §0]** — new calls made *beneath* the locked architecture (it adds no
-new architecture; it specifies *how* to build what the locked plans already decided). The polyglot
-split is fixed: **TypeScript for the IP** (verifier, OpenEnv env-server, adapters, reward ledger) +
-**Python for the trainer** (SFT/eval), bridged by **one codegen'd contract schema** [5A].
+**[impl — implementation-plan §0; language split rebaselined by E17, 2026-06-22]** — new calls made
+*beneath* the locked architecture (it adds no new architecture; it specifies *how* to build what the
+locked plans already decided). The core is **Python-first**: the **proof-critical core is Python**
+(verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
+episode orchestration) — Python's home turf (boto3 deployed-state reads + diff normalization) and the
+home of the one hard ecosystem anchor, **train/eval** (TRL · Inspect AI · OpenEnv). **TypeScript stays
+where it has a product/distribution job:** the generated public `@assayops/contracts`, `assay-web`,
+dashboards, npm consumers, optional CDK/task-authoring tooling. Bridged by **one codegen'd contract
+schema** [5A] — a neutral JSON Schema neither language owns. *E17 (the 2026-06-22 polyglot
+reconsideration) supersedes the implementation-plan's original "TypeScript for the IP"; the moat is
+language-independent (§1/§8), so the pivot leaves the trust floor untouched. Raw-plan + wiki sync is a
+tracked follow-up.*
 
 **I1 — One polyglot monorepo `assay-ops` + 2 satellite repos** (`assay-cloud-org`, `assay-web`).
 Co-locate the TS↔Python seam so a contract change lands atomically with both generated sides in one
 PR; split out only the two seams with a *different blast radius / audience* (`assay-cloud-org` can
 nuke real AWS accounts; the leaderboard is a public surface). *[impl — founder choice 2026-06-17]*
 
-**I2 — TS = Bun + Turborepo workspaces; Python = UV workspace; Turborepo orchestrates *both* lanes**
-via wrapper `package.json` scripts on the Python packages (UV still owns Python deps/venv). One task
-graph + cache, with `turbo run typecheck lint test` as the single `verify` gate; **Biome** for
-lint/format; no Nx/Bazel/Pants. Turborepo is language-agnostic (vercel/turborepo#1077). *[impl,
-refined per founder input]*
+**I2 — Python (UV) owns the proof-critical core lane; TypeScript (Bun + Turborepo + Biome) owns the
+consumer/tooling lane; Turborepo stays the single umbrella** driving both. UV owns the core packages'
+deps + venv (mypy · ruff · pytest); Bun/Turbo/Biome own the TS surface (tsc · Biome · `bun test`). One
+task graph + cache keeps `turbo run typecheck lint test` as the single `verify` gate across both lanes —
+the Python packages expose it via thin wrapper `package.json` scripts → `uv run`; no Nx/Bazel/Pants.
+Turborepo is language-agnostic (vercel/turborepo#1077), so it orchestrates a Python-majority repo
+unchanged. *[impl — rebaselined by E17: UV is the core, Turbo the umbrella]*
 
-**I3 — Contract schema = JSON Schema (Draft 2020-12) source of truth** → `quicktype` (TS) +
-`datamodel-code-generator`→Pydantic v2 (Py); sign over **RFC 8785 JCS canonical JSON** (record → JCS →
-UTF-8 → SHA-256 → **KMS asymmetric ECDSA P-256, `MessageType=DIGEST`**). Protobuf is
-*disqualified*: its spec says serialization is non-canonical, which breaks KMS signing across
-runtimes. JCS pins every serialization degree of freedom and ships a cross-language conformance
-suite. *[impl — realizes 5A + 4B]*
+**I3 — Contract schema = JSON Schema (Draft 2020-12) source of truth** — neutral and public, neither
+language owns it. Codegen roles: `datamodel-code-generator`→**Pydantic v2** is the **internal core
+contract** (the Python verifier/ledger import it; runtime-validated at I/O boundaries);
+`quicktype`→**TypeScript** is the **public/web binding** (`@assayops/contracts`, `assay-web`, npm
+consumers). The **account-B verifier (Python) signs** over **RFC 8785 JCS canonical JSON** (record → JCS
+→ UTF-8 → SHA-256 → **KMS asymmetric ECDSA P-256, `MessageType=DIGEST`**); the optional TS side
+**verifies** the same bytes — so byte-parity is **Python-signer ↔ TS-consumer**. Protobuf is
+*disqualified*: its spec says serialization is non-canonical, which breaks KMS signing across runtimes.
+JCS pins every serialization degree of freedom and ships a cross-language conformance suite. **Zod, if
+used, is TS-app ergonomics only — never the canonical contract source.** *[impl — realizes 5A + 4B;
+codegen roles rebaselined by E17]*
 
 **I4 — Track work in GitHub Issues + Projects v2** in `assay-ops` (issue-type `Epic` via label,
 sub-issues, dependencies, roadmap; all `gh`-CLI-driveable). Zero new tool/auth/sync for a 3-person
 GitHub-native team. Revisit Linear at ~8 people / ~300 active issues. *[impl — founder choice]*
 
-**I5 — TS env-server conforms to the OpenEnv HTTP/WS wire contract directly** (`/reset`, `/step`,
-`/state`, `/ws`…); optional ~30-line Python `EnvClient` shim for labs that import Python. OpenEnv is
-a language-agnostic HTTP/WS contract — no Python in the hot path; verifier/grader stays entirely in
-TS behind the boundary. *[impl — confirms the TS-first env plan]*
+**I5 — OpenEnv-native Python env-server** (`create_app` / FastAPI) implementing the OpenEnv HTTP/WS wire
+contract (`/reset`, `/step`, `/state`, `/health`, `/metadata`, `/schema`, `/ws`…) — matching the
+reference shape that TRL's OpenEnv integration drives. It runs in **account A (agent-reachable), so it
+never computes the graded reward**: the **OpenEnv reward-boundary invariant** (§8, *non-waivable*) —
+`step()`/terminal reward is at most a non-graded/zero shaping signal; the graded reward is the account-B
+verifier's KMS-signed WORM record, joined by `trajectory_id`, and the trainer trains on *that*, never the
+env's `step()`. `/schema` serves the **canonical JSON Schemas / generated artifacts**, not types derived
+from a TS app. *[impl — rebaselined by E17 to OpenEnv-native Python; supersedes the TS-first env plan]*
 
 **I6 — Trainer stack = TRL v1.0** (`SFTTrainer` + LoRA) on **Qwen3-Coder-30B-A3B-Instruct**
 (Apache-2.0) primary / **Qwen2.5-Coder-7B/14B** dense baseline; eval via **Inspect AI** (custom
 `Scorer` = the deploy-verifier). HF-ecosystem-native end-to-end; Apache-2.0 avoids license landmines
 in a commercial deal; Inspect gives native pass@k + clustered stderr. *[impl — realizes Phase-3]*
 
-**I7 — Bake Node onto PATH in the CDK Docker/CI stage**; author/synth CDK via `bun app.ts`. jsii
-requires a Node runtime to process CDK constructs regardless of host language; everything else
-(verifier, env-server, ledger, adapters) is pure Bun. *[impl]*
+**I7 — Node / the CDK Toolkit is a *toolchain* dependency, not a core-language forcing function.** The
+`cdk` CLI (jsii needs a Node runtime to process constructs) is invoked as a subprocess — exactly like
+`terraform` (Go) or `git` (C) — and does **not** make any AssayOps component TypeScript. **AWS CDK
+Python is first-class**, so trusted CDK task/golden authoring can be Python or TS (a separate call kept
+out of the verifier-language decision); the verifier **never runs the agent's `synth`/`plan` regardless
+of language** [T1, §1]. Node stays installed for the CDK Toolkit; the core is Python. *[impl —
+rebaselined by E17; corrects the earlier "CDK forces TypeScript" category error]*
 
 **I8 — Pin everything:** `oven/bun:1.3.x`, `ghcr.io/astral-sh/uv:<ver>`, `openenv[core]==0.3.x`,
 model revisions by commit hash. OpenEnv is pre-1.0 ("expect rough edges"); Bun
@@ -378,6 +401,12 @@ appears to require breaking one, stop and flag it — don't code around it.**
 - [ ] **Reward never depends on executing agent code.** `reward ∈ {0,1}` from a normalized diff. **[T1, 2A]**
 - [ ] **Reward records are KMS-signed + S3 Object Lock (WORM), append-only, trajectory-keyed.**
       Never a mutable DB row — that would break the tamper-evident ledger that *is* the product. **[4B, I11]**
+- [ ] **OpenEnv reward-boundary invariant (non-waivable).** The OpenEnv env-server runs in **account A**
+      (agent-reachable), so it **never computes the graded reward.** Its `step()` / terminal reward is at
+      most a **non-graded, zero shaping signal**; the **graded training reward is delivered exclusively by
+      the account-B write-isolated verifier** as a KMS-signed WORM record, joined to the episode by
+      `trajectory_id` — and the trainer trains on **that**, never on the env's `step()` reward. OpenEnv's
+      idiom is environment-owned reward; AssayOps does **not** follow it for the graded signal. **[1C, 4B, T1, I5]**
 - [ ] **One contract schema → codegen both languages.** Never hand-maintain dual TS/Python types;
       generated artifacts are committed; the CI byte-parity (JCS) gate must stay green. **[5A, I3]**
 - [ ] **Locked fixtures are off-limits.** Edit `contracts/vectors` only in `fixture-change` PRs from
@@ -394,7 +423,7 @@ appears to require breaking one, stop and flag it — don't code around it.**
       harness/verifier/corpus/site.** The only public artifact is `@assayops/contracts` (plus,
       optionally and later, a small public sample task split). **[I11, roadmap]**
 - [ ] **Build only the IP; reuse the rest.** Build: verifier core, diff IR + adapters, reward ledger,
-      contract schema, determinism + replay, episode lifecycle, the TS OpenEnv env-server, red-team
+      contract schema, determinism + replay, episode lifecycle, the Python OpenEnv env-server, red-team
       suite, eval-harness wiring, task corpus, account infra + guardrails. **Reuse, don't rebuild:**
       OpenEnv, Fleet Harbor (rollouts only), LocalStack, Daytona/Modal, Control Tower AFT, KMS + S3
       Object Lock, terraform/cdk CLIs. **[eng-arch]**

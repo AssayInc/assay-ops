@@ -1,8 +1,9 @@
 # AssayOps — write-isolated verification infrastructure for cloud-infrastructure agents
 
-`assay-ops` is the core monorepo: a **write-isolated verifier**, OpenEnv env-server, IaC adapters, and a
-tamper-evident reward ledger (**TypeScript**) + the **Python** trainer/eval, bridged by **one codegen'd
-contract schema**. The moat is a grader the trained agent **cannot reach**.
+`assay-ops` is the core monorepo: a **Python** proof-critical core — **write-isolated verifier**, OpenEnv
+env-server, IaC adapters, tamper-evident reward ledger, **and** the trainer/eval — with **TypeScript**
+kept for the public/web surface (`@assayops/contracts`, `assay-web`), bridged by **one codegen'd contract
+schema**. The moat is a grader the trained agent **cannot reach**.
 
 > **Stance.** You build **verification infrastructure**: correctness and the trust boundary outrank speed and cleverness. A plausible-but-wrong verifier is worse than none — when unsure, **prove it or flag it**, never paper over it.
 
@@ -183,7 +184,7 @@ their vendored skills; the rule applies beyond it.
 
 | Domain | Skill(s) | Surface |
 |--------|----------|---------|
-| AWS | `aws-sdk-js-v3-usage` · `aws-cloudformation` · `aws-cdk` · `aws-iam` | verifier reads deployed state (read-only, cross-account); ledger KMS/S3; CDK adapter + drift tasks |
+| AWS | **boto3 / Cloud Control** *(Python; skill to vendor — follow-up)* · `aws-cloudformation` · `aws-cdk` · `aws-iam` | verifier reads deployed state read-only via **boto3** Cloud Control `get_resource`/`list_resources` + CFN drift; ledger KMS/S3 (boto3); CDK adapter + drift tasks. `aws-sdk-js-v3-usage` is **demoted to the TS consumer/web surface** (`assay-web` / dashboards), not the verifier read path. |
 | Terraform | `terraform-style-guide` · `terraform-test` | the Terraform → diff-IR adapter |
 | OpenEnv | `openenv-cli` · `generate-openenv-env` | the OpenEnv-compatible env-server |
 | TRL / HF Hub | `trl-training` · `hf-cli` | the SFT + LoRA trainer |

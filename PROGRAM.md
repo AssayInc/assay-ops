@@ -5,29 +5,40 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **Phase 0 — Gate & scaffolding.** The repo skeleton ([`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md))
-  and the frozen floor ([`DECISIONS.md`](./DECISIONS.md)) are in; the AI-operating layer lands with
-  **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
-  wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
-  symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73**, closed),
-  the **prefer-official cloud/IaC/training/eval/dev-loop packs** (**E0-10 (#85)**, landed — 25 skills:
-  18 official-vendor (AWS / Terraform / OpenEnv / TRL / Python-UV / LocalStack + `skill-creator`), 3 Inspect AI
-  (maintainer-authored, `meridianlabs-ai`), and 4 well-adopted community (`wshobson/agents` — TS/Python craft)),
-  and the **five homegrown AssayOps domain skills** (**E0-11 (#86)**, landed — `write-isolated-verifier` /
-  `reward-ledger-worm` / `deterministic-verification` / `red-team-exit-bar` / `eval-rigor`, authored in
-  `AssayInc/skills` and vendored here). **E0-5 board (#22)** and **E0-9 assay-web rename (#81)** are done
-  (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
-  `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
-  **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). **Phase-0
-  scaffolding is complete; Phase-1 build has started.** The **T0 team gate (#25) closed** — the founder
-  is the interim RL/eval owner and the hire is opened (`DECISIONS.md` §4 **R5** founder-backstop: Phases
-  1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build has opened at the
-  **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** — the four JSON
-  Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
-  test — **landed** (PR #109); **E1-2 codegen wiring (#27)** (`just codegen` → quicktype TS +
-  datamodel-code-generator Pydantic v2, a semantic round-trip, deterministic) — **landed** (PR #112), see
-  Recently Landed. **Next: #28** (JCS canonicalization + golden vectors), then **#29** (CI
-  regenerate-and-diff parity gate).
+- **E17 — Python-first rebaseline (decision gate, #113).** The proof-critical core is **rebaselined
+  from TypeScript to Python**: verifier, diff/reward core, IaC adapters, reward ledger, deterministic
+  replay, the OpenEnv env-server, and episode orchestration move to **`py/packages/*`**; **TypeScript is
+  kept for the public/web/tooling surface** (`@assayops/contracts` binding, `assay-web`, dashboards, npm
+  consumers, optional CDK/task-authoring). The **moat is language-independent**, so the **trust floor is
+  preserved untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). **This
+  decision PR lands the floor change only** — `DECISIONS.md` (§4 I1–I7 + §8 + the §1 diagram labels),
+  `docs/ARCHITECTURE.md` (package map + episode flow), `CLAUDE.md` (top-line + the skill-preflight
+  AWS-read row → boto3/Python), and the re-scoped epics. **No proof-critical code moves** — it is unbuilt;
+  only the contracts spine + `@assayops/logger` + the LocalStack smoke are TS today (switching cost is
+  near-zero now, the reason E17 runs before E2–E7).
+- **OpenEnv reward-boundary invariant — LOCKED, non-waivable (`DECISIONS.md` §8).** The A-side
+  env-server **never computes the graded reward**; `step()`/terminal is non-graded shaping only; the
+  graded reward is the **account-B verifier's KMS-signed WORM record** joined by `trajectory_id`, and the
+  trainer trains on **that**, never the env's `step()`.
+- **Decision-gate dispositions (the 6 spikes).** Scheduled as **blocking follow-up issues**: the
+  **OpenEnv/TRL** feasibility spike (gates E5/#6) and the **ledger** spike (rfc8785/KMS/Object Lock;
+  gates E4/#5). The **verifier-read** spike is the existing **#80**, re-scoped to **boto3** Cloud
+  Control/CFN. **Resolved in the decision record:** typing (mypy + Pydantic-v2 runtime validation at I/O
+  boundaries, no `Any` in the reward path), CDK-surface (CDK = trusted tooling, Python or TS, separate
+  from the verifier-language call), and version-refresh (pin OpenEnv/TRL/Inspect/Pydantic/boto3 at each
+  epic's first step).
+- **Build spine + downstream.** The contract spine (E1) is built in **both** lanes — **#26** (4 JSON
+  Schemas) + **#27** (codegen) landed. **#28** (JCS + golden vectors) and **#29** (CI parity) continue,
+  **reframed:** JCS stays required for signing; #29 byte-parity shifts from an internal TS↔Python seam to
+  **Python-signer ↔ TS-consumer** parity. **E2–E7 (#3–#8) are re-scoped to Python and blocked on this
+  decision PR + the scheduled feasibility spikes** — no E2+ implementation starts on stale TS-core
+  assumptions. Phase-0 scaffolding + the skill layer are complete (see *Recently Landed*); the **T0 team
+  gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
+- **Open follow-ups (post-decision, tracked as issues).** Re-home the built TS for the Python core
+  (`@assayops/logger` → a Python structured-logging story; the `infra-local` LocalStack smoke → a boto3
+  counterpart); **brain/wiki sync** (the raw plans + wiki still describe the TS-IP split); vendor a
+  **boto3 / Cloud-Control skill**; the broader `CLAUDE.md`/skill-layer language flip beyond the top-line +
+  AWS row.
 
 ## Recently Landed
 
