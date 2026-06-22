@@ -101,7 +101,9 @@ Nx/Bazel/npm/yarn/pnpm/pip/poetry. **Pin everything.** Adding a package:
 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) → *How to navigate*.
 
 - **TS:** `bun <file|test|install|run>`, not Node/npm/jest; `unknown` at boundaries, **never `any`**;
-  **factory functions over classes**; assertions only at an I/O boundary behind a runtime check.
+  **factory functions over classes**; assertions only at an I/O boundary behind a runtime check; structured
+  logging via **`@assayops/logger`** (pino) — **never `console.log`** (Python: structured logging, no bare
+  `print`).
 - **Python:** `uv run` for `mypy` / `ruff` / `pytest`, via each package's thin `package.json` wrapper.
 
 ## Superpowers Workflow
