@@ -15,6 +15,23 @@ Entry format:
 
 ---
 
+## 2026-06-22 — use-the-librarys-official-mechanism-not-a-hand-roll
+- **Mistake:** Built `@assayops/logger` from cached pino knowledge instead of the official docs: (1) a
+  hand-rolled recursive `formatters.log` redactor that **leaked base/child bindings** and **flattened
+  `Error`s** (lost message/stack), and (2) a hand-rolled `{ write }` capture for the tests. The founder
+  caught both ("are you using the official docs?" → pino's built-in `redact`, and the official `pino-test`);
+  a Codex `xhigh` re-check confirmed the leaks.
+- **Rule:** For a library's **security/correctness primitive** (redaction, signing, canonicalization) **and
+  its testing**, read the official docs FIRST and use the library's built-in mechanism — don't hand-roll
+  from memory. pino specifically: redaction = the built-in **`redact`** (fast-redact path syntax; runs at
+  serialization so it covers bindings + preserves `Error`s); testing = the official **`pino-test`**
+  (`sink()` + `once()`); pretty = `transport: { target: 'pino-pretty' }`. A hand-rolled security primitive
+  is a defect magnet (cloning the log object breaks Error/Date and misses bindings); the library's is
+  battle-tested. The CLAUDE.md skill-preflight rule applies to **library config + test tooling**, not just
+  new API calls.
+- **Context:** `@assayops/logger` (PR #110); pino docs — redaction / pretty / testing (→ `pino-test`).
+  Sharp instance of [[verify-against-official-docs-and-skills-before-acting]].
+
 ## 2026-06-21 — ground-in-decisions-and-brain-not-the-ai-written-issue
 - **Mistake:** Started E1-1 (#26) from the issue's prose as if it were the spec, and made several
   field-level calls (a continuous reward, `RFC-3339-or-ns` timestamps, a `cloudformation` task tool) that
