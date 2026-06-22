@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-06-22 — dont-close-an-epic-on-its-first-deliverable-pr
+- **Mistake:** Put `Closes #113` on the E17 **decision PR** (#118) and merged — which closed #113. But
+  #113 is an **epic** with open sub-issues (#114/#115 spikes, #80, #116/#117/#119); the decision PR was only
+  its **first** deliverable. The founder caught it from the board ("do we need to reopen any of those closed
+  issues?"). Reopened #113 + reset its board Status to In Progress.
+- **Rule:** Use `Closes #N` only when the PR **fully completes** issue N. For an **epic** (or any parent
+  with open sub-issues / more deliverables to come), **reference, don't close** — `Part of #N` / `Advances
+  #N`, and let the epic close when its **last sub-issue** closes (the GitHub sub-issue rollup tracks it —
+  cf. E1 #2 staying open while #28/#29 are open). Before merging, check whether the `Closes`-targeted number
+  is an epic or has open sub-issues; if so, downgrade the keyword.
+- **Context:** E17 (#113) / PR #118. Pairs with [[update-program-state-before-landing]] +
+  [[new-issues-must-join-the-board-and-parent-epic]] — the GitHub issue/epic graph is part of "done."
+
 ## 2026-06-22 — ground-the-option-set-of-an-inherited-decision-not-just-the-pick
 - **Mistake:** "Resolved" the E17 type-checker gate to **mypy** by accepting the AI-written issue's
   framing ("mypy vs pyright") + the existing E0-1 default — **without checking the official Astral docs and
