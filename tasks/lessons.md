@@ -15,6 +15,34 @@ Entry format:
 
 ---
 
+## 2026-06-22 — bun-lock-and-uv-lock-after-adding-a-py-package
+- **Mistake:** Added `py/packages/env-server` (a **Python** package) with a thin `package.json` turbo
+  wrapper, ran `uv lock`/`uv sync`, and `bun run verify` was green locally — but **CI failed at
+  `bun install --frozen-lockfile`** ("lockfile had changes, but lockfile is frozen"): the new package
+  is also a **bun workspace member** (root `package.json` `workspaces: ["py/packages/*"]`) and
+  `bun.lock` never recorded it. `bun run verify` (turbo) never reinstalls, so it masked the stale lock.
+- **Rule:** After adding ANY new `py/packages/*` **or** `ts/**` package with a `package.json`, run
+  **BOTH** `bun install` (updates `bun.lock` for the bun-workspace member — even a Python package has a
+  bun wrapper) **AND** `uv lock`/`uv sync` (uv.lock), and commit both lockfiles. The CI install step is
+  `bun install --frozen-lockfile`, which rejects a stale `bun.lock`; **verify locally with `bun install
+  --frozen-lockfile` before pushing** — `bun run verify` does NOT catch it.
+- **Context:** E17-S1 (#114) / PR #121; `ci.yml` runs `bun install --frozen-lockfile` per lane.
+
+## 2026-06-22 — verifier-grades-ground-truth-not-agent-reported-state
+- **Mistake:** In the OpenEnv env-server spike the reward-boundary proof fed the **agent-reachable**
+  `observation.deployed_state` into the (mock) account-B grader. Every test passed, but the proof was
+  **tautological** — it never showed the verifier reads state independently of the agent. Codex
+  `gpt-5.5` xhigh caught it in `/review` (recommended **Block**).
+- **Rule:** For the AssayOps verifier (real or mocked — E2/E4/E5), the grade input MUST come from
+  **ground truth the agent cannot forge**: read from an independent channel (deployed cloud resources
+  via boto3, or a ground-truth substrate keyed by `trajectory_id`), **never** the agent-reachable
+  observation / trajectory / `step()` output. Feeding agent-reported state to the grader makes a green
+  boundary test prove nothing — the independent read *is* the moat (`DECISIONS.md` §1/§8, vector #15).
+  A passing suite can still encode a tautological boundary; run the cross-model adversarial `/review` on
+  any verifier/boundary code.
+- **Context:** E17-S1 (#114) / PR #121; the fix is `cloud_state.CLOUD` (env deploys, account-B reads it
+  by `trajectory_id`). Pairs with [[ground-in-decisions-and-brain-not-the-ai-written-issue]].
+
 ## 2026-06-22 — dont-close-an-epic-on-its-first-deliverable-pr
 - **Mistake:** Put `Closes #113` on the E17 **decision PR** (#118) and merged — which closed #113. But
   #113 is an **epic** with open sub-issues (#114/#115 spikes, #80, #116/#117/#119); the decision PR was only
