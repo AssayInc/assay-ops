@@ -5,47 +5,41 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **E17 — Python-first rebaseline (decision gate, #113).** The proof-critical core is **rebaselined
-  from TypeScript to Python**: verifier, diff/reward core, IaC adapters, reward ledger, deterministic
-  replay, the OpenEnv env-server, and episode orchestration move to **`py/packages/*`**; **TypeScript is
-  kept for the public/web/tooling surface** (`@assayops/contracts` binding, `assay-web`, dashboards, npm
-  consumers, optional CDK/task-authoring). The **moat is language-independent**, so the **trust floor is
-  preserved untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). **This
-  decision PR lands the floor change only** — `DECISIONS.md` (§4 I1–I7 + §8 + the §1 diagram labels),
-  `docs/ARCHITECTURE.md` (package map + episode flow), `CLAUDE.md` (top-line + the skill-preflight
-  AWS-read row → boto3/Python), and the re-scoped epics. **No proof-critical code moves** — it is unbuilt;
-  only the contracts spine + `@assayops/logger` + the LocalStack smoke are TS today (switching cost is
-  near-zero now, the reason E17 runs before E2–E7).
-- **OpenEnv reward-boundary invariant — LOCKED, non-waivable (`DECISIONS.md` §8).** The A-side
-  env-server **never computes the graded reward**; `step()`/terminal is non-graded shaping only; the
-  graded reward is the **account-B verifier's KMS-signed WORM record** joined by `trajectory_id`, and the
-  trainer trains on **that**, never the env's `step()`.
-- **Decision-gate dispositions (the 6 spikes).** Scheduled as **blocking follow-up issues**: the
-  **OpenEnv/TRL** feasibility spike (gates E5/#6) and the **ledger** spike (rfc8785/KMS/Object Lock;
-  gates E4/#5). The **verifier-read** spike is the existing **#80**, re-scoped to **boto3** Cloud
-  Control/CFN. **Resolved in the decision record (grounded vs official docs):** typing — **mypy --strict**
-  is the **bridge** for E2+; **`ty` (Astral) is the committed target**, adopted when it clears two gates
-  re-checked at **E2's first step** — (1) **Stable** (out of `0.0.x`/beta), (2) **Pydantic FPs closed**
-  (the reward path is Pydantic v2) — and since the core is unbuilt, **E2 starts on `ty` directly if both
-  clear by then (zero migration)**. Tracked in **#119**. Pydantic-v2 validation at I/O boundaries, no `Any`
-  in the reward path; `ruff` is lint/format only. CDK-surface (CDK = trusted tooling, Python or TS, separate
-  from the verifier-language call), and version-refresh (pin OpenEnv/TRL/Inspect/Pydantic/boto3 at each
-  epic's first step).
-- **Build spine + downstream.** The contract spine (E1) is built in **both** lanes — **#26** (4 JSON
-  Schemas) + **#27** (codegen) landed. **#28** (JCS + golden vectors) and **#29** (CI parity) continue,
-  **reframed:** JCS stays required for signing; #29 byte-parity shifts from an internal TS↔Python seam to
-  **Python-signer ↔ TS-consumer** parity. **E2–E7 (#3–#8) are re-scoped to Python and blocked on this
-  decision PR + the scheduled feasibility spikes** — no E2+ implementation starts on stale TS-core
-  assumptions. Phase-0 scaffolding + the skill layer are complete (see *Recently Landed*); the **T0 team
-  gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
-- **Open follow-ups (post-decision, tracked as issues).** Re-home the built TS for the Python core
-  (`@assayops/logger` → a Python structured-logging story; the `infra-local` LocalStack smoke → a boto3
-  counterpart); **brain/wiki sync** (the raw plans + wiki still describe the TS-IP split); vendor a
-  **boto3 / Cloud-Control skill**; the broader `CLAUDE.md`/skill-layer language flip beyond the top-line +
-  AWS row.
+- **Python-first core is LOCKED (E17 / #113 — landed, PR #118).** The proof-critical core is **Python**
+  (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
+  episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
+  (`@assayops/contracts` binding, `assay-web`, dashboards, npm consumers). The **trust floor is preserved
+  untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). The **OpenEnv
+  reward-boundary invariant** is locked **non-waivable** (§8): the A-side env-server never computes the
+  graded reward — the **verifier (T1) computes** `reward∈{0,1}`, the **reward ledger (T4) signs +
+  WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
+- **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes **#114** (OpenEnv/TRL,
+  gates E5), **#115** (ledger rfc8785/KMS/Object-Lock, gates E4), **#80** (boto3 read coverage) + **account
+  infra T7 (P1-BLOCKING)** + LocalStack — **no proof-critical code starts on stale TS assumptions**. The
+  contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) then
+  **#29** (CI parity).
+- **Type checker:** `mypy --strict` is the bridge; **`ty`** (Astral) is the committed target, adopted at
+  E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
+  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
+- **Next ready work:** **#28** (contract-spine JCS canonicalization + golden vectors) — and, to unblock
+  E2–E7, the feasibility spikes (#114/#115, #80). **T0 team gate (#25) closed** (founder interim RL/eval
+  owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E17 (#113): Python-first rebaseline — decision gate (PR #118).** Locked the **Python-first
+  proof-critical core** (verifier / diff-reward / adapters / ledger / replay / OpenEnv env-server /
+  orchestration → `py/packages/*`; TS kept for the public/web/tooling surface) with the **trust floor
+  preserved untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). Locked
+  the **OpenEnv reward-boundary invariant** non-waivable (§8): the A-side env-server never computes the
+  graded reward — the verifier (T1) computes it, the reward ledger (T4) signs + WORM-writes it, joined by
+  `trajectory_id`. Rewrote `DECISIONS.md` §4 I1–I7 + §8 + §1 diagram labels, `docs/ARCHITECTURE.md` package
+  map + episode flow, `CLAUDE.md` + `README.md` framing + skill-preflight AWS-read→boto3; re-scoped epics
+  #3–#8 + contracts #2/#28/#29 + #80; created follow-ups #114/#115 (blocking spikes) + #116/#117/#119.
+  Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh) caught the `README` front-line + the
+  verifier-vs-ledger signing attribution; the type-checker gate was grounded against the official Astral
+  docs (`ty` beta/0.0.x → `mypy --strict` bridge, `ty` the committed target, #119). **No proof-critical
+  code moved** (unbuilt). (PR #118.)
 - **E1-2 (#27): codegen wiring.** Root **`just codegen`** regenerates the committed contract types from
   `contracts/schemas/` — **quicktype** → `ts/packages/contracts/src/generated.ts` (interfaces) +
   **datamodel-code-generator** → `py/packages/contracts/src/assayops_contracts/models/` (Pydantic v2,
