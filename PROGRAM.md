@@ -5,7 +5,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **Python-first core is LOCKED (E17 / #113 — landed, PR #118).** The proof-critical core is **Python**
+- **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
   (`@assayops/contracts` binding, `assay-web`, dashboards, npm consumers). The **trust floor is preserved
@@ -39,7 +39,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh) caught the `README` front-line + the
   verifier-vs-ledger signing attribution; the type-checker gate was grounded against the official Astral
   docs (`ty` beta/0.0.x → `mypy --strict` bridge, `ty` the committed target, #119). **No proof-critical
-  code moved** (unbuilt). (PR #118.)
+  code moved** (unbuilt). (PR #118; the **#113 epic stays open** until #114/#115/#80/#116/#117/#119 close.)
 - **E1-2 (#27): codegen wiring.** Root **`just codegen`** regenerates the committed contract types from
   `contracts/schemas/` — **quicktype** → `ts/packages/contracts/src/generated.ts` (interfaces) +
   **datamodel-code-generator** → `py/packages/contracts/src/assayops_contracts/models/` (Pydantic v2,
