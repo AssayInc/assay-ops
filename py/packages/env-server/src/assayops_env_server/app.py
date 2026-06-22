@@ -19,5 +19,5 @@ app = create_app(
     DeployAction,
     DeployObservation,
     env_name="assayops-deploy-verify",
-    max_concurrent_envs=8,
+    max_concurrent_envs=16,
 )

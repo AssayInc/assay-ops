@@ -16,6 +16,15 @@ import pytest
 import uvicorn
 
 from assayops_env_server.app import app
+from assayops_env_server.cloud_state import CLOUD
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cloud_state() -> Iterator[None]:
+    # CLOUD is a module-global substrate; clear it around every test so episodes never bleed.
+    CLOUD.clear()
+    yield
+    CLOUD.clear()
 
 
 def _free_port() -> int:

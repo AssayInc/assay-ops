@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 import assayops_env_server
 from assayops_env_server.client import DeployVerifyEnvClient
+from assayops_env_server.cloud_state import CLOUD
 from assayops_env_server.models import COMMIT_RESOURCE_TYPE, DeployAction
 
 
@@ -96,22 +97,45 @@ def test_a_forged_reward_record_does_not_verify_under_account_b_key() -> None:
     assert account_b.verify(forged) is False
 
 
-def test_reward_ledger_is_worm_append_only() -> None:
+def test_a_tampered_signed_record_does_not_verify() -> None:
+    CLOUD.deploy("traj-tamper", "AWS::S3::Bucket", {"VersioningEnabled": False})
     account_b = MockAccountBVerifierLedger()
-    satisfied = {"AWS::S3::Bucket": {"VersioningEnabled": True}}
-    account_b.grade_and_record("traj-worm", satisfied, nonce="n0", attempt=0)
+    genuine = account_b.grade_and_record("traj-tamper", nonce="n")  # reward 0, correctly signed
+    assert genuine.reward == 0
+    assert account_b.verify(genuine)
+    # Flip reward 0 -> 1 on the signed record; the signature no longer covers these bytes.
+    tampered = genuine.model_copy(update={"reward": 1})
+    assert account_b.verify(tampered) is False
+
+
+def test_a_malformed_signature_fails_verification_without_raising() -> None:
+    CLOUD.deploy("traj-bad", "AWS::S3::Bucket", {"VersioningEnabled": True})
+    account_b = MockAccountBVerifierLedger()
+    record = account_b.grade_and_record("traj-bad", nonce="n")
+    malformed = record.model_copy(update={"signature": "not-hex-zz"})
+    # The agent controls the bytes submitted, so malformed must mean "does not verify", never raise.
+    assert account_b.verify(malformed) is False
+
+
+def test_reward_ledger_is_worm_append_only_and_prior_attempts_are_immutable() -> None:
+    account_b = MockAccountBVerifierLedger()
+    CLOUD.deploy("traj-worm", "AWS::S3::Bucket", {"VersioningEnabled": True})
+    first = account_b.grade_and_record("traj-worm", nonce="n0", attempt=0)
+    assert first.reward == 1
 
     # The same (trajectory_id, attempt) cannot be overwritten.
     overwrite_rejected = False
     try:
-        account_b.grade_and_record("traj-worm", satisfied, nonce="n0b", attempt=0)
+        account_b.grade_and_record("traj-worm", nonce="n0b", attempt=0)
     except ValueError:
         overwrite_rejected = True
     assert overwrite_rejected
 
-    # A divergent re-grade is a NEW attempt (append-only), never a mutation of the first.
-    second = account_b.grade_and_record(
-        "traj-worm", {"AWS::S3::Bucket": {"VersioningEnabled": False}}, nonce="n1", attempt=1
-    )
+    # The ground truth changes (the resource is reconfigured); a re-grade is a NEW attempt that
+    # reflects it — append-only, never a mutation of the first. (Which attempt the trainer trusts is
+    # a verifier/consumer policy — E4/T8, out of spike scope.)
+    CLOUD.deploy("traj-worm", "AWS::S3::Bucket", {"VersioningEnabled": False})
+    second = account_b.grade_and_record("traj-worm", nonce="n1", attempt=1)
     assert second.attempt == 1
     assert second.reward == 0
+    assert account_b.verify(first)  # the first signed record is intact after the append

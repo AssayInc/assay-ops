@@ -46,30 +46,24 @@ class OpenEnvRolloutHarness:
         self._account_b = account_b
 
     def rollout_func(self, prompts: list[str], trainer: Any = None) -> dict[str, Any]:
-        async def drive(prompt: str) -> tuple[str, dict[str, Any]]:
+        async def drive(prompt: str) -> str:
             async with DeployVerifyEnvClient(base_url=self._server_url) as env:
                 await env.reset()
                 result: Any = None
                 for action in _policy_actions(prompt):
                     result = await env.step(action)
-                observation = result.observation
-                trajectory_id: str = observation.trajectory_id
-                deployed_state: dict[str, Any] = dict(observation.deployed_state)
-                return trajectory_id, deployed_state
+                trajectory_id: str = result.observation.trajectory_id
+                return trajectory_id
 
-        async def drive_all() -> list[tuple[str, dict[str, Any]]]:
+        async def drive_all() -> list[str]:
             return await asyncio.gather(*(drive(prompt) for prompt in prompts))
 
-        driven = asyncio.run(drive_all())
-        trajectory_ids = [trajectory_id for trajectory_id, _ in driven]
+        trajectory_ids = asyncio.run(drive_all())
 
-        # The account-B verifier reads each deployed state (out-of-band) and writes a signed WORM
-        # record. In production this is the cross-account read of DEPLOYED cloud resources; here the
-        # env's reported deployed_state stands in for that read.
-        for trajectory_id, deployed_state in driven:
-            self._account_b.grade_and_record(
-                trajectory_id, deployed_state, nonce=f"nonce-{trajectory_id}"
-            )
+        # The account-B verifier reads each trajectory's GROUND-TRUTH deployed state (CLOUD) itself,
+        # out-of-band, and writes a signed WORM record. It is never handed the agent's observation.
+        for trajectory_id in trajectory_ids:
+            self._account_b.grade_and_record(trajectory_id, nonce=f"nonce-{trajectory_id}")
 
         # Required columns are stubbed (generation is GPU-bound, orthogonal to the boundary); the
         # trajectory_id column carries the join key TRL forwards verbatim to reward_funcs.

@@ -83,6 +83,25 @@ when done.
   real KMS/JCS (#28)/Object-Lock (#115)/regenerated-golden + boto3 read (#80). The `area:env-server` label
   still reads "OpenEnv **TS** env-server" (pre-E17 stale) — board-hygiene nit.
 
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — fixes applied
+
+The cross-model review confirmed **no A-side path emits a graded reward** (the core boundary holds), and
+caught real strengthening work (applied, re-verified green 16 passed / 1 skipped):
+- **Independent read (Codex Critical):** the proof originally fed the agent-reachable
+  `observation.deployed_state` into the grader — tautological. Added `cloud_state.CLOUD` (a ground-truth
+  deploy substrate); **account-B now reads `CLOUD` by `trajectory_id` independently**, never the agent's
+  observation. This makes "the agent cannot forge the grade / the read is independent" actually demonstrated.
+- **AC#3 framing (both):** `trl` is not a runtime dep (the real-symbol test skips), so the headline was
+  softened to "the rollout→reward **seam** is reproduced and run against the real env; the real
+  `trl.GRPOTrainer` binding is opt-in (kept out of the gate to avoid torch/vLLM)."
+- **Real bugs:** `verify()` now safely rejects malformed-hex signatures (caught `ValueError`) instead of
+  raising; terminal is **latched** + the env mints `trajectory_id` in `__init__` (no empty-id / post-commit
+  mutation); `cryptography`/`httpx` moved out of the A-side **runtime** deps into the workspace dev group
+  (the env-server package now depends on `openenv[core]` only); `max_concurrent_envs` 8→16 (headroom);
+  added tamper-after-signing + malformed-signature + terminal-latch tests; dropped one tautological assert.
+- Left as documented low-risk: the `_free_port` TOCTOU (session-scoped, startup failures surface as a
+  readiness timeout) and the single-threaded mock ledger's non-atomic write (real E4 uses conditional writes).
+
 ---
 
 ## E17 (#113) — Rebaseline to a Python-first proof-critical core — IN PROGRESS (branch `feat/e17-python-first-rebaseline`)

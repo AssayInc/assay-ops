@@ -30,6 +30,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict
 
+from assayops_env_server.cloud_state import CLOUD
+
 # The B-side golden target — independently held; the A-side env never sees it (DECISIONS.md 2A).
 _GOLDEN_RESOURCE = "AWS::S3::Bucket"
 
@@ -75,7 +77,6 @@ class MockAccountBVerifierLedger:
     def grade_and_record(
         self,
         trajectory_id: str,
-        deployed_state: dict[str, Any],
         *,
         nonce: str,
         attempt: int = 0,
@@ -84,6 +85,9 @@ class MockAccountBVerifierLedger:
         if key in self._worm:
             # Append-only: a divergent re-grade appends a new attempt, never overwrites.
             raise ValueError(f"WORM violation: {key} already written")
+        # The independent cross-account read: B grades the GROUND-TRUTH deployed state, not the
+        # agent-reachable observation. The agent cannot make B read a state it did not deploy.
+        deployed_state = CLOUD.read(trajectory_id)
         reward = self._grade(deployed_state)
         report = json.dumps(
             {"trajectory_id": trajectory_id, "deployed_state": deployed_state, "reward": reward},
@@ -119,5 +123,7 @@ class MockAccountBVerifierLedger:
                 ec.ECDSA(hashes.SHA256()),
             )
             return True
-        except InvalidSignature:
+        except (InvalidSignature, ValueError):
+            # Malformed signature bytes (e.g. non-hex) must fail verification safely, never raise —
+            # the agent controls the bytes submitted, so "malformed" must mean "does not verify".
             return False

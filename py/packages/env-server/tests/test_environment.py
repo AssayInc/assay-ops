@@ -54,3 +54,15 @@ def test_commit_action_terminates_with_a_zero_shaping_reward() -> None:
     assert obs.reward == 0.0  # even the terminal reward is a zero shaping signal, never the grade
     # the deployed state the account-B verifier will later grade, read-only, out-of-band
     assert obs.deployed_state == {"AWS::S3::Bucket": {"VersioningEnabled": True}}
+
+
+def test_terminal_is_latched_so_steps_after_commit_do_not_mutate_state() -> None:
+    env = DeployVerifyEnv()
+    env.reset()
+    env.step(DeployAction(resource_type="AWS::S3::Bucket", properties={"VersioningEnabled": True}))
+    committed = env.step(DeployAction(resource_type="__commit__", properties={}))
+    # A stray step after the terminal must NOT deploy more, advance the step count, or un-terminate.
+    after = env.step(DeployAction(resource_type="AWS::EC2::Instance", properties={"sneaky": True}))
+    assert after.done is True
+    assert after.step_count == committed.step_count
+    assert after.deployed_state == {"AWS::S3::Bucket": {"VersioningEnabled": True}}

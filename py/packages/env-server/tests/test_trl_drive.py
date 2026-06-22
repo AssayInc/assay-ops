@@ -32,8 +32,8 @@ def test_trl_rollout_seam_supplies_the_graded_reward_out_of_band(server_url: str
 
     # The reward TRL optimizes = reward_funcs over the forwarded columns (out-of-band fetch by id).
     rewards = harness.reward_funcs(trajectory_id=rollout["trajectory_id"])
-    assert rewards == [1.0, 0.0]  # graded {0,1} from account-B...
-    assert rewards[0] != 0.0  # ...which differs from the env's zero shaping reward
+    # graded {0,1} from account-B; the env's step reward stays 0.0 (see test_terminal_reward)
+    assert rewards == [1.0, 0.0]
 
 
 def test_pinned_trl_grpotrainer_exposes_the_rollout_func_seam() -> None:
