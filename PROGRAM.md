@@ -26,7 +26,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
   test — **landed** (PR #109). **E1-2 codegen wiring (#27)** — the root `just codegen` spine (quicktype → committed TS types;
   datamodel-code-generator → committed Pydantic v2 models), a semantic reward-record round-trip test, and
-  deterministic re-generation — is **implemented (PR open)**. **Next: #28** (JCS canonicalization + golden
+  deterministic re-generation — is **implemented (PR #112)**. **Next: #28** (JCS canonicalization + golden
   vectors), then **#29** (CI regenerate-and-diff parity gate).
 
 ## Recently Landed
