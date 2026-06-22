@@ -6,7 +6,7 @@ when done.
 
 ---
 
-## E0-4 (#21) — Repo hygiene (CODEOWNERS, PR template, secret scanning, CONTRIBUTING) — IN PR (branch `chore/e0-4-repo-hygiene`)
+## E0-4 (#21) — Repo hygiene (CODEOWNERS, PR template, secret scanning, CONTRIBUTING) — LANDED (PR #108)
 
 **Goal (AC):** CODEOWNERS + PR template + secret-scanning push protection enabled (a planted secret is
 blocked on push); the `Closes #` convention documented in the PR template; a `CONTRIBUTING.md` with the
@@ -53,7 +53,7 @@ contributor workflow + a pointer to the quality bar, linking (not duplicating) t
   deadlock solo PRs) + the per-path grader CODEOWNERS rules.
 - **/review:** Claude + Codex (gpt-5.5 xhigh) adversarial passes — clean after fixing two doc-precision
   nits (push-protection wording in CONTRIBUTING.md; PROGRAM.md "essentially complete" → "once it lands").
-- **Pending:** user approval to merge (then move E0-4 to PROGRAM.md *Recently Landed*).
+- **Landed:** PR #108 squash-merged into `main`; E0-4 moved to PROGRAM.md *Recently Landed*; #21 closed.
 
 ---
 
