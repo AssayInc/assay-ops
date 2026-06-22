@@ -24,9 +24,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **OpenEnv/TRL** feasibility spike (gates E5/#6) and the **ledger** spike (rfc8785/KMS/Object Lock;
   gates E4/#5). The **verifier-read** spike is the existing **#80**, re-scoped to **boto3** Cloud
   Control/CFN. **Resolved in the decision record (grounded vs official docs):** typing — **mypy --strict**
-  now (Astral's `ty` is **beta / 0.0.x / no stable API** as of 2026-06 → wrong gate for a proof-critical
-  lane; tracked as adopt-when-stable, same uv+ruff ecosystem), Pydantic-v2 validation at I/O boundaries,
-  no `Any` in the reward path; `ruff` is lint/format only (separate typecheck). CDK-surface (CDK = trusted tooling, Python or TS, separate
+  is the **bridge** for E2+; **`ty` (Astral) is the committed target**, adopted when it clears two gates
+  re-checked at **E2's first step** — (1) **Stable** (out of `0.0.x`/beta), (2) **Pydantic FPs closed**
+  (the reward path is Pydantic v2) — and since the core is unbuilt, **E2 starts on `ty` directly if both
+  clear by then (zero migration)**. Tracked in **#119**. Pydantic-v2 validation at I/O boundaries, no `Any`
+  in the reward path; `ruff` is lint/format only. CDK-surface (CDK = trusted tooling, Python or TS, separate
   from the verifier-language call), and version-refresh (pin OpenEnv/TRL/Inspect/Pydantic/boto3 at each
   epic's first step).
 - **Build spine + downstream.** The contract spine (E1) is built in **both** lanes — **#26** (4 JSON

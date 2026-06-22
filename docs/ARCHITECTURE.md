@@ -19,8 +19,10 @@ core, TypeScript at the edge ([I1–I7, rebaselined by E17](../DECISIONS.md#4-im
   `package.json` wrapper in each Python package whose scripts shell out to `uv run` (decision **I2** /
   `vercel/turborepo#1077`). UV owns Python deps + the shared `.venv`; Turbo owns the one task graph. Per
   package: `typecheck` = `mypy --strict`, `lint` = `ruff check`, `test` = `pytest`. *(ruff/mypy/pytest are
-  E0-1 `[impl]` defaults, not a locked decision — swap freely. Astral's `ty` is the eventual same-ecosystem
-  type-checker, but it is **beta / 0.0.x / no stable API** as of 2026-06 — adopt when it stabilizes.)*
+  E0-1 `[impl]` defaults, not a locked decision — swap freely. Astral's `ty` is the committed target type
+  checker (same uv+ruff ecosystem) but **beta / 0.0.x / no stable API** as of 2026-06 with open Pydantic
+  false-positives — `mypy --strict` is the bridge; adopt `ty` once it is Stable + Pydantic-clean, re-checked
+  at E2's first step. See #119.)*
 - **TS lane (consumer / web / tooling surface)** — Bun + Turborepo + Biome. Shared config lives in
   `ts/packages/typescript-config` (tsconfig `base`/`bun`) and `ts/packages/biome-config` (lint/format).
   Per package: `typecheck` = `tsc --noEmit`, `lint` = `biome lint .`, `test` = `bun test`.
