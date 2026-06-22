@@ -23,8 +23,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 - **Decision-gate dispositions (the 6 spikes).** Scheduled as **blocking follow-up issues**: the
   **OpenEnv/TRL** feasibility spike (gates E5/#6) and the **ledger** spike (rfc8785/KMS/Object Lock;
   gates E4/#5). The **verifier-read** spike is the existing **#80**, re-scoped to **boto3** Cloud
-  Control/CFN. **Resolved in the decision record:** typing (mypy + Pydantic-v2 runtime validation at I/O
-  boundaries, no `Any` in the reward path), CDK-surface (CDK = trusted tooling, Python or TS, separate
+  Control/CFN. **Resolved in the decision record (grounded vs official docs):** typing — **mypy --strict**
+  now (Astral's `ty` is **beta / 0.0.x / no stable API** as of 2026-06 → wrong gate for a proof-critical
+  lane; tracked as adopt-when-stable, same uv+ruff ecosystem), Pydantic-v2 validation at I/O boundaries,
+  no `Any` in the reward path; `ruff` is lint/format only (separate typecheck). CDK-surface (CDK = trusted tooling, Python or TS, separate
   from the verifier-language call), and version-refresh (pin OpenEnv/TRL/Inspect/Pydantic/boto3 at each
   epic's first step).
 - **Build spine + downstream.** The contract spine (E1) is built in **both** lanes — **#26** (4 JSON

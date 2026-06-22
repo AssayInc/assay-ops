@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-06-22 — ground-the-option-set-of-an-inherited-decision-not-just-the-pick
+- **Mistake:** "Resolved" the E17 type-checker gate to **mypy** by accepting the AI-written issue's
+  framing ("mypy vs pyright") + the existing E0-1 default — **without checking the official Astral docs and
+  without even considering `ty`** (Astral's type checker), the obvious same-ecosystem candidate for a repo
+  already on uv + ruff. Recorded it "resolved in the decision record" with zero doc-grounding. The founder
+  caught it ("did you ground every decision by official docs? like astral ty?").
+- **Rule:** When you "resolve" or lock a **tooling/library decision**, ground the **option SET itself**
+  against the official docs first — not just the option you picked. An AI-written issue's "X vs Y" framing
+  can silently omit the obvious candidate; "resolved in the record" without a primary-source check is the
+  cached-knowledge trap [[ground-in-official-docs-first]] exists to stop. One `/browse` of the vendor docs
+  settles it (here: ty's README → **beta, 0.0.x, no stable API, breaking changes expected** → wrong gate
+  for a proof-critical lane, so **mypy --strict** now + `ty` tracked adopt-when-stable). Cached "mypy is the
+  default" reasoning does not.
+- **Context:** E17 (#113) typing gate; Astral `ty` (docs.astral.sh/ty · github.com/astral-sh/ty), ruff
+  (lint/format only), uv. Sharpens [[ground-in-official-docs-first]] /
+  [[verify-against-official-docs-and-skills-before-acting]] — it applies to *which options exist*, not only
+  a chosen library's API.
+
 ## 2026-06-22 — new-issues-must-join-the-board-and-parent-epic
 - **Mistake:** Created the E17 follow-up issues (#114–#117) with `gh issue create` and stopped there —
   they landed with **no Projects v2 board membership and `parent: null`**, off the AssayOps board and
