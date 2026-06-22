@@ -14,7 +14,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   graded reward — the **verifier (T1) computes** `reward∈{0,1}`, the **reward ledger (T4) signs +
   WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
 - **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes: **#114 (OpenEnv/TRL,
-  gates E5) is delivered — GO on OpenEnv-native Python → E5/#6 unblocked**; **#115** (ledger
+  gates E5) is delivered — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, awaiting review);
+  **#115** (ledger
   rfc8785/KMS/Object-Lock, gates E4), **#80** (boto3 read coverage) + **account infra T7 (P1-BLOCKING)** +
   LocalStack remain — **no proof-critical code starts on stale TS assumptions**. The contracts spine
   continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) then **#29** (CI parity).
