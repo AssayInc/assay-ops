@@ -1,17 +1,7 @@
 import { expect, test } from "bun:test"
 import pino from "pino"
+import { once, sink } from "pino-test"
 import { DEFAULT_REDACT_PATHS, createLoggerOptions, resolveLogLevel } from "../src"
-
-function emit(payload: Record<string, unknown>, msg = "test"): string {
-  const lines: string[] = []
-  const logger = pino(createLoggerOptions({ level: "info" }), {
-    write: (line: string) => {
-      lines.push(line)
-    },
-  })
-  logger.info(payload, msg)
-  return lines.join("")
-}
 
 test("resolveLogLevel accepts supported levels and falls back to info", () => {
   expect(resolveLogLevel("debug")).toBe("debug")
@@ -33,36 +23,52 @@ test("DEFAULT_REDACT_PATHS covers the high-value credential paths", () => {
   expect(DEFAULT_REDACT_PATHS).toContain("privateKey")
 })
 
-test("redacts top-level, nested, AWS-credential, and header secrets in real output", () => {
-  const out = emit({
-    password: "PW_LEAK",
-    config: { secretAccessKey: "SAK1_LEAK", credentials: { secretAccessKey: "SAK2_LEAK" } },
-    req: { headers: { authorization: "Bearer TOK_LEAK", "x-api-key": "XAK_LEAK" } },
+test("redacts top-level, nested, AWS-credential, and header secrets", async () => {
+  const stream = sink()
+  const logger = pino(createLoggerOptions({ level: "info" }), stream)
+
+  logger.info(
+    {
+      password: "secret",
+      config: { secretAccessKey: "sak1", credentials: { secretAccessKey: "sak2" } },
+      req: { headers: { authorization: "Bearer t", "x-api-key": "k" } },
+      keep: "visible",
+    },
+    "msg",
+  )
+
+  await once(stream, {
+    level: 30,
+    msg: "msg",
+    password: "[redacted]",
+    config: { secretAccessKey: "[redacted]", credentials: { secretAccessKey: "[redacted]" } },
+    req: { headers: { authorization: "[redacted]", "x-api-key": "[redacted]" } },
     keep: "visible",
   })
-  for (const leaked of ["PW_LEAK", "SAK1_LEAK", "SAK2_LEAK", "Bearer TOK_LEAK", "XAK_LEAK"]) {
-    expect(out).not.toContain(leaked)
-  }
-  expect(out).toContain("[redacted]")
-  expect(out).toContain("visible")
 })
 
-test("redacts secrets carried on child-logger bindings (pino redact covers bindings)", () => {
-  const lines: string[] = []
-  const base = pino(createLoggerOptions({ level: "info" }), {
-    write: (line: string) => {
-      lines.push(line)
-    },
+test("redacts secrets carried on child-logger bindings", async () => {
+  const stream = sink()
+  const logger = pino(createLoggerOptions({ level: "info" }), stream)
+
+  logger.child({ authorization: "Bearer c", service: "verifier" }).info("with binding")
+
+  await once(stream, {
+    level: 30,
+    msg: "with binding",
+    authorization: "[redacted]",
+    service: "verifier",
   })
-  base.child({ authorization: "Bearer CHILD_LEAK", service: "verifier" }).info("with binding")
-  const out = lines.join("")
-  expect(out).not.toContain("Bearer CHILD_LEAK")
-  expect(out).toContain("[redacted]")
-  expect(out).toContain("verifier")
 })
 
-test("preserves Error message and stack (redaction does not flatten errors)", () => {
-  const out = emit({ err: new Error("BOOM_MARKER") })
-  expect(out).toContain("BOOM_MARKER")
-  expect(out).toContain("stack")
+test("preserves Error message and stack (redaction does not flatten errors)", async () => {
+  const stream = sink()
+  const logger = pino(createLoggerOptions({ level: "info" }), stream)
+
+  logger.info({ err: new Error("BOOM_MARKER") }, "failed")
+
+  await once(stream, (log: { err?: { message?: string; stack?: string } }) => {
+    expect(log.err?.message).toBe("BOOM_MARKER")
+    expect(typeof log.err?.stack).toBe("string")
+  })
 })

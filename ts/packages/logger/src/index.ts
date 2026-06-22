@@ -75,7 +75,9 @@ export function createLoggerOptions({
   // Never pretty-print in production, even if a caller passes pretty: true.
   const prettyEnabled = pretty && process.env.NODE_ENV !== "production"
   return {
-    base: bindings,
+    // Only override pino's default base (pid + hostname) when the caller supplies bindings; otherwise
+    // keep pid/hostname so logs stay traceable.
+    ...(bindings ? { base: bindings } : {}),
     level: level ?? resolveLogLevel(process.env.LOG_LEVEL),
     name,
     redact: {
