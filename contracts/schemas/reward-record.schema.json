@@ -43,8 +43,8 @@
     },
     "gradedAt": {
       "type": "string",
-      "pattern": "^[0-9]+$",
-      "description": "Grading time as integer nanoseconds since the Unix epoch, encoded as a digit string (~19 digits exceeds 2^53, so it must be a string). One canonical form — never RFC 3339 — keeps the signed bytes unambiguous."
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "description": "Grading time as integer nanoseconds since the Unix epoch, encoded as a canonical digit string (no leading zeros; ~19 digits exceeds 2^53, so it must be a string). One canonical form — never RFC 3339 — keeps the signed bytes unambiguous."
     },
     "nonce": {
       "type": "string",

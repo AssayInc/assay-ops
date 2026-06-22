@@ -37,6 +37,7 @@
               "type": "object",
               "additionalProperties": false,
               "required": ["path"],
+              "anyOf": [{ "required": ["expected"] }, { "required": ["actual"] }],
               "properties": {
                 "path": {
                   "type": "string",

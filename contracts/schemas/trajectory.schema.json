@@ -19,8 +19,8 @@
     },
     "createdAt": {
       "type": "string",
-      "pattern": "^[0-9]+$",
-      "description": "Episode start as integer nanoseconds since the Unix epoch, encoded as a digit string (same canonical form as the reward record's gradedAt)."
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "description": "Episode start as integer nanoseconds since the Unix epoch, encoded as a canonical digit string (no leading zeros; same form as the reward record's gradedAt)."
     },
     "steps": {
       "type": "array",

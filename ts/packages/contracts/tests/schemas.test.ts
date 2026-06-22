@@ -135,6 +135,11 @@ describe("contract schemas (E1-1)", () => {
       const validate = validatorFor("trajectory")
       expect(validate({ ...VALID.trajectory, createdAt: "not-a-time" })).toBe(false)
     })
+
+    test("reward-record rejects a leading-zero gradedAt (non-canonical — JCS byte-parity)", () => {
+      const validate = validatorFor("reward-record")
+      expect(validate({ ...VALID["reward-record"], gradedAt: "007" })).toBe(false)
+    })
   })
 
   describe("task-spec tool enum is terraform | cdk", () => {
@@ -180,6 +185,11 @@ describe("contract schemas (E1-1)", () => {
       expect(
         validate(resource({ change: "unchanged", propertyDiffs: [{ path: "X", expected: 1, actual: 2 }] })),
       ).toBe(false)
+    })
+
+    test("rejects a propertyDiff carrying neither expected nor actual", () => {
+      const validate = validatorFor("diff-ir")
+      expect(validate(resource({ change: "modified", propertyDiffs: [{ path: "X" }] }))).toBe(false)
     })
   })
 })

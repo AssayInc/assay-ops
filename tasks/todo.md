@@ -58,14 +58,19 @@ large IDs/nonces/ns-timestamps modeled as **strings**, rewards as **bounded doub
   value typing deferred to where the IR is produced).
 - **Tightening round (grounded in `DECISIONS.md` + assay-brain, per founder guidance — don't trust the
   AI-written issue blindly):** timestamps (`gradedAt`/`createdAt`) → integer-nanosecond **digit strings**
-  (`^[0-9]+$`, one canonical form, not the RFC-3339-or-ns ambiguity I'd invented); `task-spec.tool` →
+  (`^(0|[1-9][0-9]*)$`, one canonical no-leading-zeros form, not the RFC-3339-or-ns ambiguity); `task-spec.tool` →
   `terraform | cdk` (the locked T2/T3 authoring tools — CloudFormation is the read *substrate*, dropped);
   `diff-ir` **`modified ⟺ non-empty propertyDiffs`** via `if/then/else`; and `contracts/schemas/**` added to
   turbo `globalDependencies` — a schema change now busts the contracts-test cache (it didn't before: a
   false-green gap, since the test reads schemas from outside its package). Still deferred: unique
   resource-address (not cleanly JSON-Schema-expressible → the E3 reward core). 24 tests, pristine output.
-- **Other design calls:** `tool` enum = terraform | cdk | cloudformation; field shapes a coherent v1
-  grounded in the `reward-ledger-worm` + `deterministic-verification` skills.
+- **Second cross-model review (pre-merge, Claude + Codex xhigh) — fixes:** timestamp pattern →
+  `^(0|[1-9][0-9]*)$` (reject leading zeros — `"007"`≡`"7"` was a JCS byte-parity hole on the *signed*
+  path); `diff-ir` propertyDiff now requires `expected` **or** `actual` (`anyOf`) so an empty `{path}` diff
+  can't validate. Deferred to #27 (a codegen-policy call both reviewers agree on): typing `diff-ir`
+  `expected`/`actual` (bare any-JSON → `any` in generated TS) and IR-number JCS precision.
+- **Other design calls:** `tool` enum = `terraform | cdk`; field shapes a coherent v1 grounded in the
+  `reward-ledger-worm` + `deterministic-verification` skills.
 - **Scope discipline:** schemas + validation only. Codegen (#27), JCS canonicalization + golden vectors
   (#28, the locked `contracts/vectors`), CI parity (#29) are their own issues — not pulled in. `contracts/`
   is the neutral source (not a workspace pkg), so it's outside the lint/typecheck graph by design.
