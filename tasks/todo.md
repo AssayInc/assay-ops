@@ -33,12 +33,25 @@ contributor workflow + a pointer to the quality bar, linking (not duplicating) t
 - [x] Enable secret scanning + push protection (repo API); resolve fabricated test alerts.
 - [x] Add `.github/CODEOWNERS`, `.github/pull_request_template.md`, `CONTRIBUTING.md`.
 - [x] `bun run verify` green (docs/config — no verify-graph impact; FULL TURBO).
-- [ ] Prove: a planted (fabricated) secret is blocked on push.
-- [ ] Update `PROGRAM.md` + `ISSUES.md`; PR "Closes #21"; `/review`.
+- [x] Prove: a planted (fabricated) secret is blocked on push.
+- [x] Update `PROGRAM.md` + `ISSUES.md`; PR "Closes #21" (#108); `/review`.
 
 ### Review
 
-_(added on completion)_
+- **Done + proven:** secret scanning + push protection **enabled** repo-side (org has GitHub Advanced
+  Security); `.github/CODEOWNERS` (`* @samuelcastro`), `.github/pull_request_template.md` (documents
+  `Closes #`), `CONTRIBUTING.md` (workflow + quality-bar pointer + secrets; links README Get started). PR
+  #108 (`Closes #21`); `bun run verify` green (8/8, FULL TURBO).
+- **Push-protection proof:** a planted basket of push-protection-supported secrets (Stripe/SendGrid/Slack)
+  was **rejected on push** (`GH013 … Push cannot contain secrets`, exit 1, ref rejected; no bypass, nothing
+  landed). First attempts used `google_api_key` — **detection-only** (`hasPushProtection: false`), which
+  lands + alerts and does NOT test push protection (user-corrected; lesson added).
+- **Scope discipline:** no speculative CODEOWNERS rules for the not-yet-existent locked-grader paths
+  (`contracts/vectors` #28 / `tools/red-team` #56) — they land in those epics' `fixture-change` PRs; the
+  untracked `.env.example` (not this issue) kept out of the diff.
+- **Deferred (ISSUES.md):** require-code-owner-review on the `main` ruleset (single collaborator → would
+  deadlock solo PRs) + the per-path grader CODEOWNERS rules.
+- **Pending:** `/review`; user approval to merge (then move E0-4 to PROGRAM.md *Recently Landed*).
 
 ---
 
