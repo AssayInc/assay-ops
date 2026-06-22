@@ -1,9 +1,10 @@
 # assay-ops
 
-AssayOps core monorepo: the proprietary IP (write-isolated verifier, OpenEnv env-server, IaC
-adapters, reward ledger) in **TypeScript**, plus the **Python** trainer/eval, bridged by one
-codegen'd contract schema. Polyglot by design — **Bun + Turborepo** (TS) and **UV** (Python),
-with a single `verify` gate spanning both lanes.
+AssayOps core monorepo: the **Python** proof-critical IP (write-isolated verifier, OpenEnv env-server,
+IaC adapters, reward ledger) plus the **Python** trainer/eval — one Python core — with **TypeScript**
+for the public/web surface (`@assayops/contracts`, `assay-web`), bridged by one codegen'd contract
+schema. Python core, TS at the edge — **UV** (Python) + **Bun + Turborepo** (TS), with a single
+`verify` gate spanning both lanes.
 
 ## Start here
 

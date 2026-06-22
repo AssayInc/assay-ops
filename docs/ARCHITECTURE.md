@@ -5,24 +5,30 @@
 > read **[`DECISIONS.md`](../DECISIONS.md)**. The trust model lives there and is **not** duplicated
 > here; this file points to it.
 
-`assay-ops` is the core monorepo: the proprietary IP in **TypeScript** (write-isolated verifier,
-OpenEnv env-server, IaC adapters, reward ledger) plus the **Python** trainer/eval, bridged by **one
-codegen'd contract schema** ([`DECISIONS.md` §2, decision 5A](../DECISIONS.md#2-locked-architecture-decisions-1ct3)).
-The split is polyglot by design ([I1, I2](../DECISIONS.md#4-implementation-decisions-i1i11)).
+`assay-ops` is the core monorepo: the **proof-critical IP in Python** (write-isolated verifier, IaC
+adapters + diff/reward core, reward ledger, deterministic replay, the OpenEnv env-server, episode
+orchestration) plus the **Python** trainer/eval — one Python core — with **TypeScript** kept for the
+public/web surface (`@assayops/contracts`, `assay-web`, npm consumers, optional CDK/task-authoring
+tooling), bridged by **one codegen'd contract schema**
+([`DECISIONS.md` §2, decision 5A](../DECISIONS.md#2-locked-architecture-decisions-1ct3)). Python-first
+core, TypeScript at the edge ([I1–I7, rebaselined by E17](../DECISIONS.md#4-implementation-decisions-i1i11)).
 
 ## Build & toolchain (how the lanes run)
 
-- **TS lane** — Bun + Turborepo + Biome. Shared config lives in `ts/packages/typescript-config`
-  (tsconfig `base`/`bun`) and `ts/packages/biome-config` (lint/format). Per package: `typecheck`
-  = `tsc --noEmit`, `lint` = `biome lint .`, `test` = `bun test`.
-- **Python lane** — a **UV** workspace, **orchestrated by Turbo** via a thin `package.json` wrapper
-  in each Python package whose scripts shell out to `uv run` (decision **I2** / `vercel/turborepo#1077`).
-  UV owns Python deps + the shared `.venv`; Turbo owns the one task graph. Per package: `typecheck`
-  = `mypy`, `lint` = `ruff check`, `test` = `pytest`. *(ruff/mypy/pytest are E0-1 `[impl]` defaults,
-  not a locked decision — swap freely.)*
+- **Python lane (the proof-critical core)** — a **UV** workspace, **orchestrated by Turbo** via a thin
+  `package.json` wrapper in each Python package whose scripts shell out to `uv run` (decision **I2** /
+  `vercel/turborepo#1077`). UV owns Python deps + the shared `.venv`; Turbo owns the one task graph. Per
+  package: `typecheck` = `mypy --strict`, `lint` = `ruff check`, `test` = `pytest`. *(ruff/mypy/pytest are
+  E0-1 `[impl]` defaults, not a locked decision — swap freely. Astral's `ty` is the committed target type
+  checker (same uv+ruff ecosystem) but **beta / 0.0.x / no stable API** as of 2026-06 with open Pydantic
+  false-positives — `mypy --strict` is the bridge; adopt `ty` once it is Stable + Pydantic-clean, re-checked
+  at E2's first step. See #119.)*
+- **TS lane (consumer / web / tooling surface)** — Bun + Turborepo + Biome. Shared config lives in
+  `ts/packages/typescript-config` (tsconfig `base`/`bun`) and `ts/packages/biome-config` (lint/format).
+  Per package: `typecheck` = `tsc --noEmit`, `lint` = `biome lint .`, `test` = `bun test`.
 - **One gate:** `bun run verify` → `turbo run typecheck lint test` across **both** lanes.
 - **Setup:** `bun install && uv sync` (or `bun run setup`). Lockfiles `bun.lock` + `uv.lock` are
-  committed. Generated contract artifacts (TS + Pydantic) will be committed in E1, so neither lane needs
+  committed. Generated contract artifacts (Pydantic + TS) are committed in E1, so neither lane needs
   the other's toolchain to build ([I2, I3](../DECISIONS.md#4-implementation-decisions-i1i11)).
 
 ## Repository layout (target map; status per item)
@@ -44,25 +50,26 @@ assay-ops/
 │  └─ vectors/ ................ ◻ golden JCS byte-parity fixtures — fixture-change only (#28)
 │     (codegen = the root `just codegen` recipe: quicktype (TS) + datamodel-code-generator (Py) [#27])
 │
-├─ ts/                          # ── Bun + Turborepo ──────────────────────────────────
-│  ├─ packages/
-│  │  ├─ typescript-config/ ... ✅ shared tsconfig (base + bun)
-│  │  ├─ biome-config/ ........ ✅ shared lint/format
-│  │  ├─ contracts/ ........... ✅ E1 generated TS types (quicktype) [#27]; ◻ JCS canonicalize [#28]
-│  │  ├─ diff-ir/ ............. ◻ E3 normalized diff IR + shared reward core [6A]
-│  │  ├─ adapter-terraform/ ... ◻ E3 Terraform → diff IR (the A-spike engine) [T2]
-│  │  ├─ adapter-cdk/ ......... ◻ E3 CDK adapter [T3]
-│  │  ├─ verifier/ ............ ◻ E2 write-isolated verifier core (account B, read-only) [T1]
-│  │  ├─ reward-ledger/ ....... ◻ E4 KMS-sign + S3 Object Lock (WORM), trajectory-keyed [T4]
-│  │  ├─ replay/ .............. ◻ E6 deterministic replay + flaky-task quarantine [T8]
-│  │  ├─ env-server/ .......... ◻ E5 OpenEnv-compatible TS HTTP/WS server [I5]
-│  │  └─ orchestrator/ ........ ◻ E7 direct orchestration; Harbor slot for Phase-2 [T12]
-│  └─ apps/
-│     └─ assayctl/ ............ ◻ E7 dev CLI (run episode, grade, replay, red-team)
-│
-├─ py/                          # ── UV workspace (each pkg: thin package.json wrapper → uv) ──
+├─ ts/                          # ── Bun + Turborepo — consumer / web / tooling surface ──
 │  └─ packages/
-│     ├─ contracts/ ........... ✅ E1 generated Pydantic v2 (datamodel-codegen) [#27]; ◻ rfc8785 canon. [#28]
+│     ├─ typescript-config/ ... ✅ shared tsconfig (base + bun)
+│     ├─ biome-config/ ........ ✅ shared lint/format
+│     ├─ contracts/ ........... ✅ E1 generated TS binding (quicktype) — the PUBLIC `@assayops/contracts` (assay-web / npm / TS labs) [#27]; ◻ JCS verify-side [#28]
+│     └─ logger/ .............. ✅ pino structured logging for the TS surface (`@assayops/logger`)
+│                                  (no ts/apps yet — assayctl is Python; see py/ below)
+│
+├─ py/                          # ── UV workspace — THE proof-critical core (each pkg: thin package.json wrapper → uv) ──
+│  └─ packages/
+│     ├─ contracts/ ........... ✅ E1 generated Pydantic v2 (datamodel-codegen) — the INTERNAL core contract [#27]; ◻ rfc8785 canon. [#28] (the ledger E4 signs)
+│     ├─ diff-ir/ ............. ◻ E3 normalized diff IR + shared reward core [6A]
+│     ├─ adapter-terraform/ ... ◻ E3 Terraform → diff IR (the A-spike engine) [T2]
+│     ├─ adapter-cdk/ ......... ◻ E3 CDK adapter [T3]
+│     ├─ verifier/ ............ ◻ E2 write-isolated verifier core (account B, read-only, boto3 Cloud Control/CFN) [T1]
+│     ├─ reward-ledger/ ....... ◻ E4 KMS-sign + S3 Object Lock (WORM), trajectory-keyed (boto3) [T4]
+│     ├─ replay/ .............. ◻ E6 deterministic replay + flaky-task quarantine [T8]
+│     ├─ env-server/ .......... ◻ E5 OpenEnv-native Python server (create_app / FastAPI) [I5]
+│     ├─ orchestrator/ ........ ◻ E7 direct orchestration; Harbor slot for Phase-2 [T12]
+│     ├─ assayctl/ ............ ◻ E7 dev CLI (run episode, grade, replay, red-team)
 │     ├─ trainer/ ............. ◻ E12 SFT pipeline (TRL v1.0 + LoRA) [I6]
 │     └─ evals/ ............... ◻ E13 Inspect AI harness (deploy-verifier as Scorer) [T11]
 │
@@ -75,7 +82,8 @@ assay-ops/
 
 > **Layout note — `ts/` + `py/`, not `apps/` + `packages/`.** Split by **language** at the top level so
 > each workspace manager and linter has an unambiguous scope (Bun/Biome own `ts/**`; UV/ruff/mypy own
-> `py/**`); the app-vs-library split is preserved *under* `ts/` (`ts/apps/*`, `ts/packages/*`). Per
+> `py/**`); the app-vs-library split lives *under* `ts/` (`ts/apps/*` / `ts/packages/*`); Python CLIs
+> (e.g. `assayctl`) are `py/packages/*` with console-script entry points. Per
 > Turborepo's directory-grouping support: single-level globs only (`ts/packages/*`, never `**`), and no
 > `package.json` at the grouping dirs.
 
@@ -88,10 +96,13 @@ Built **first** (E1) — it is the join key for the whole system and the thing a
 independently verify:
 
 ```
-contracts/schemas/*.schema.json   (one neutral source of truth, neither language owns it)
-        │ quicktype                              │ datamodel-code-generator
+contracts/schemas/*.schema.json      one neutral, public source of truth — neither language owns it
+        │ datamodel-code-generator               │ quicktype
         ▼                                        ▼
-ts/packages/contracts  (TS types + JCS)   py/packages/contracts  (Pydantic v2 + rfc8785)
+py/packages/contracts                    ts/packages/contracts
+  Pydantic v2 + rfc8785 canon. →           generated TS binding + JCS canon. →
+  the INTERNAL core contract               the PUBLIC `@assayops/contracts`
+        (the reward ledger E4 signs the canonical bytes; consumers verify)
 ```
 
 Generated artifacts on both sides are **committed**, regenerated by a root **`just codegen`** task both
@@ -110,19 +121,19 @@ A structural view of the runtime path. **The trust boundary — account A vs B, 
 never runs the agent's `synth`/`plan` — is in [`DECISIONS.md` §1](../DECISIONS.md#1-trust-model-the-moat-in-one-diagram--the-rule-that-defines-the-product)** and is not restated here.
 
 ```
-  agent (policy) ⇄ env-server [E5]          # OpenEnv HTTP/WS; agent deploys IaC,
-        │                                   # its synth/plan runs A-side as untrusted data
-        ▼
+  agent (policy) ⇄ py/env-server [E5]       # OpenEnv HTTP/WS (account A); agent deploys IaC, its
+        │                                   # synth/plan runs A-side as untrusted data. step() reward
+        ▼                                   # is NON-graded shaping only (reward-boundary invariant §8)
   DEPLOYED cloud resource state
         │  cross-account, READ-ONLY
         ▼
-  verifier [E2] ── adapter [E3] → diff IR [E3] → reward ∈ {0,1} + diff report
+  py/verifier [E2] ── py/adapter [E3] → diff IR [E3] → reward ∈ {0,1} + diff report
         │
         ▼
-  reward-ledger [E4]   # KMS-signed, S3 Object Lock (WORM), keyed by trajectory_id, in account B
+  py/reward-ledger [E4]   # KMS-signed, S3 Object Lock (WORM), keyed by trajectory_id, in account B
         │  read-only signed records
         ▼
-  py/trainer [E12] · py/evals [E13]         # join on trajectory_id; SFT + the lift proof
+  py/trainer [E12] · py/evals [E13]         # join on trajectory_id; trains on the B-side reward — never the env's step()
 ```
 
 Determinism + deterministic replay ([E6, T8]) wrap the episode so a trajectory regrades to an
@@ -132,13 +143,17 @@ identical reward. The headline proof is a lift on an OOD slice — eval rigor is
 ## How to navigate
 
 - **Read order:** [`DECISIONS.md`](../DECISIONS.md) (rules) → this file (layout).
-- **Add a TS package:** `ts/packages/<name>/` with `package.json` (extend the shared configs via
-  `workspace:*`, add `typecheck`/`lint`/`test` scripts) + `tsconfig.json` extending
-  `@assayops/typescript-config/bun.json`. Turbo picks it up via the `ts/packages/*` workspace glob.
+- **Which lane?** Proof-critical core (verifier, adapters, diff/reward, ledger, replay, env-server,
+  orchestration, trainer, evals) = **Python** (`py/packages/*`); public/web/tooling (the
+  `@assayops/contracts` binding, dashboards, npm consumers) = **TypeScript** (`ts/packages/*`). The
+  language is rebaselined by E17 ([`DECISIONS.md` I1–I7](../DECISIONS.md#4-implementation-decisions-i1i11)).
 - **Add a Python package:** `py/packages/<name>/` with a `pyproject.toml` *and* a thin `package.json`
   whose `typecheck`/`lint`/`test` scripts call `uv run` — that wrapper is what lets the one Turbo
   graph drive the Python lane (I2). Add it to nothing else; `[tool.uv.workspace]` + the
   `py/packages/*` glob pick it up.
+- **Add a TS package:** `ts/packages/<name>/` with `package.json` (extend the shared configs via
+  `workspace:*`, add `typecheck`/`lint`/`test` scripts) + `tsconfig.json` extending
+  `@assayops/typescript-config/bun.json`. Turbo picks it up via the `ts/packages/*` workspace glob.
 - **The gate is `bun run verify`.** Every *source* package wires `typecheck`/`lint`/`test` (the
   config-only packages — `typescript-config`, `biome-config` — export config and have no gate tasks);
   CI (E0-2) runs

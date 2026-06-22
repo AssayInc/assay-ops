@@ -6,6 +6,20 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **E17 Python-first rebaseline (#113) — decision PR landed; migration follow-ups open.** The
+  proof-critical core is rebaselined TypeScript → **Python** (verifier, diff/reward, adapters, ledger,
+  replay, env-server, orchestration → `py/packages/*`); TS stays for the public/web/tooling surface. The
+  decision PR changed the **floor only** (`DECISIONS.md` I1–I7 + §8 + the §1 diagram labels,
+  `docs/ARCHITECTURE.md` package map + episode flow, `CLAUDE.md` top-line + the skill-preflight AWS-read
+  row) and **preserved the trust floor untouched**; the **OpenEnv reward-boundary invariant is locked
+  non-waivable** (§8). **E2–E7 (#3–#8) are re-scoped to Python and blocked on the decision + the
+  scheduled feasibility spikes** (OpenEnv/TRL spike, ledger spike; verifier-read = #80, re-scoped to
+  boto3). **Open migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
+  built TS** — `@assayops/logger` (retire vs keep) + a Python structured-logging story, and a **boto3
+  counterpart** to the `infra-local` LocalStack smoke; (2) **brain/wiki sync** — the raw plans
+  (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) + wiki pages still
+  describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** and finish the
+  `CLAUDE.md`/skill-layer language flip beyond the top-line + AWS row.
 - **LocalStack auth token + plan tier (E0-3 / #20).** The free tokenless community edition was retired in
   the 2026-03-23 single-image change; the `infra-local` dev loop + the smoke CI run the licensed **LocalStack
   for AWS** image with `LOCALSTACK_AUTH_TOKEN` (a secret, never committed — local `.env` + a CI repo secret,

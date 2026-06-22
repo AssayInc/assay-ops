@@ -6,6 +6,54 @@ when done.
 
 ---
 
+## E17 (#113) — Rebaseline to a Python-first proof-critical core — IN PROGRESS (branch `feat/e17-python-first-rebaseline`)
+
+**Goal (AC):** a focused **decision PR** that locks **Python-first proof-critical core** (TS kept for
+public/web/tooling), **preserves the trust floor untouched**, and **locks the OpenEnv reward-boundary
+invariant in writing (non-waivable)**. Scope = floor docs + issue re-scope, **not** a code-migration
+sweep — the proof-critical core is unbuilt.
+
+**Validation (issue vs. DECISIONS + brain — don't trust the AI-written issue blindly):**
+- Grounded in `DECISIONS.md` (frozen floor) + the brain reconsideration
+  (`raw/conversations/assay-polyglot-typescript-vs-python.md`, 2026-06-22): the only hard anchor is
+  **Python for train/eval** (TRL/Inspect/OpenEnv); the "CDK forces Node→TS" claim was a **category error**
+  (CDK Python is first-class; Node is toolchain); the **moat is language-independent**. Cross-model
+  convergence (Claude + Codex) → Python core, TS at the edge.
+- **Trust floor preserved:** §1 account A/B split, §2 locked decisions, §3 tasks, §5 15-vector bar,
+  §6 eval rigor, §7 risks — untouched (only the §1 *language labels* flip, per founder OK). The pivot
+  touches **§4 I1–I7** (the `[impl]` language/tooling calls) + **§8** (env-server label + the new invariant).
+- **Reward-boundary invariant** is the one new trust statement the OpenEnv-native Python pivot forces (the
+  A-side env-server must never compute the graded reward). Locked in §8 (non-waivable), referenced from I5.
+
+**Design (smallest change that meets the AC):**
+- `DECISIONS.md`: §1 labels (TS→Python, surgical, boundary column held); §4 preamble + I2/I3/I5/I7
+  rewritten (I1/I4/I6 already Python-anchored/topology — unchanged); §8 env-server relabel + the
+  reward-boundary bullet. Provenance cites E17 (2026-06-22) as superseding the implementation-plan's TS-IP split.
+- `docs/ARCHITECTURE.md`: package map moves the **unbuilt** proof-critical packages `ts/packages/*` →
+  `py/packages/*`; `ts/packages/contracts` = public binding, `py/packages/contracts` = internal core;
+  spine + episode diagrams to Python ownership + the reward-boundary note.
+- `CLAUDE.md` (minimal, founder OK): top-line Python-core framing; skill-preflight AWS-read row →
+  boto3/Python (demote `aws-sdk-js-v3-usage` to the consumer surface). `AGENTS.md` symlinks → auto.
+- `PROGRAM.md` / `ISSUES.md`: pivot recorded; E2–E7 gated; migration follow-ups tracked.
+- Issues: re-scope epics #3–#8 + contracts #2/#28/#29 (**reframe, not delete**); re-scope #80 (boto3 read
+  spike); create blocking follow-ups (OpenEnv/TRL spike, ledger spike, TS re-home, brain/wiki sync); comment #113.
+
+**Steps:**
+- [x] Branch `feat/e17-python-first-rebaseline`; ground in DECISIONS + brain conversation + #113.
+- [x] `DECISIONS.md` §1 labels + §4 I1–I7 + §8 (incl. the non-waivable reward-boundary invariant).
+- [x] `docs/ARCHITECTURE.md` package map + spine + episode flow.
+- [x] `CLAUDE.md` top-line + AWS-read row.
+- [x] `PROGRAM.md` + `ISSUES.md` + this `tasks/todo.md`; `README.md` top-line (caught by `/review`).
+- [x] Re-scope #3–#8 + #2/#28/#29 + #80 (→ Python; reframe-not-delete); create blocking follow-ups (#114–#117); comment on #113.
+- [x] `bun run verify` green; PR **#118** (`Closes #113`); `/review` (Claude + Codex xhigh) → README + signing-attribution (verifier computes / ledger signs) fixes applied. **Awaiting explicit go to merge** (never merge unattended).
+
+### Review (`/review` — Claude + Codex `gpt-5.5` xhigh)
+
+- **Claude adversarial:** 1 finding — `README.md` front-line still framed the IP as TypeScript (stale, outside the original 6-file diff). Fixed. Trust floor verified byte-unchanged (§2/§5/§6/§7 outside all hunks); reward-boundary invariant loophole-free; §1 ASCII boundary column holds; anchors + technical claims valid.
+- **Codex xhigh (5 findings, all applied):** (1+2) **signing misattributed** to contracts/verifier → corrected to the **reward ledger (E4/T4/4B)**: the verifier *computes* `reward∈{0,1}`, the ledger *signs* (KMS) + *writes* (WORM) — fixed in `ARCHITECTURE.md` (pkg line + spine diagram) and `DECISIONS.md` (I3 + §8 invariant); (3) `PROGRAM.md` Recently-Landed `aws-sdk-js→verifier E2` mapping marked E17-superseded (→ boto3); (4) these step checkboxes synced to reality; (5) `ARCHITECTURE.md` layout note "app-vs-library split per lane" corrected (Python CLIs are `py/packages/*` console-scripts, no `py/apps/`).
+
+---
+
 ## E1-2 (#27) — Codegen wiring (quicktype + datamodel-code-generator) — IN PROGRESS (branch `feat/e1-2-codegen-wiring`)
 
 **Goal (AC):** a root **`just codegen`** regenerates **committed** TS types (quicktype) + Pydantic v2

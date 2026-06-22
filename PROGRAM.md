@@ -5,32 +5,41 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **Phase 0 — Gate & scaffolding.** The repo skeleton ([`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md))
-  and the frozen floor ([`DECISIONS.md`](./DECISIONS.md)) are in; the AI-operating layer lands with
-  **E0-6 (#18)** (this file set). The **agent skill layer** is in: the **skills.sh lock + consumer `.agents/skills/`
-  wiring** (PR #89 — `bun`/`turborepo`/`karpathy-guidelines` + the `assay-brain` recall skill, vendored and
-  symlinked into `.claude/`+`.hermes/`; `assay-brain` built in `AssayInc/skills`, **#73**, closed),
-  the **prefer-official cloud/IaC/training/eval/dev-loop packs** (**E0-10 (#85)**, landed — 25 skills:
-  18 official-vendor (AWS / Terraform / OpenEnv / TRL / Python-UV / LocalStack + `skill-creator`), 3 Inspect AI
-  (maintainer-authored, `meridianlabs-ai`), and 4 well-adopted community (`wshobson/agents` — TS/Python craft)),
-  and the **five homegrown AssayOps domain skills** (**E0-11 (#86)**, landed — `write-isolated-verifier` /
-  `reward-ledger-worm` / `deterministic-verification` / `red-team-exit-bar` / `eval-rigor`, authored in
-  `AssayInc/skills` and vendored here). **E0-5 board (#22)** and **E0-9 assay-web rename (#81)** are done
-  (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
-  `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
-  **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). **Phase-0
-  scaffolding is complete; Phase-1 build has started.** The **T0 team gate (#25) closed** — the founder
-  is the interim RL/eval owner and the hire is opened (`DECISIONS.md` §4 **R5** founder-backstop: Phases
-  1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build has opened at the
-  **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** — the four JSON
-  Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
-  test — **landed** (PR #109); **E1-2 codegen wiring (#27)** (`just codegen` → quicktype TS +
-  datamodel-code-generator Pydantic v2, a semantic round-trip, deterministic) — **landed** (PR #112), see
-  Recently Landed. **Next: #28** (JCS canonicalization + golden vectors), then **#29** (CI
-  regenerate-and-diff parity gate).
+- **Python-first core is LOCKED (E17 / #113 — landed, PR #118).** The proof-critical core is **Python**
+  (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
+  episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
+  (`@assayops/contracts` binding, `assay-web`, dashboards, npm consumers). The **trust floor is preserved
+  untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). The **OpenEnv
+  reward-boundary invariant** is locked **non-waivable** (§8): the A-side env-server never computes the
+  graded reward — the **verifier (T1) computes** `reward∈{0,1}`, the **reward ledger (T4) signs +
+  WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
+- **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes **#114** (OpenEnv/TRL,
+  gates E5), **#115** (ledger rfc8785/KMS/Object-Lock, gates E4), **#80** (boto3 read coverage) + **account
+  infra T7 (P1-BLOCKING)** + LocalStack — **no proof-critical code starts on stale TS assumptions**. The
+  contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) then
+  **#29** (CI parity).
+- **Type checker:** `mypy --strict` is the bridge; **`ty`** (Astral) is the committed target, adopted at
+  E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
+  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
+- **Next ready work:** **#28** (contract-spine JCS canonicalization + golden vectors) — and, to unblock
+  E2–E7, the feasibility spikes (#114/#115, #80). **T0 team gate (#25) closed** (founder interim RL/eval
+  owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E17 (#113): Python-first rebaseline — decision gate (PR #118).** Locked the **Python-first
+  proof-critical core** (verifier / diff-reward / adapters / ledger / replay / OpenEnv env-server /
+  orchestration → `py/packages/*`; TS kept for the public/web/tooling surface) with the **trust floor
+  preserved untouched** (§1 account split, §2 locked decisions, §5 15-vector bar, §6 eval rigor). Locked
+  the **OpenEnv reward-boundary invariant** non-waivable (§8): the A-side env-server never computes the
+  graded reward — the verifier (T1) computes it, the reward ledger (T4) signs + WORM-writes it, joined by
+  `trajectory_id`. Rewrote `DECISIONS.md` §4 I1–I7 + §8 + §1 diagram labels, `docs/ARCHITECTURE.md` package
+  map + episode flow, `CLAUDE.md` + `README.md` framing + skill-preflight AWS-read→boto3; re-scoped epics
+  #3–#8 + contracts #2/#28/#29 + #80; created follow-ups #114/#115 (blocking spikes) + #116/#117/#119.
+  Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh) caught the `README` front-line + the
+  verifier-vs-ledger signing attribution; the type-checker gate was grounded against the official Astral
+  docs (`ty` beta/0.0.x → `mypy --strict` bridge, `ty` the committed target, #119). **No proof-critical
+  code moved** (unbuilt). (PR #118.)
 - **E1-2 (#27): codegen wiring.** Root **`just codegen`** regenerates the committed contract types from
   `contracts/schemas/` — **quicktype** → `ts/packages/contracts/src/generated.ts` (interfaces) +
   **datamodel-code-generator** → `py/packages/contracts/src/assayops_contracts/models/` (Pydantic v2,
@@ -85,7 +94,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 - **E0-10 (#85): prefer-official skill packs.** 25 skills vendored into the committed layer (18 official-vendor +
   3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`), each mapped to a coding surface: `skill-creator` (anthropics); AWS `aws-cdk` / `aws-sdk-js-v3-usage` /
-  `aws-cloudformation` / `aws-iam` (verifier read surface E2 + CDK adapter/drift E3/E11 + A/B role);
+  `aws-cloudformation` / `aws-iam` (verifier read surface E2 + CDK adapter/drift E3/E11 + A/B role; **E17
+  supersedes:** the verifier read is now **boto3/Python**, `aws-sdk-js-v3-usage` → the TS consumer surface);
   `terraform-style-guide` / `terraform-test` (adapter-terraform E3); `openenv-cli` / `generate-openenv-env`
   (env-server E5, from canonical `huggingface/OpenEnv` — `meta-pytorch/openenv` now redirects there);
   `hf-cli` / `trl-training` (trainer E12); `uv` / `ruff` (Python lane); LocalStack `localstack` /

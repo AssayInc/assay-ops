@@ -15,6 +15,40 @@ Entry format:
 
 ---
 
+## 2026-06-22 — ground-the-option-set-of-an-inherited-decision-not-just-the-pick
+- **Mistake:** "Resolved" the E17 type-checker gate to **mypy** by accepting the AI-written issue's
+  framing ("mypy vs pyright") + the existing E0-1 default — **without checking the official Astral docs and
+  without even considering `ty`** (Astral's type checker), the obvious same-ecosystem candidate for a repo
+  already on uv + ruff. Recorded it "resolved in the decision record" with zero doc-grounding. The founder
+  caught it ("did you ground every decision by official docs? like astral ty?").
+- **Rule:** When you "resolve" or lock a **tooling/library decision**, ground the **option SET itself**
+  against the official docs first — not just the option you picked. An AI-written issue's "X vs Y" framing
+  can silently omit the obvious candidate; "resolved in the record" without a primary-source check is the
+  cached-knowledge trap [[ground-in-official-docs-first]] exists to stop. One `/browse` of the vendor docs
+  settles it (here: ty's README → **beta, 0.0.x, no stable API, breaking changes expected** → wrong gate
+  for a proof-critical lane, so **mypy --strict** now + `ty` tracked adopt-when-stable). Cached "mypy is the
+  default" reasoning does not.
+- **Context:** E17 (#113) typing gate; Astral `ty` (docs.astral.sh/ty · github.com/astral-sh/ty), ruff
+  (lint/format only), uv. Sharpens [[ground-in-official-docs-first]] /
+  [[verify-against-official-docs-and-skills-before-acting]] — it applies to *which options exist*, not only
+  a chosen library's API.
+
+## 2026-06-22 — new-issues-must-join-the-board-and-parent-epic
+- **Mistake:** Created the E17 follow-up issues (#114–#117) with `gh issue create` and stopped there —
+  they landed with **no Projects v2 board membership and `parent: null`**, off the AssayOps board and
+  outside the E17 epic. The founder caught it ("#116 is not under any project … should be under the
+  correct epic").
+- **Rule:** An issue isn't tracked until it's **on the board AND parented**. After every `gh issue create`
+  here (`DECISIONS.md` I4 = GitHub Issues + Projects v2, epics-as-sub-issues), do three steps and verify:
+  (1) **add to the org project** — `gh project item-add 1 --owner AssayInc --url <issue-url>`; (2) **parent
+  under the right epic** via GraphQL **`addSubIssue`** (`gh issue edit` has **no** parent flag) — the
+  `E{N}-*` title prefix dictates the parent (`E17-*` → the E17 epic **#113**, itself under **#1/E0**);
+  (3) **set the board single-selects** (Status/Lane/Epic) with `gh project item-edit` to **mirror the
+  parent epic** (a bare item shows in "No Status"/no epic swimlane). Confirm with a `subIssues` /
+  `projectItems` GraphQL read before claiming done. Project #1 = `PVT_kwDOEYppDc4BbCzj`.
+- **Context:** E17 (#113) follow-ups #114–#117. Extends the CLAUDE.md task-loop "update PROGRAM/ISSUES +
+  GitHub issues" step — "create the issue" is not done at `gh issue create`.
+
 ## 2026-06-22 — use-the-librarys-official-mechanism-not-a-hand-roll
 - **Mistake:** Built `@assayops/logger` from cached pino knowledge instead of the official docs: (1) a
   hand-rolled recursive `formatters.log` redactor that **leaked base/child bindings** and **flattened
