@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import Ajv2020, { type AnySchemaObject } from "ajv/dist/2020"
+import Ajv2020, { type AnySchemaObject, type ValidateFunction } from "ajv/dist/2020"
 
 // The contract schemas are the neutral source of truth at the repo root (contracts/schemas),
 // codegen'd to both lanes in E1-2 (#27). This test file sits at ts/packages/contracts/tests —
@@ -15,8 +15,20 @@ function loadSchema(name: SchemaName): AnySchemaObject {
   return JSON.parse(readFileSync(join(SCHEMA_DIR, `${name}.schema.json`), "utf8")) as AnySchemaObject
 }
 
-function validatorFor(name: SchemaName) {
-  return new Ajv2020({ allErrors: true }).compile(loadSchema(name))
+// One shared Ajv instance — `compile` caches each schema, so compile each once and reuse it (the ajv.js.org
+// API docs' idiomatic pattern). When codegen (#27) produces the TS types, `ajv.compile<T>` makes the
+// validator a type guard (`data is T`) for type-safe validation in the verifier/ledger.
+const ajv = new Ajv2020({ allErrors: true })
+const validators = new Map<SchemaName, ValidateFunction>()
+
+function validatorFor(name: SchemaName): ValidateFunction {
+  const cached = validators.get(name)
+  if (cached) {
+    return cached
+  }
+  const validate = ajv.compile(loadSchema(name))
+  validators.set(name, validate)
+  return validate
 }
 
 // One well-formed instance per schema, with the modeling rules applied (string ids / nonces /
@@ -59,7 +71,7 @@ describe("contract schemas (E1-1)", () => {
         expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema")
         expect(typeof schema.$id).toBe("string")
         expect(schema.additionalProperties).toBe(false)
-        expect(() => new Ajv2020({ allErrors: true }).compile(schema)).not.toThrow()
+        expect(() => validatorFor(name)).not.toThrow()
       })
     }
   })
