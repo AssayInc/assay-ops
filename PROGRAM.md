@@ -21,12 +21,23 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). **Phase-0
   scaffolding is complete; Phase-1 build has started.** The **T0 team gate (#25) closed** — the founder
   is the interim RL/eval owner and the hire is opened (`DECISIONS.md` §4 **R5** founder-backstop: Phases
-  1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build opens at the
-  **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** authors the four JSON
-  Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + a validation test
-  (in review).
+  1–2 proceed now; Phase 3 stays hard-gated on the permanent owner). The build has opened at the
+  **contract-schema spine (E1)**, the join key for the whole system: **E1-1 (#26)** — the four JSON
+  Schemas (`reward-record` / `trajectory` / `diff-ir` / `task-spec`, Draft 2020-12) + an ajv validation
+  test — **landed** (PR #109). **Next: E1-2 codegen wiring (#27)** (quicktype + datamodel-code-generator),
+  now unblocked.
 
 ## Recently Landed
+
+- **E1-1 (#26): the 4 contract JSON Schemas.** `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json`
+  (Draft 2020-12, `additionalProperties:false`) as the neutral source of truth, + an ajv validation test in
+  `ts/packages/contracts`. Modeling rules: ids / nonces / timestamps / seeds / digests = strings
+  (ns-timestamps as canonical no-leading-zero digit strings); `reward` = `enum {0,1}` (binary, per
+  `DECISIONS.md` §8 — **not** a continuous double); `tool` = `terraform | cdk`; `diff-ir`
+  `modified ⟺ non-empty propertyDiffs`. `contracts/schemas/**` added to turbo `globalDependencies` (a schema
+  change now busts the contracts-test cache). Two cross-model `/review` rounds (Claude + Codex `gpt-5.5
+  xhigh`) caught the reward-binary frozen-floor deviation and the JCS leading-zero / empty-diff holes.
+  Codegen (#27), JCS + golden vectors (#28), CI parity (#29) follow. (PR #109.)
 
 - **E0-4 (#21): repo hygiene.** `.github/CODEOWNERS` (global owner; the DECISIONS.md §8 enforcement arm —
   no speculative locked-grader rules, those land with #28/#56), `.github/pull_request_template.md`
