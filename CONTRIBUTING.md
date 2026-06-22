@@ -33,6 +33,6 @@ require breaking a non-negotiable, **stop and flag it on the issue** — don't c
 
 ## Secrets
 
-Secret-scanning **push protection** is enabled — GitHub blocks a push that contains a detected
-credential. Keep secrets out of the repo: put local values in a gitignored `.env` (see the README). If
-a push is blocked, remove the secret from your commits rather than bypassing the block.
+Secret-scanning **push protection** is enabled — GitHub blocks a push that contains a supported secret
+type (API keys, tokens, etc.). Keep secrets out of the repo: put local values in a gitignored `.env` (see
+the README). If a push is blocked, remove the secret from your commits rather than bypassing the block.

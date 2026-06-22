@@ -51,7 +51,9 @@ contributor workflow + a pointer to the quality bar, linking (not duplicating) t
   untracked `.env.example` (not this issue) kept out of the diff.
 - **Deferred (ISSUES.md):** require-code-owner-review on the `main` ruleset (single collaborator → would
   deadlock solo PRs) + the per-path grader CODEOWNERS rules.
-- **Pending:** `/review`; user approval to merge (then move E0-4 to PROGRAM.md *Recently Landed*).
+- **/review:** Claude + Codex (gpt-5.5 xhigh) adversarial passes — clean after fixing two doc-precision
+  nits (push-protection wording in CONTRIBUTING.md; PROGRAM.md "essentially complete" → "once it lands").
+- **Pending:** user approval to merge (then move E0-4 to PROGRAM.md *Recently Landed*).
 
 ---
 

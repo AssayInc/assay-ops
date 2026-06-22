@@ -19,8 +19,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (verified + closed). **E0-3 LocalStack dev loop (#20)** **landed** (PR #95) — the `localstack-smoke` CI goes green once the
   `LOCALSTACK_AUTH_TOKEN` repo secret is set; LocalStack retired its free tokenless edition, so the loop runs
   **licensed** LocalStack (see [`DECISIONS.md`](./DECISIONS.md) / [`ISSUES.md`](./ISSUES.md)). With
-  **E0-4 (#21)** (repo hygiene) in review (PR #108) — the last ready E0 eng issue — Phase-0 scaffolding is
-  essentially complete; **Phase-1 build proper starts at the contract-schema spine (E1)**, the join key
+  **E0-4 (#21)** (repo hygiene) in review (PR #108) — the last ready E0 eng issue — once it lands, Phase-0
+  scaffolding is complete; **Phase-1 build proper starts at the contract-schema spine (E1)**, the join key
   for the whole system.
 
 ## Recently Landed
