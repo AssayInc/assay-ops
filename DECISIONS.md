@@ -222,7 +222,7 @@ unchanged. *[impl — rebaselined by E17: UV is the core, Turbo the umbrella]*
 language owns it. Codegen roles: `datamodel-code-generator`→**Pydantic v2** is the **internal core
 contract** (the Python verifier/ledger import it; runtime-validated at I/O boundaries);
 `quicktype`→**TypeScript** is the **public/web binding** (`@assayops/contracts`, `assay-web`, npm
-consumers). The **account-B verifier (Python) signs** over **RFC 8785 JCS canonical JSON** (record → JCS
+consumers). The **account-B reward ledger (Python, E4) signs** over **RFC 8785 JCS canonical JSON** (record → JCS
 → UTF-8 → SHA-256 → **KMS asymmetric ECDSA P-256, `MessageType=DIGEST`**); the optional TS side
 **verifies** the same bytes — so byte-parity is **Python-signer ↔ TS-consumer**. Protobuf is
 *disqualified*: its spec says serialization is non-canonical, which breaks KMS signing across runtimes.
@@ -238,9 +238,9 @@ GitHub-native team. Revisit Linear at ~8 people / ~300 active issues. *[impl —
 contract (`/reset`, `/step`, `/state`, `/health`, `/metadata`, `/schema`, `/ws`…) — matching the
 reference shape that TRL's OpenEnv integration drives. It runs in **account A (agent-reachable), so it
 never computes the graded reward**: the **OpenEnv reward-boundary invariant** (§8, *non-waivable*) —
-`step()`/terminal reward is at most a non-graded/zero shaping signal; the graded reward is the account-B
-verifier's KMS-signed WORM record, joined by `trajectory_id`, and the trainer trains on *that*, never the
-env's `step()`. `/schema` serves the **canonical JSON Schemas / generated artifacts**, not types derived
+`step()`/terminal reward is at most a non-graded/zero shaping signal; the graded reward comes from account B
+as a KMS-signed WORM record [4B] (verifier computes, reward ledger signs + writes), joined by
+`trajectory_id`, and the trainer trains on *that*, never the env's `step()`. `/schema` serves the **canonical JSON Schemas / generated artifacts**, not types derived
 from a TS app. *[impl — rebaselined by E17 to OpenEnv-native Python; supersedes the TS-first env plan]*
 
 **I6 — Trainer stack = TRL v1.0** (`SFTTrainer` + LoRA) on **Qwen3-Coder-30B-A3B-Instruct**
@@ -403,9 +403,10 @@ appears to require breaking one, stop and flag it — don't code around it.**
       Never a mutable DB row — that would break the tamper-evident ledger that *is* the product. **[4B, I11]**
 - [ ] **OpenEnv reward-boundary invariant (non-waivable).** The OpenEnv env-server runs in **account A**
       (agent-reachable), so it **never computes the graded reward.** Its `step()` / terminal reward is at
-      most a **non-graded, zero shaping signal**; the **graded training reward is delivered exclusively by
-      the account-B write-isolated verifier** as a KMS-signed WORM record, joined to the episode by
-      `trajectory_id` — and the trainer trains on **that**, never on the env's `step()` reward. OpenEnv's
+      most a **non-graded, zero shaping signal**; the **graded training reward comes only from account B** —
+      the write-isolated verifier (T1) computes it, the reward ledger (T4) signs + writes it as a KMS-signed
+      WORM record [4B], joined to the episode by `trajectory_id` — and the trainer trains on **that**, never
+      on the env's `step()` reward. OpenEnv's
       idiom is environment-owned reward; AssayOps does **not** follow it for the graded signal. **[1C, 4B, T1, I5]**
 - [ ] **One contract schema → codegen both languages.** Never hand-maintain dual TS/Python types;
       generated artifacts are committed; the CI byte-parity (JCS) gate must stay green. **[5A, I3]**
