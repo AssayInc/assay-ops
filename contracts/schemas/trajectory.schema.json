@@ -19,8 +19,8 @@
     },
     "createdAt": {
       "type": "string",
-      "minLength": 1,
-      "description": "Episode start timestamp; a string (RFC 3339 or integer nanoseconds)."
+      "pattern": "^[0-9]+$",
+      "description": "Episode start as integer nanoseconds since the Unix epoch, encoded as a digit string (same canonical form as the reward record's gradedAt)."
     },
     "steps": {
       "type": "array",

@@ -28,13 +28,13 @@ const VALID: Record<SchemaName, Record<string, unknown>> = {
     reward: 1,
     reportDigest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     graderVersion: "grader@1.0.0",
-    gradedAt: "2026-06-21T12:00:00Z",
+    gradedAt: "1782518400000000000",
     nonce: "5f4dcc3b5aa765d61d8327deb882cf99",
   },
   trajectory: {
     trajectory_id: "traj-01J9Z3K8QmR2",
     task_id: "task-s3-versioning-001",
-    createdAt: "2026-06-21T12:00:00Z",
+    createdAt: "1782518400000000000",
     steps: [{ index: 0, observation: {}, action: {} }],
   },
   "diff-ir": {
@@ -122,6 +122,64 @@ describe("contract schemas (E1-1)", () => {
     test("task-spec rejects a numeric task_id", () => {
       const validate = validatorFor("task-spec")
       expect(validate({ ...VALID["task-spec"], task_id: 123456789 })).toBe(false)
+    })
+  })
+
+  describe("timestamps are integer-nanosecond digit strings", () => {
+    test("reward-record rejects a non-numeric gradedAt (RFC 3339 is not the canonical form)", () => {
+      const validate = validatorFor("reward-record")
+      expect(validate({ ...VALID["reward-record"], gradedAt: "2026-01-02T03:04:05Z" })).toBe(false)
+    })
+
+    test("trajectory rejects a non-numeric createdAt", () => {
+      const validate = validatorFor("trajectory")
+      expect(validate({ ...VALID.trajectory, createdAt: "not-a-time" })).toBe(false)
+    })
+  })
+
+  describe("task-spec tool enum is terraform | cdk", () => {
+    test("accepts cdk", () => {
+      const validate = validatorFor("task-spec")
+      expect(validate({ ...VALID["task-spec"], tool: "cdk" })).toBe(true)
+    })
+
+    test("rejects cloudformation (the read substrate, not an authoring tool)", () => {
+      const validate = validatorFor("task-spec")
+      expect(validate({ ...VALID["task-spec"], tool: "cloudformation" })).toBe(false)
+    })
+  })
+
+  describe("diff-ir change / propertyDiffs consistency", () => {
+    const resource = (over: Record<string, unknown>) => ({
+      resources: [
+        { address: "AppBucket", type: "AWS::S3::Bucket", change: "unchanged", propertyDiffs: [], ...over },
+      ],
+    })
+
+    test("a modified resource carries at least one propertyDiff", () => {
+      const validate = validatorFor("diff-ir")
+      expect(
+        validate(
+          resource({
+            change: "modified",
+            propertyDiffs: [
+              { path: "VersioningConfiguration.Status", expected: "Enabled", actual: "Suspended" },
+            ],
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    test("rejects a modified resource with no propertyDiffs", () => {
+      const validate = validatorFor("diff-ir")
+      expect(validate(resource({ change: "modified", propertyDiffs: [] }))).toBe(false)
+    })
+
+    test("rejects an unchanged resource that carries propertyDiffs", () => {
+      const validate = validatorFor("diff-ir")
+      expect(
+        validate(resource({ change: "unchanged", propertyDiffs: [{ path: "X", expected: 1, actual: 2 }] })),
+      ).toBe(false)
     })
   })
 })

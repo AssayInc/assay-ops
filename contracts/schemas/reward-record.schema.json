@@ -43,8 +43,8 @@
     },
     "gradedAt": {
       "type": "string",
-      "minLength": 1,
-      "description": "Grading timestamp; a string (RFC 3339 or integer nanoseconds) so ns precision never collides with IEEE-754 number limits."
+      "pattern": "^[0-9]+$",
+      "description": "Grading time as integer nanoseconds since the Unix epoch, encoded as a digit string (~19 digits exceeds 2^53, so it must be a string). One canonical form — never RFC 3339 — keeps the signed bytes unambiguous."
     },
     "nonce": {
       "type": "string",

@@ -55,8 +55,15 @@ large IDs/nonces/ns-timestamps modeled as **strings**, rewards as **bounded doub
   anti-pattern — the continuous form was a silent frozen-floor deviation. Corrected (still a finite JCS-safe
   number). (2) **`attempt`/`index` capped at 2^53−1** (the same >IEEE-754 hazard the string-id rule
   prevents). (3) **`diff-ir` `expected`/`actual`** documented as a deliberate any-JSON boundary (precise
-  value typing deferred to where the IR is produced). Deferred (flagged, not silent): strict
-  timestamp-format patterns + `diff-ir` cross-field semantics (modified⟹diffs, unique addresses).
+  value typing deferred to where the IR is produced).
+- **Tightening round (grounded in `DECISIONS.md` + assay-brain, per founder guidance — don't trust the
+  AI-written issue blindly):** timestamps (`gradedAt`/`createdAt`) → integer-nanosecond **digit strings**
+  (`^[0-9]+$`, one canonical form, not the RFC-3339-or-ns ambiguity I'd invented); `task-spec.tool` →
+  `terraform | cdk` (the locked T2/T3 authoring tools — CloudFormation is the read *substrate*, dropped);
+  `diff-ir` **`modified ⟺ non-empty propertyDiffs`** via `if/then/else`; and `contracts/schemas/**` added to
+  turbo `globalDependencies` — a schema change now busts the contracts-test cache (it didn't before: a
+  false-green gap, since the test reads schemas from outside its package). Still deferred: unique
+  resource-address (not cleanly JSON-Schema-expressible → the E3 reward core). 24 tests, pristine output.
 - **Other design calls:** `tool` enum = terraform | cdk | cloudformation; field shapes a coherent v1
   grounded in the `reward-ledger-worm` + `deterministic-verification` skills.
 - **Scope discipline:** schemas + validation only. Codegen (#27), JCS canonicalization + golden vectors
