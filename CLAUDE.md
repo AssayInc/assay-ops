@@ -41,8 +41,12 @@ the standing brief. `gh`-query the next **open, unblocked** issue (tracked in Gi
 *ready* = open with every blocker closed), preferring `prio:P1`.
 
 **Task loop.**
-1. **Validate** the issue against the code — accurate, unblocked, not already done? A contradiction or a
-   locked decision in the way → **comment on the issue; don't code around it**.
+1. **Validate + ground.** Before coding, check the issue against the code **and** the frozen floor: read the
+   relevant **`DECISIONS.md`** sections and recall **assay-brain** (the plans + rationale). The issue was
+   authored by another AI agent — it can be wrong, stale, or missing a locked detail, so **don't trust it
+   blindly**; ground every requirement in `DECISIONS.md` + brain + the issue, and reconcile the three.
+   Accurate, unblocked, not already done? A contradiction or a locked decision in the way → **comment on the
+   issue; don't code around it**.
 2. **Plan** non-trivial work to `tasks/todo.md` before coding.
 3. **Test-first** — each acceptance criterion → a failing test → implement to green. **Reuse before adding.**
 4. **`bun run verify` green**, then a **focused PR** (`Closes #N`, diff scoped to the AC); run `/review`.

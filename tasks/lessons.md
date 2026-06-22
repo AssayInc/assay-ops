@@ -15,6 +15,19 @@ Entry format:
 
 ---
 
+## 2026-06-21 — ground-in-decisions-and-brain-not-the-ai-written-issue
+- **Mistake:** Started E1-1 (#26) from the issue's prose as if it were the spec, and made several
+  field-level calls (a continuous reward, `RFC-3339-or-ns` timestamps, a `cloudformation` task tool) that
+  were under-grounded — the reward one silently broke a `DECISIONS.md` §8 non-negotiable. The GitHub issues
+  here are authored by **another AI agent** and can be wrong, stale, or missing a locked detail.
+- **Rule (founder directive):** Before implementing ANY issue, **ground the requirements in `DECISIONS.md`
+  + assay-brain + the plans first** — read the relevant `DECISIONS.md` sections and recall the brain for the
+  rationale, then reconcile issue + floor + brain. **Don't trust the AI-written issue blindly**; it's an
+  input, not the spec. When they disagree, the frozen floor wins and you comment on the issue. This is
+  CLAUDE.md task-loop §1 ("Validate + ground"), promoted to a standing rule.
+- **Context:** Founder feedback on E1-1 (#26). Pairs with [[frozen-floor-invariants-beat-issue-phrasing]]
+  and [[verify-against-official-docs-and-skills-before-acting]].
+
 ## 2026-06-21 — frozen-floor-invariants-beat-issue-phrasing
 - **Mistake:** Authored the `reward` field of the contract spine (E1-1 / #26) as a continuous bounded
   double `{type:number, minimum:0, maximum:1}`, following the issue + `ARCHITECTURE.md` phrasing "rewards as
