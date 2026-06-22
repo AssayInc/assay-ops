@@ -6,6 +6,78 @@ when done.
 
 ---
 
+## E1-1 (#26) — Author the 4 JSON Schemas — IN PROGRESS (branch `feat/e1-1-json-schemas`)
+
+**Goal (AC):** `reward-record`, `trajectory`, `diff-ir`, `task-spec` JSON Schemas (Draft 2020-12) exist;
+large IDs/nonces/ns-timestamps modeled as **strings**, rewards as **bounded doubles**, NaN/Infinity
+**rejected** (validation test).
+
+**Validation (issue vs. code + deps):**
+- #26 was `blocked_by` #25 (T0 team gate); #25 **closed** (founder = interim RL/eval owner + hire opened) →
+  #26 now ready (0 open blockers). Within E1: #26 → {#27, #28} → #29 (#29 `blocked_by` #27/#28); #27/#28
+  logically need #26's schemas.
+- No top-level `contracts/` exists yet (only per-lane shell pkgs). ARCHITECTURE.md §spine: schemas live at
+  `contracts/schemas/*.schema.json` (neutral source of truth); `contracts/vectors` = #28, codegen = #27.
+- **Scope = schemas + a validation test ONLY.** Codegen (#27), JCS/golden vectors (#28), CI parity (#29)
+  are separate issues — don't pull them in (smallest change that meets the AC).
+
+**Design:**
+- `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json` — Draft 2020-12, each with
+  `$id` + `additionalProperties:false`. Field shapes grounded in the `reward-ledger-worm` +
+  `deterministic-verification` skills. Modeling rules (JCS-forced, ARCHITECTURE.md §spine): IDs / nonces /
+  ns-timestamps = `string`; reward = `{type:number, minimum:0, maximum:1}` (bounded double, finite).
+- Validation test (TS lane, ajv Draft-2020-12) at `ts/packages/contracts/tests/schemas.test.ts`: every
+  schema compiles; a good instance validates; reward NaN / Infinity / out-of-range rejected; a numeric ID
+  rejected (string rule); an unknown property rejected (tight contract). ajv = dev-only test dep.
+- **TS lane chosen** for #26's test: ajv's bounded min/max robustly rejects NaN/±Inf; cross-language
+  byte-parity is #28/#29's job, not this issue's.
+
+**Steps (TDD):**
+- [x] Add `ajv` dev dep to `ts/packages/contracts`; `bun install`.
+- [x] Write failing `tests/schemas.test.ts` (schemas absent → RED).
+- [x] Author the 4 schemas → GREEN.
+- [x] `bun run verify` green (both lanes).
+- [x] Update `PROGRAM.md`; PR "Closes #26"; `/review`.
+
+### Review
+
+- **Done + proven:** `contracts/schemas/{reward-record,trajectory,diff-ir,task-spec}.schema.json` (Draft
+  2020-12, `$id` + `additionalProperties:false`) authored as the neutral source of truth. Modeling rules
+  applied uniformly: ids / nonces / timestamps / seeds / digests = `string`; `reward` = `enum {0,1}`
+  (binary, finite). Validation test `ts/packages/contracts/tests/schemas.test.ts` (ajv Draft-2020-12) — TDD
+  RED→GREEN, 16 tests. `bun run verify` green (8/8 tasks, both lanes).
+- **AC coverage:** schemas exist ✓; large ids/nonces/ns-timestamps as strings ✓ (test rejects numeric ids);
+  reward ∈ {0,1} (binary, finite double) ✓; NaN/Infinity + partial-credit rejected ✓ (enum admits only 0/1;
+  test asserts 0.5 / 2 / −0.5 / NaN / ±Inf all rejected).
+- **Cross-model `/review` fixes applied (Claude conf 9 + Codex gpt-5.5 xhigh):** (1) **`reward` →
+  `enum:[0,1]`.** First modeled as a continuous bounded double `[0,1]`; `DECISIONS.md` §8 (non-negotiables)
+  locks `reward ∈ {0,1}` and `deterministic-verification` names a 0.0–1.0 score as the gameable
+  anti-pattern — the continuous form was a silent frozen-floor deviation. Corrected (still a finite JCS-safe
+  number). (2) **`attempt`/`index` capped at 2^53−1** (the same >IEEE-754 hazard the string-id rule
+  prevents). (3) **`diff-ir` `expected`/`actual`** documented as a deliberate any-JSON boundary (precise
+  value typing deferred to where the IR is produced).
+- **Tightening round (grounded in `DECISIONS.md` + assay-brain, per founder guidance — don't trust the
+  AI-written issue blindly):** timestamps (`gradedAt`/`createdAt`) → integer-nanosecond **digit strings**
+  (`^(0|[1-9][0-9]*)$`, one canonical no-leading-zeros form, not the RFC-3339-or-ns ambiguity); `task-spec.tool` →
+  `terraform | cdk` (the locked T2/T3 authoring tools — CloudFormation is the read *substrate*, dropped);
+  `diff-ir` **`modified ⟺ non-empty propertyDiffs`** via `if/then/else`; and `contracts/schemas/**` added to
+  turbo `globalDependencies` — a schema change now busts the contracts-test cache (it didn't before: a
+  false-green gap, since the test reads schemas from outside its package). Still deferred: unique
+  resource-address (not cleanly JSON-Schema-expressible → the E3 reward core). 24 tests, pristine output.
+- **Second cross-model review (pre-merge, Claude + Codex xhigh) — fixes:** timestamp pattern →
+  `^(0|[1-9][0-9]*)$` (reject leading zeros — `"007"`≡`"7"` was a JCS byte-parity hole on the *signed*
+  path); `diff-ir` propertyDiff now requires `expected` **or** `actual` (`anyOf`) so an empty `{path}` diff
+  can't validate. Deferred to #27 (a codegen-policy call both reviewers agree on): typing `diff-ir`
+  `expected`/`actual` (bare any-JSON → `any` in generated TS) and IR-number JCS precision.
+- **Other design calls:** `tool` enum = `terraform | cdk`; field shapes a coherent v1 grounded in the
+  `reward-ledger-worm` + `deterministic-verification` skills.
+- **Scope discipline:** schemas + validation only. Codegen (#27), JCS canonicalization + golden vectors
+  (#28, the locked `contracts/vectors`), CI parity (#29) are their own issues — not pulled in. `contracts/`
+  is the neutral source (not a workspace pkg), so it's outside the lint/typecheck graph by design.
+- **Validation:** #26 was `blocked_by` #25 (T0 gate) → closed (founder interim owner + hire opened) → ready.
+
+---
+
 ## E0-4 (#21) — Repo hygiene (CODEOWNERS, PR template, secret scanning, CONTRIBUTING) — LANDED (PR #108)
 
 **Goal (AC):** CODEOWNERS + PR template + secret-scanning push protection enabled (a planted secret is

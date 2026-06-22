@@ -20,7 +20,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
   gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
   ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is deferred to its own issue
-  (blocked-by #27/#28; no `contracts/` schema exists yet), and the **`fixture-change` guard** (a CI
+  (blocked-by #27/#28; the schemas exist (E1-1) but codegen + golden vectors don't yet), and the
+  **`fixture-change` guard** (a CI
   path+label check or a CODEOWNERS rule on the ruleset) activates when `contracts/vectors` (#28) /
   `tools/red-team` (#56) land.
 - **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are

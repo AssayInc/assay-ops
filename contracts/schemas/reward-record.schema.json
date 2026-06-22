@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.ai/schemas/reward-record.schema.json",
+  "title": "RewardRecord",
+  "description": "The reward record keyed by trajectory_id. This is the canonical payload that is RFC 8785 (JCS) canonicalized and KMS-signed in account B; the signature envelope is added by the reward ledger (E4). A buying lab verifies it offline against the public key.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "trajectory_id",
+    "attempt",
+    "reward",
+    "reportDigest",
+    "graderVersion",
+    "gradedAt",
+    "nonce"
+  ],
+  "properties": {
+    "trajectory_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Join key for the whole system; a string so large opaque ids never lose precision under JCS."
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "Re-grade counter (≤ 2^53−1 to stay JCS-exact). A divergent re-grade appends a new record (a new attempt), never an overwrite."
+    },
+    "reward": {
+      "type": "number",
+      "enum": [0, 1],
+      "description": "Execution-grounded reward ∈ {0,1}: binary (zero normalized diff = 1), a finite JCS-safe number. The enum admits only 0 and 1 — rejecting NaN/Infinity and any partial-credit (0.0–1.0) value."
+    },
+    "reportDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 (lowercase hex) of the diff report the reward was read from."
+    },
+    "graderVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Pins which grader/vectors produced this reward."
+    },
+    "gradedAt": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "description": "Grading time as integer nanoseconds since the Unix epoch, encoded as a canonical digit string (no leading zeros; ~19 digits exceeds 2^53, so it must be a string). One canonical form — never RFC 3339 — keeps the signed bytes unambiguous."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Verifier-issued episode nonce; binds the record to this run so a signed reward cannot be replayed."
+    }
+  }
+}

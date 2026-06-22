@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.ai/schemas/task-spec.schema.json",
+  "title": "TaskSpec",
+  "description": "A deploy-graded task definition. The golden target is regenerated reproducibly from (tool, seed); the verifier never grades the agent's submitted config.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "title", "description", "tool", "seed"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable task id, referenced by a trajectory's task_id."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short human-readable title."
+    },
+    "description": {
+      "type": "string",
+      "description": "What the agent must accomplish."
+    },
+    "tool": {
+      "type": "string",
+      "enum": ["terraform", "cdk"],
+      "description": "IaC tool the task is authored against — Terraform (the Phase-1 A-spike engine) or CDK (Phase 2). CloudFormation is the deployed-state read substrate (CDK compiles to it), not an authoring tool."
+    },
+    "seed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Golden-generation seed; a string so large/opaque seeds never lose precision under JCS."
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
-  "globalDependencies": ["bun.lock", "uv.lock", "pyproject.toml", ".python-version"],
+  "globalDependencies": ["bun.lock", "uv.lock", "pyproject.toml", ".python-version", "contracts/schemas/**"],
   "tasks": {
     "typecheck": {},
     "lint": {},
