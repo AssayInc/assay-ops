@@ -15,6 +15,27 @@ Entry format:
 
 ---
 
+## 2026-06-23 — reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production
+- **Mistake:** Building E1-3 (#28), I wrote the production JCS `canonicalize` by **reusing the #115 spike's
+  `rfc8785` recipe + empirical testing + the shipped `canonicalize` `.d.ts`**, and cached knowledge for
+  Pydantic `model_dump(mode="json")` — without reading the **official docs** for any of them this session.
+  The founder asked "did you ground every implementation from the official docs?" Grounding them after the
+  fact (rfc8785.py README, erdtman/canonicalize README, Pydantic serialization docs via `/browse`)
+  **confirmed every claim** — but the primary-source check should have come first, not in response to the
+  question.
+- **Rule:** A **landed spike's** library usage, an **empirical green**, and a shipped **`.d.ts`** are all
+  **secondary** sources. Promoting a spike's external-library usage to production code is a **new grounding
+  obligation**: read the **official docs FIRST** and cite them, even when the spike already proved the
+  behavior and the tests pass — especially for a **security/correctness primitive** (here, the exact bytes a
+  KMS signature covers). The cheap primary-source pass settles it (rfc8785: "All APIs raise
+  `CanonicalizationError`… on serialization failures" → the documented fail-closed; canonicalize: "crypto
+  safe… as defined by RFC8785"; `model_dump(mode="json")`: "ensure JSON-compatible types are used"). Don't
+  let "the spike already did it" or "the tests are green" substitute for [[ground-in-official-docs-first]].
+- **Context:** E1-3 (#28) JCS canonicalize; `rfc8785` (Trail of Bits) / `canonicalize` (erdtman) / Pydantic
+  v2 serialization docs. Sharpens [[ground-in-official-docs-first]] +
+  [[ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them]] with the
+  spike→production re-grounding trigger.
+
 ## 2026-06-22 — ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them
 - **Mistake:** In the E17-S2 ledger spike (#115) I grounded the AWS KMS/S3 specifics — KMS `Sign` returns a
   DER ECDSA sig + `MessageType=DIGEST` doesn't re-hash, `GetPublicKey` returns SPKI DER, the S3

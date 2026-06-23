@@ -134,6 +134,17 @@ bytes** (Codex confirmed), the trust boundary is intact, and the signed **`Rewar
 Net code-logic change from the review: **none** (the canonicalize recipe is unchanged) — the review added a
 vector, a boundary test, docs, and the flags. `bun run verify` green (14/14) after each round.
 
+**Grounding (founder docs-first rule).** The three load-bearing libraries were grounded against **primary
+docs** — post-hoc, after the founder asked "did you ground every implementation from the official docs?"
+(lesson [[reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production]] added):
+**`rfc8785`** (Trail of Bits README — RFC 8785 JCS, `dumps(obj)→UTF-8 bytes`, "All APIs raise
+`CanonicalizationError`… on serialization failures" = the documented fail-closed), **`canonicalize`**
+(erdtman README — "crypto safe… as defined by RFC8785", default export → canonical string, TS types),
+**Pydantic `model_dump(mode="json")`** (official docs — "ensure JSON-compatible types are used"). All three
+**confirm** the implementation + the committed doc claims; **no corrections**. (The other deps are
+low-stakes utilities cross-verified by tests — `hashlib`/`node:crypto` sha256, `json.dumps` — or the
+already-grounded #26 `ajv` pattern.)
+
 ---
 
 ## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)
