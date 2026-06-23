@@ -6,19 +6,21 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
-- **Python type-safety parity landed; config-DRY + a Pydantic-v2 skill are the open tails.** The Python
+- **Python type-safety parity + its three hardening tails (#126, #128, #127) — all landed.** The Python
   lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
   the TS `any` ban — `object` + a runtime narrow (Pydantic) is the `unknown` equivalent — with `S`/`LOG`/`G`/
   `ASYNC` ruff rules and `ruff format --check` gated, and **structlog** named as the Python logging lib (the
   pino analog; advances the #113 "Python structured-logging story"). **Tracked follow-ups (now GitHub issues,
-  not orphaned):** **#126** config-DRY — the shared **ruff** config is hoisted to a root `[tool.ruff]` + `extend`
+  not orphaned):** **#126 (done — #129)** config-DRY — the shared **ruff** config is hoisted to a root `[tool.ruff]` + `extend`
   in each member; **mypy/pytest stay per-package by design** (mypy has no config-merge, and the two packages
   run divergent `disallow_any_explicit` strategies — contracts global incl. `scripts/`, env-server scoped so
   its OpenEnv/TRL-mock tests keep `Any` — so it is intentional divergence, not duplication). **#128 (done — AssayInc/skills#9, vendored)** the
   homegrown **Pydantic-v2 skill** (`AssayInc/skills`, grounded in official Pydantic docs — frozen/`extra=forbid`,
   deterministic `model_dump_json` → RFC 8785 JCS, `TypeAdapter`; Pydantic is the contract spine and has no
-  official skill). **#127** the 4 epic-gated **wshobson Python skills** (resilience / observability /
-  error-handling / configuration — vendor with their consuming epics, not speculatively). The official
+  official skill). **#127 (done — all 4 vendored)** the 4 **wshobson Python skills** (resilience /
+  error-handling / configuration / observability) — founder elected to vendor all four now (cheap; community
+  skills auto-load by relevance), overriding the epic-gating, each mapped to its surface in the CLAUDE.md
+  preflight. The official
   **FastAPI** skill is **not** vendored — AssayOps never hand-writes FastAPI (OpenEnv's `create_app` owns the
   routes), so it is YAGNI (founder call).
 

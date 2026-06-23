@@ -6,6 +6,28 @@ when done.
 
 ---
 
+## Vendor 4 wshobson Python skills (#127) — IN PROGRESS (branch `feat/vendor-wshobson-python-skills`)
+
+**Trigger + scope:** founder asked to resolve #127; confirmed via AskUserQuestion → **vendor all 4 now**
+(overrides the epic-gating — consumers E2/E3/E4 are unbuilt, but community-skill vendoring is cheap and
+auto-loads by relevance; closes the Python-first hardening batch, #124/#126/#128 done). #127 is a
+standalone follow-up (not an epic) → `Closes #127` is correct.
+
+**The 4 skills (`wshobson/agents`, `plugins/python-development/skills/<name>`; confirmed present via `--list`):**
+- `python-resilience` → verifier transient-vs-genuine-failure (`deterministic-verification`) + boto3 adaptive retries (E2/#80)
+- `python-error-handling` → robust parsing of untrusted IaC / boto3 responses in verifier + adapters (E2/E3)
+- `python-configuration` → typed settings + secrets (pydantic-settings) for ledger / account creds (E4)
+- `python-observability` → the `structlog` logging decision + eval/verifier metrics (when logging lands)
+
+**Steps:**
+- [x] Per skill: `npx -y skills add wshobson/agents --skill <name>` (DEFAULT targeting, never `-a '*'`) — all 4 added; `--list` confirmed names + the skip-list.
+- [x] After EACH add: `git status --porcelain` → ONLY `.agents/`, `.claude/`, `.hermes/`, `skills-lock.json` changed. No overshoot dirs.
+- [x] Sync-hygiene: each skill is **markdown-only** (`SKILL.md` + `references/details.md`) — no scripts/executables → no bundled-script regression surface; symlinks resolve into `.agents/`; content read + on-target. `python-resilience` "Critical Risk (Gen)" scanner rating = false positive (example `httpx` calls in a doc).
+- [x] CLAUDE.md skill-preflight: one focused "Python lane (runtime robustness)" row mapping the 4 to their surfaces.
+- [x] `bun run verify` green **14/14**; NO `bun.lock`/`uv.lock` change (skills-lock.json separate). Lock diff = 4 well-formed `wshobson/agents` entries.
+- [x] PROGRAM.md (Recently Landed + dropped #127 from the pending follow-ups) + ISSUES.md (#127/#126 marked done).
+- [ ] PR `Closes #127`; `/review` if warranted; AWAIT explicit merge approval ([[never-merge-without-explicit-user-approval]]); on "merge" → `gh pr merge --squash --delete-branch`
+
 ## Python type-safety parity — ban `Any` + ruff/mypy hardening + skills routing — IN PROGRESS (branch `feat/py-type-safety-parity`)
 
 **Trigger:** founder review of the Python-first move — the TS lane bans `any`/uses `unknown`, the Python
