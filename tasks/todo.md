@@ -95,6 +95,27 @@ four reward-ledger primitives are real in the Python core, over the canonical `@
   `MessageType=DIGEST` ↔ `cryptography` `Prehashed` equivalence smoke-verified; moto fidelity discovered
   empirically (`local-aws-emulator-must-prove-read-api`), never assumed.
 
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — fixes applied (16 spike tests, verify 14/14)
+
+Cross-model split: Claude verified the proofs are sound (not vacuous) → merge-after-wording; Codex (xhigh)
+flagged AC3 fidelity → block. Reconciled by **applying the substantive findings** (moat-critical path) after
+**empirically confirming each** (not acting on unconfirmed claims):
+- **Curve pinning (real fail-closed gap, both models):** `verify_offline` accepted any EC curve — a P-384
+  key verified `True` (confirmed). Now pins **`SECP256R1`** (+ a wrong-curve negative test); broadened the
+  catch with `UnsupportedAlgorithm`. The recipe is P-256 specifically.
+- **Delete-marker survival (Codex P1):** added a test — a simple delete (no `versionId`) inserts a delete
+  marker (current key → `NoSuchKey`), but the locked signed version **survives by `versionId`, still
+  verifies, and still can't be deleted**. Sharpens the version-scoped finding: key-level write-once rests on
+  `(key, versionId)` pinning + an E4 deny policy.
+- **Object-Lock checksum (Codex P1):** added `ChecksumAlgorithm="SHA256"` to every Object-Lock `put_object`
+  (real S3 requires a checksum; boto3 sends one, but explicit is faithful + documents it for E4).
+- **Docstring precision (both):** dropped the "replaces #114's stand-ins" overclaim (the spike doesn't touch
+  the env-server mock); AC2 reframed as proving the **call shape / wiring**, not signing correctness; the
+  parity test reframed as **demonstrating** the parity #29 will gate (not the gate itself).
+- **Envelope binding (Codex P2):** documented that `verify_offline` pins the recipe (curve + ECDSA-SHA-256)
+  and never trusts the envelope's `alg`/`keyId`, so envelope-metadata tampering can't downgrade; E4 binds
+  key selection. Capstone now asserts the stored `alg`.
+
 ---
 
 ## E17-S1 (#114) — OpenEnv-native Python env-server feasibility spike — LANDED (PR #121, `b91da87`)

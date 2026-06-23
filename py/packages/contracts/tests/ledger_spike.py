@@ -1,8 +1,9 @@
-"""E17-S2 (#115) spike helper — reward-ledger primitives made real.
+"""E17-S2 (#115) spike helper — the real reward-ledger primitives, proven feasible.
 
-Replaces #114's stand-ins; proves DECISIONS.md I3 / 4B / §8 / T4 feasible in the
-Python core before E4 builds the ledger. See the test module for the proof and
-findings; the ``reward-ledger-worm`` skill for the rules.
+Proves DECISIONS.md I3 / 4B / §8 / T4 feasible in the Python core before E4 builds the
+ledger — these are the real primitives that will replace #114's stand-ins (sorted-key
+JSON, message-hash ECDSA, in-memory WORM); this spike does not touch that mock. See the
+test module for the proof and findings; the ``reward-ledger-worm`` skill for the rules.
 
 Primitives: ``canonicalize`` (RFC 8785 JCS via ``rfc8785``), ``AccountBSigningKey``
 (the account-B KMS asymmetric-key analog: ECDSA P-256, ``MessageType=DIGEST`` over
@@ -22,7 +23,7 @@ import hashlib
 import json
 
 import rfc8785
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -82,15 +83,19 @@ class AccountBSigningKey:
 def verify_offline(public_key_spki_der: bytes, payload: bytes, signature: bytes) -> bool:
     """The portable proof: verify ``signature`` over ``payload`` with ONLY the public key, offline.
 
-    A buying lab needs no KMS call and no trust in Assay. Returns ``False`` (never raises) for a bad
-    signature, a foreign key, or malformed bytes — the verifier controls none of the bytes."""
+    Pins the exact KMS recipe — an ECDSA **P-256** (SECP256R1) key over SHA-256 — so a non-EC or
+    wrong-curve key fails closed. Verification never trusts an envelope's ``alg``/``keyId``; E4
+    binds key selection. Returns ``False`` (never raises) for a bad signature, a foreign/wrong-curve
+    key, or malformed bytes — the verifier controls none of the agent-submitted bytes."""
     try:
         public_key = serialization.load_der_public_key(public_key_spki_der)
         if not isinstance(public_key, ec.EllipticCurvePublicKey):
             return False
+        if not isinstance(public_key.curve, ec.SECP256R1):
+            return False
         public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
         return True
-    except (InvalidSignature, ValueError):
+    except (InvalidSignature, ValueError, UnsupportedAlgorithm):
         return False
 
 

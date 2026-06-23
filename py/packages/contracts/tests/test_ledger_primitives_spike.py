@@ -2,8 +2,8 @@
 
 A decision gate for E4 (the reward ledger): prove the primitives over the canonical
 ``@assayops/contracts`` ``RewardRecord`` (``reward∈{0,1}``), keyed by ``trajectory_id`` —
-making #114's account-B mock stand-ins real (DECISIONS.md I3 / 4B / §8 / T4; the
-``reward-ledger-worm`` skill):
+the real primitives that will replace #114's mock stand-ins (DECISIONS.md I3 / 4B / §8 / T4;
+the ``reward-ledger-worm`` skill):
 
 - AC1  RFC 8785 JCS via ``rfc8785`` — conformant vs. the official vectors AND
        byte-identical to a TS ``canonicalize`` (the #29 signer ↔ consumer parity).
@@ -105,8 +105,9 @@ def test_canonicalize_consumes_the_real_contract_reward_record() -> None:
 
 
 def test_python_rfc8785_is_byte_identical_to_ts_canonicalize() -> None:
-    """The #29 signer ↔ consumer byte-parity, shown: ``rfc8785`` (Python) and
-    ``canonicalize`` (the RFC 8785 reference JS impl) emit identical bytes."""
+    """Demonstrates the cross-runtime byte-parity #29 will gate: ``rfc8785`` (Python) and the RFC
+    8785 reference JS impl (``canonicalize``) emit identical bytes for the vectors and the record.
+    #28 builds the production TS canonicalizer; the conformance test above guards against drift."""
     bun = shutil.which("bun")
     assert bun is not None, "bun must be on PATH (monorepo setup: bun install && uv sync)"
 
@@ -134,10 +135,11 @@ def test_python_rfc8785_is_byte_identical_to_ts_canonicalize() -> None:
 
 
 def test_kms_sign_call_shape_matches_the_i3_recipe() -> None:
-    """AC2: the boto3 KMS ``Sign`` call E4 will make — an ``ECC_NIST_P256`` / ``SIGN_VERIFY``
-    key signing with ``MessageType=DIGEST`` + ``ECDSA_SHA_256`` over ``SHA-256(JCS(record))``
-    — returns a signature + an exportable P-256 SPKI public key. (moto's KMS crypto is faked;
-    correctness + offline verify is proven on real ``cryptography`` below.)"""
+    """AC2: the boto3 KMS ``Sign`` call **shape** E4 will make — an ``ECC_NIST_P256`` /
+    ``SIGN_VERIFY`` key, ``MessageType=DIGEST`` + ``ECDSA_SHA_256`` over ``SHA-256(JCS(record))`` —
+    is accepted and returns a signature + an exportable P-256 SPKI public key. This proves wiring,
+    not signing correctness: moto's KMS crypto is faked, so the recipe + offline verify is proven on
+    real ``cryptography`` below; E4 validates the signature against real KMS."""
     digest = hashlib.sha256(canonicalize(sample_record())).digest()
     with mock_aws():
         kms = boto3.client("kms", region_name="us-east-1")
@@ -198,6 +200,18 @@ def test_a_malformed_signature_fails_without_raising() -> None:
     assert bad is False
 
 
+def test_a_wrong_curve_p384_key_does_not_verify() -> None:
+    """The recipe is ECDSA P-256 specifically — a valid signature under a different curve (P-384)
+    must NOT verify; verify_offline pins SECP256R1, not any EC key."""
+    payload = canonicalize(sample_record())
+    wrong_curve = ec.generate_private_key(ec.SECP384R1())
+    signature = wrong_curve.sign(payload, ec.ECDSA(hashes.SHA256()))
+    spki = wrong_curve.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    assert verify_offline(spki, payload, signature) is False
+
+
 # --- AC3: S3 Object Lock WORM + conditional write-once (boto3 / moto) ---
 
 
@@ -217,6 +231,7 @@ def test_worm_conditional_write_is_first_writer_wins() -> None:
             ObjectLockMode="COMPLIANCE",
             ObjectLockRetainUntilDate=RETAIN_UNTIL,
             IfNoneMatch="*",
+            ChecksumAlgorithm="SHA256",  # real S3 requires a checksum for Object-Lock puts
         )
         with pytest.raises(ClientError) as exc:
             s3.put_object(Bucket=LEDGER_BUCKET, Key=key, Body=b"second-writer", IfNoneMatch="*")
@@ -243,6 +258,7 @@ def test_object_lock_compliance_blocks_deletion_of_the_signed_version() -> None:
             ObjectLockMode="COMPLIANCE",
             ObjectLockRetainUntilDate=RETAIN_UNTIL,
             IfNoneMatch="*",
+            ChecksumAlgorithm="SHA256",  # real S3 requires a checksum for Object-Lock puts
         )
         with pytest.raises(ClientError) as exc:
             s3.delete_object(Bucket=LEDGER_BUCKET, Key=key, VersionId=put["VersionId"])
@@ -268,6 +284,7 @@ def test_object_lock_is_version_scoped_the_signed_version_survives_a_new_put() -
             ObjectLockMode="COMPLIANCE",
             ObjectLockRetainUntilDate=RETAIN_UNTIL,
             IfNoneMatch="*",
+            ChecksumAlgorithm="SHA256",  # real S3 requires a checksum for Object-Lock puts
         )
         s3.put_object(Bucket=LEDGER_BUCKET, Key=key, Body=b"unconditioned-new-version")
         pinned = s3.get_object(Bucket=LEDGER_BUCKET, Key=key, VersionId=put["VersionId"])[
@@ -276,6 +293,40 @@ def test_object_lock_is_version_scoped_the_signed_version_survives_a_new_put() -
         assert pinned == envelope_json(signed)
         recovered = parse_envelope(pinned)
         assert verify_offline(signer.public_key_spki_der(), recovered.payload, recovered.signature)
+
+
+def test_a_simple_delete_marker_hides_the_key_but_the_signed_version_survives() -> None:
+    """Version-scoped, sharpened: a simple delete (no versionId) inserts a delete marker, so the
+    current key reads gone, but the locked signed version survives by versionId, still verifies, and
+    can't be deleted. Key-level write-once rests on (key, versionId) pinning + an E4 deny policy."""
+    signer = AccountBSigningKey()
+    signed = signer.sign_record(sample_record())
+    key = worm_object_key("traj-delmarker", 0)
+    with mock_aws():
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket=LEDGER_BUCKET, ObjectLockEnabledForBucket=True)
+        put = s3.put_object(
+            Bucket=LEDGER_BUCKET,
+            Key=key,
+            Body=envelope_json(signed),
+            ObjectLockMode="COMPLIANCE",
+            ObjectLockRetainUntilDate=RETAIN_UNTIL,
+            IfNoneMatch="*",
+            ChecksumAlgorithm="SHA256",  # real S3 requires a checksum for Object-Lock puts
+        )
+        version_id = put["VersionId"]
+        marker = s3.delete_object(Bucket=LEDGER_BUCKET, Key=key)  # no versionId -> delete marker
+        assert marker["DeleteMarker"] is True
+        with pytest.raises(ClientError) as exc:
+            s3.get_object(Bucket=LEDGER_BUCKET, Key=key)
+        assert exc.value.response["Error"]["Code"] == "NoSuchKey"
+        recovered = parse_envelope(
+            s3.get_object(Bucket=LEDGER_BUCKET, Key=key, VersionId=version_id)["Body"].read()
+        )
+        assert verify_offline(signer.public_key_spki_der(), recovered.payload, recovered.signature)
+        with pytest.raises(ClientError) as exc2:
+            s3.delete_object(Bucket=LEDGER_BUCKET, Key=key, VersionId=version_id)
+        assert exc2.value.response["Error"]["Code"] == "AccessDenied"
 
 
 def test_a_regrade_appends_a_new_attempt_and_never_overwrites() -> None:
@@ -295,6 +346,7 @@ def test_a_regrade_appends_a_new_attempt_and_never_overwrites() -> None:
                 ObjectLockMode="COMPLIANCE",
                 ObjectLockRetainUntilDate=RETAIN_UNTIL,
                 IfNoneMatch="*",
+                ChecksumAlgorithm="SHA256",
             )
         keys = {obj["Key"] for obj in s3.list_objects_v2(Bucket=LEDGER_BUCKET)["Contents"]}
         assert keys == {"traj-rg#0", "traj-rg#1"}
@@ -324,6 +376,7 @@ def test_full_portable_lifecycle_sign_worm_store_then_offline_verify() -> None:
             ObjectLockMode="COMPLIANCE",
             ObjectLockRetainUntilDate=RETAIN_UNTIL,
             IfNoneMatch="*",
+            ChecksumAlgorithm="SHA256",  # real S3 requires a checksum for Object-Lock puts
         )
         stored = s3.get_object(Bucket=LEDGER_BUCKET, Key=key, VersionId=put["VersionId"])[
             "Body"
@@ -334,3 +387,4 @@ def test_full_portable_lifecycle_sign_worm_store_then_offline_verify() -> None:
     assert verify_offline(public_key, recovered.payload, recovered.signature) is True
     # the payload decodes to the contract record it claims to be
     assert RewardRecord.model_validate_json(recovered.payload) == record
+    assert recovered.alg == ALG  # the stored envelope metadata carries the pinned algorithm
