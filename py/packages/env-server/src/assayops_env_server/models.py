@@ -7,8 +7,6 @@ carries ``done``/``reward``/``metadata``; we add the AssayOps-shaped fields and,
 
 from __future__ import annotations
 
-from typing import Any
-
 from openenv.core.env_server.types import Action, Observation, State
 from pydantic import Field
 
@@ -20,7 +18,7 @@ class DeployAction(Action):  # type: ignore[misc]
     """One agent step: declare a resource to deploy (or ``__commit__`` to finish)."""
 
     resource_type: str
-    properties: dict[str, Any] = Field(default_factory=dict)
+    properties: dict[str, object] = Field(default_factory=dict)
 
 
 class DeployObservation(Observation):  # type: ignore[misc]
@@ -28,7 +26,7 @@ class DeployObservation(Observation):  # type: ignore[misc]
 
     trajectory_id: str
     step_count: int
-    deployed_state: dict[str, Any] = Field(default_factory=dict)
+    deployed_state: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
 class EnvState(State):  # type: ignore[misc]

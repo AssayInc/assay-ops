@@ -6,6 +6,86 @@ when done.
 
 ---
 
+## Python type-safety parity — ban `Any` + ruff/mypy hardening + skills routing — IN PROGRESS (branch `feat/py-type-safety-parity`)
+
+**Trigger:** founder review of the Python-first move — the TS lane bans `any`/uses `unknown`, the Python
+lane had no `Any` policy. Approved scope (founder): **full parity + cleanup**, one focused PR; config-DRY
+hoist deferred to its own PR.
+
+**Grounding (official docs, via the research workflow):**
+- `mypy --strict` does **not** enable `disallow_any_explicit` (only `disallow_any_generics` /
+  `disallow_subclassing_any` / `warn_return_any`) — so `x: Any` passes clean today. [mypy command-line +
+  config-file docs]. `object` (must narrow) = TS `unknown`; `Any` (contagious) = TS `any`. [mypy dynamic-typing]
+- ruff **`ANN401`** flags `Any` in args/returns/`*args`/`**kwargs` (verified on ruff 0.15.18); it does NOT
+  catch `Any` in *variable/field* annotations (`dict[str, Any]`) — so mypy `disallow_any_explicit` is needed
+  for full parity. [docs.astral.sh/ruff]
+- Do NOT add `TC` (breaks codegen Pydantic models under `from __future__ import annotations`) or bare `PL`
+  (noisy thresholds). `ruff format` is zero-churn here ("7 files already formatted").
+- No frozen-floor conflict: `DECISIONS.md` I2 / ARCHITECTURE.md mark ruff/mypy config as swappable `[impl]`
+  defaults; the `Any` ban is an *operating* rule → `CLAUDE.md` (where the TS `any` ban lives), not `DECISIONS.md`.
+
+**Design (smallest change that meets the goal):**
+- **mypy:** enable `disallow_any_explicit` per **source package** via `[[tool.mypy.overrides]]`
+  (`assayops_env_server.*`, `assayops_contracts.*`) so tests (top-level modules) are naturally exempt;
+  exempt the codegen models (`assayops_contracts.models.*` = false, ordered last). Existing boto3/openenv
+  `ignore_missing_imports` overrides stay.
+- **ruff:** `select += ["ANN", "S", "ASYNC", "LOG", "G"]` (ANN401 = the `Any` ban; S = security for a
+  trust-boundary verifier; LOG+G enforce the no-`print`/structured-logging rule; ASYNC guards the env-server).
+  per-file-ignores: codegen models `+= ["ANN"]` (keep E501); `"tests/**" = ["S101", "ANN"]`. Fold
+  `ruff format --check .` into each `lint` script (gates format via the existing `lint` turbo task).
+- **env-server src cleanup:** `dict[str, Any]` → `dict[str, object]` and `**kwargs: Any` → `**kwargs: object`
+  (models/cloud_state/client/environment), drop now-unused `Any` imports, one `isinstance` narrow in
+  `client._parse_result`. (Required for `disallow_any_explicit` on `assayops_env_server.*` to pass.)
+- **CLAUDE.md:** Python Toolchain bullet gets the `Any` rule (`object`/Pydantic, never `Any`) + names
+  **structlog** as the pino analog (moves the structured-logging note out of the TS bullet); add one
+  Skill-preflight row routing the language-level Python skills (perf-optimization flagged situational).
+- **Deferred → ISSUES.md:** config-DRY hoist (root ruff/mypy + `extend`); homegrown Pydantic-v2 skill;
+  FastAPI skill (own PR). boto3 skill stays in #116.
+
+**Steps (verify-first; prove the rule actually fires, don't just go green-by-absence):**
+- [x] pyproject (contracts + env-server): mypy `disallow_any_explicit` overrides + ruff select/ignores; fold `ruff format --check` into `lint`.
+- [x] env-server src: `Any` → `object` cleanup + drop unused imports + the one narrow.
+- [x] CLAUDE.md: `Any` policy + structlog + skills-routing row.
+- [x] `bun run verify` green (both lanes) — 14/14.
+- [x] **Prove enforcement:** throwaway `Any` in env-server src → ruff `ANN401` flagged arg + return; mypy flagged signature + variable (`Explicit "Any" is not allowed [explicit-any]`) → probe deleted, green again.
+- [x] PROGRAM.md + ISSUES.md updated.
+- [ ] Focused PR; `/review` (Claude + Codex `gpt-5.5` xhigh); await explicit merge approval. (FastAPI skill = follow-up PR 2.)
+
+### Review (`bun run verify` green 14/14 — both lanes)
+
+- **Done + proven.** The Python lane now mirrors the TS `any` ban. Enforcement is real, not green-by-absence:
+  a throwaway `Any` probe was rejected by **both** ruff `ANN401` (signature) and mypy `disallow_any_explicit`
+  (signature + `dict[str, Any]`-style variable/field annotations), then removed. `object` + a Pydantic/`isinstance`
+  narrow is the `unknown` equivalent.
+- **Grounding (founder docs-first rule).** mypy `disallow_any_explicit` is NOT in `--strict` (mypy
+  command-line + config-file docs); `object`≈`unknown`/`Any`≈`any` (mypy dynamic-typing); ruff `ANN401` flags
+  `Any` in args/returns/`*args`/`**kwargs` but not field annotations (so mypy is needed for parity) —
+  verified empirically on ruff 0.15.18 in this repo. `ruff format` is zero-churn ("26 files already formatted").
+- **`S` (security) earns its place immediately:** it flagged `S311` (non-crypto RNG, env-server fuzz test)
+  and `S603` (trusted `bun` subprocess, contracts parity tests) — both legitimately relaxed in `tests/**`,
+  but **kept active in src**, where a crypto-RNG/`md5` misuse on the verifier/ledger path would be caught.
+- **Scope discipline.** Did NOT adopt `TC` (breaks codegen Pydantic models under future-annotations) or bare
+  `PL` (noisy thresholds). env-server `cloud_state` cleanup surfaced the real 3-level nesting the `Any` hid
+  (`trajectory → {resource_type → {prop → value}}`) — typed precisely, no `Any`. Config-DRY hoist +
+  Pydantic-v2 skill deferred to ISSUES.md (the hoist NEEDS CARE: mypy has no config-merge).
+- **No frozen-floor change:** ruff/mypy config is swappable `[impl]` per `DECISIONS.md` I2 / ARCHITECTURE.md;
+  the `Any` ban is an operating rule (lives in `CLAUDE.md`, where the TS `any` ban lives). No new deps → no
+  lockfile change.
+
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — one fix applied, verify green 14/14
+
+- Both models **verified the mypy override precedence** (codegen models exempt, hand-written src banned) and
+  cleared the `&&` format gate, the `S` test-scoping, and the env-server `object`/nested-dict types.
+- **Fix applied (both flagged):** the contracts `typecheck` ran `mypy src tests` and the ban was scoped to
+  `assayops_contracts.*`, leaving `scripts/gen_vectors.py` (hand-written locked-vector generator) unguarded
+  for variable/field `Any`. → `disallow_any_explicit` made **global** in contracts + `scripts` added to the
+  typecheck. Proven: a `dict[str, Any]` *variable* in `scripts/` now errors `[explicit-any]`. Zero churn
+  (gen_vectors already strict-clean).
+- **Flagged, not fixed (out of scope):** Codex rated the `cloud_state` shallow-copy aliasing High, but it is
+  **pre-existing** (this PR changed only annotations, not the `dict()` copy) and lives in a documented spike
+  stand-in the production boto3 cross-account read (#80/E2) replaces — noted in `ISSUES.md`. Severity is my
+  call against the architecture (the lessons' "flag, not Block" precedent), not Codex's verbatim.
+
 ## E1-3 (#28) — JCS canonicalization + golden vectors — IN PROGRESS (branch `feat/e1-3-jcs-golden-vectors`)
 
 **Goal (AC):** (1) **both sides canonicalize identically** — production `canonicalize` from PyPI `rfc8785`

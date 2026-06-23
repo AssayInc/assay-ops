@@ -19,7 +19,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
   The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
-- **Type checker:** `mypy --strict` is the bridge; **`ty`** (Astral) is the committed target, adopted at
+- **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
   (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff

@@ -15,21 +15,21 @@ such accumulation. Access is lock-guarded so a read never observes an in-flight 
 from __future__ import annotations
 
 import threading
-from typing import Any
 
 
 class DeployedResources:
     """Ground-truth deployed state, keyed by ``trajectory_id`` (one episode's deploy namespace)."""
 
     def __init__(self) -> None:
-        self._by_trajectory: dict[str, dict[str, Any]] = {}
+        # trajectory_id -> {resource_type -> properties}; properties is an open JSON object.
+        self._by_trajectory: dict[str, dict[str, dict[str, object]]] = {}
         self._lock = threading.Lock()
 
-    def deploy(self, trajectory_id: str, resource_type: str, properties: dict[str, Any]) -> None:
+    def deploy(self, trajectory_id: str, resource_type: str, properties: dict[str, object]) -> None:
         with self._lock:
             self._by_trajectory.setdefault(trajectory_id, {})[resource_type] = dict(properties)
 
-    def read(self, trajectory_id: str) -> dict[str, Any]:
+    def read(self, trajectory_id: str) -> dict[str, dict[str, object]]:
         """A read-only, atomic snapshot of the resources deployed under ``trajectory_id``."""
         with self._lock:
             deployed = self._by_trajectory.get(trajectory_id, {})
