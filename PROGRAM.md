@@ -21,14 +21,22 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
-  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync), #126
-  (config-DRY ruff hoist — this PR), #127 (4 wshobson Python skills, epic-gated), #128 (homegrown Pydantic-v2 skill).
+  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync), #127 (4
+  wshobson Python skills, epic-gated), #128 (homegrown Pydantic-v2 skill).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff
   parity gate, now unblocked — #27/#28 landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes
   both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team
   gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **#129 (closes #126): config-DRY — shared ruff config hoisted to root via `extend`.** The duplicated
+  `[tool.ruff]` (line-length / target-version / lint.select) now lives once in the root `pyproject.toml`;
+  each member `extend`s it (proven to inherit the select — a probe fires `ANN401` + `S311` via the root
+  config, not silently dropped to defaults). **mypy/pytest stay per-package by design** — mypy has no
+  config-merge and the packages run divergent `disallow_any_explicit` strategies (contracts global incl.
+  `scripts/`, env-server scoped with tests exempt), so it is intentional divergence, not duplication.
+  `bun run verify` green 14/14. (PR #129.)
 
 - **#124: Python type-safety parity — forbid explicit `Any` (mypy + ruff).** The Python lane now mirrors the
   TS `any` ban: mypy **`disallow_any_explicit`** (which `--strict` does NOT enable, confirmed vs the mypy
