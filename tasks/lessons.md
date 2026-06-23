@@ -15,6 +15,40 @@ Entry format:
 
 ---
 
+## 2026-06-23 — create-and-link-the-tracking-issue-before-opening-a-PR
+- **Mistake:** For founder-initiated review/improvement work (the Python type-safety parity) I branched and
+  opened PR #124 directly with **no tracking issue** — so it had no `Closes #N` and wasn't on the board. The
+  founder caught it: "we forgot to create an issue first, so create an issue so we can link to this PR."
+- **Rule:** Even for **ad-hoc / founder-initiated work** (not just the "implement the next ready issue"
+  trigger), create the GitHub issue **first** (or before opening the PR) and open the PR with `Closes #N`.
+  The issue must detail the findings + fixes and **join the board + parent epic** (the
+  [[new-issues-must-join-the-board-and-parent-epic]] steps: `gh project item-add 1 --owner AssayInc`,
+  GraphQL `addSubIssue` under the right epic, `gh project item-edit` to mirror the parent's Status/Lane/Epic).
+  Gotchas seen here: (1) `gh pr edit --body-file` fails on this repo with a "Projects (classic) … being
+  deprecated" GraphQL error — patch the body via `gh api --method PATCH repos/<o>/<r>/pulls/<n> -F body=@file`
+  instead; (2) the board **Epic field has no E17 option** (E17 #113 lives under E0), so E17 sub-issues mirror
+  the parent — Lane "A · Core IP", Epic "E0 Infra".
+- **Context:** PR #124 / issue #125 (E17 Python type-safety parity). Extends the CLAUDE.md task-loop
+  "update PROGRAM/ISSUES + GitHub issues" step to ad-hoc work.
+
+## 2026-06-23 — a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself
+- **Mistake:** On the same PR I (1) grounded the load-bearing mypy claims (`--strict` excludes
+  `disallow_any_explicit`; the per-module override precedence) via a research **sub-agent's** doc citations +
+  Codex's citation rather than reading mypy.readthedocs.io myself; (2) had the **skills-review sub-agent
+  fail** and backfilled its conclusions from skill *descriptions* instead of reading the vendored skills; and
+  (3) applied a `/review` fix without re-running Codex xhigh on it. The founder asked all three: "did you
+  ground all your decisions by official docs and skills? did you re-review codex gpt-5.5 xhigh?"
+- **Rule:** A research/review **sub-agent (or Codex) citing official docs is a SECONDARY source** — for any
+  load-bearing claim, open the **primary doc yourself and quote it** (the 60-second check). If a sub-agent
+  that was supposed to read the skills/docs **fails**, do that reading yourself; never report "grounded" off
+  a description backfill. And [[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]] applies
+  to **any** fix made in response to a review — a `/review`-initiated fix too, not only issue implementation:
+  re-run Codex **xhigh** on the fixed code and re-sweep the finding's scope before claiming done.
+- **Context:** PR #124. Confirmed after the fact, verbatim from mypy.readthedocs.io: the `--strict` flag list
+  (no `disallow-any-explicit`), "Disallows explicit `Any` in type positions…", and the well-structured-wildcard
+  precedence (more-specific wins, per-module beats top-level); the xhigh re-review returned ship/zero-findings.
+  Sharpens [[ground-in-official-docs-first]] + [[verify-against-official-docs-and-skills-before-acting]].
+
 ## 2026-06-23 — re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope
 - **Mistake:** In the E1-3 (#28) `/review`, after a Codex xhigh pass flagged the `DiffIR.propertyDiffs`
   canonicalization divergence I implemented a fix and committed it **without re-running Codex xhigh on the
