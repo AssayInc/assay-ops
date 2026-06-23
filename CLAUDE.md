@@ -107,9 +107,13 @@ Nx/Bazel/npm/yarn/pnpm/pip/poetry. **Pin everything.** Adding a package:
 
 - **TS:** `bun <file|test|install|run>`, not Node/npm/jest; `unknown` at boundaries, **never `any`**;
   **factory functions over classes**; assertions only at an I/O boundary behind a runtime check; structured
-  logging via **`@assayops/logger`** (pino) — **never `console.log`** (Python: structured logging, no bare
-  `print`).
+  logging via **`@assayops/logger`** (pino) — **never `console.log`**.
 - **Python:** `uv run` for `mypy` / `ruff` / `pytest`, via each package's thin `package.json` wrapper.
+  `object` + a runtime narrow (Pydantic / `isinstance`) at boundaries, **never `Any`** — `object` is
+  Python's `unknown`; bare `Any` is contagious like TS `any`. Open JSON payloads (env observations, deployed
+  state) get a Pydantic model or `dict[str, object]`, not `dict[str, Any]`. Enforced by mypy
+  `disallow_any_explicit` + ruff `ANN401` (relaxed for codegen output + tests). Structured logging via
+  **structlog** (the pino analog) — **never bare `print`**.
 
 ## Superpowers Workflow
 
@@ -190,3 +194,4 @@ their vendored skills; the rule applies beyond it.
 | TRL / HF Hub | `trl-training` · `hf-cli` | the SFT + LoRA trainer |
 | Inspect AI | `map-inspect-packages` · `reading-logs` · `babysitting-evals` | the eval harness (deploy-verifier as `Scorer`) |
 | LocalStack | `localstack` · `localstack-deploy` · `localstack-iam` · `localstack-state` · `localstack-logs` | the local dev loop |
+| Python lane (language-level) | `python-type-safety` · `python-testing-patterns` · `async-python-patterns` · `python-design-patterns` · `ruff` · `uv` | the `Any`/typing policy + `mypy --strict`; pytest + TDD; the asyncio env-server + concurrent sessions; composition/factories; lint+format; the uv workspace. (`python-performance-optimization` is situational — the verifier is I/O-bound on cloud reads, not CPU-bound.) |

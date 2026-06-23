@@ -6,6 +6,22 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **Python type-safety parity landed; config-DRY + a Pydantic-v2 skill are the open tails.** The Python
+  lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
+  the TS `any` ban — `object` + a runtime narrow (Pydantic) is the `unknown` equivalent — with `S`/`LOG`/`G`/
+  `ASYNC` ruff rules and `ruff format --check` gated, and **structlog** named as the Python logging lib (the
+  pino analog; advances the #113 "Python structured-logging story"). **Open tails:** (1) **config-DRY hoist**
+  — both `pyproject.toml`s still byte-duplicate `[tool.ruff]`/`[tool.mypy]`/`[tool.pytest]`; hoist shared
+  config to root (`[tool.ruff]` + `extend`; a root `[tool.mypy]` with the boto3/openenv `ignore_missing_imports`
+  overrides moved up), keeping only local bits (the codegen-model + tests ignores, env-server `filterwarnings`).
+  NEEDS CARE — mypy has no config merge, so a leftover per-package `[tool.mypy]` silently shadows root;
+  re-verify strict typecheck on both packages after. (2) **a homegrown Pydantic-v2 skill** — Pydantic v2 is
+  the contract spine (the ledger signs Pydantic-canonicalized bytes) but there is **no official** core-modeling
+  skill (pydantic/skills ships only PydanticAI/Logfire); author one in `AssayInc/skills` grounded in official
+  Pydantic docs (frozen/`extra=forbid` models, deterministic `model_dump_json` → RFC 8785 JCS, `TypeAdapter`,
+  discriminated unions), not the 1-star community option. The official **FastAPI** skill (`fastapi/fastapi`)
+  is vendored in a follow-up PR.
+
 - **Reward-ledger primitives spike (#115) — GO; E4 (#5) inputs surfaced.** The E17-S2 feasibility spike
   (`py/packages/contracts/tests/ledger_spike.py` + `test_ledger_primitives_spike.py`) recorded **GO**: the
   four primitives are real in the Python core over the canonical `RewardRecord` — RFC 8785 JCS via `rfc8785`

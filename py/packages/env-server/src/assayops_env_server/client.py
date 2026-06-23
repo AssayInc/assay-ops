@@ -6,8 +6,6 @@ Subclasses ``EnvClient`` and supplies the three serialization hooks. This is the
 
 from __future__ import annotations
 
-from typing import Any
-
 from openenv.core.client_types import StepResult
 from openenv.core.env_client import EnvClient
 
@@ -17,12 +15,17 @@ from assayops_env_server.models import DeployAction, DeployObservation, EnvState
 class DeployVerifyEnvClient(
     EnvClient[DeployAction, DeployObservation, EnvState],  # type: ignore[misc]
 ):
-    def _step_payload(self, action: DeployAction) -> dict[str, Any]:
-        payload: dict[str, Any] = action.model_dump()
+    def _step_payload(self, action: DeployAction) -> dict[str, object]:
+        payload: dict[str, object] = action.model_dump()
         return payload
 
-    def _parse_result(self, payload: dict[str, Any]) -> StepResult[DeployObservation]:
-        observation_fields = payload.get("observation", {})
+    def _parse_result(self, payload: dict[str, object]) -> StepResult[DeployObservation]:
+        # Wire payload is untyped JSON; narrow the nested object before unpacking it (Pydantic then
+        # validates). `object` is Python's `unknown` — it must be narrowed, never spread blind.
+        raw_observation = payload.get("observation", {})
+        observation_fields: dict[str, object] = (
+            raw_observation if isinstance(raw_observation, dict) else {}
+        )
         observation = DeployObservation(
             done=payload.get("done", False),
             reward=payload.get("reward"),
@@ -34,5 +37,5 @@ class DeployVerifyEnvClient(
             done=payload.get("done", False),
         )
 
-    def _parse_state(self, payload: dict[str, Any]) -> EnvState:
+    def _parse_state(self, payload: dict[str, object]) -> EnvState:
         return EnvState(**payload)

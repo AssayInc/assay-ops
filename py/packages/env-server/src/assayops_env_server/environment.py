@@ -11,7 +11,6 @@ the boundary forbids.
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import uuid4
 
 from openenv.core.env_server.interfaces import Environment
@@ -49,7 +48,7 @@ class DeployVerifyEnv(Environment):  # type: ignore[misc]
         self,
         seed: int | None = None,
         episode_id: str | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> DeployObservation:
         # seed is accepted for OpenEnv-signature compatibility but not modeled (no stochastic
         # dynamics to seed). episode_id, when supplied, becomes the trajectory_id join key.
@@ -60,7 +59,7 @@ class DeployVerifyEnv(Environment):  # type: ignore[misc]
         self,
         action: DeployAction,
         timeout_s: float | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> DeployObservation:
         if self._done:
             # Terminal is latched: once committed, no further deploys until reset.
