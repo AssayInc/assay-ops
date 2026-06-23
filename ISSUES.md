@@ -6,6 +6,23 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **Reward-ledger primitives spike (#115) — GO; E4 (#5) inputs surfaced.** The E17-S2 feasibility spike
+  (`py/packages/contracts/tests/ledger_spike.py` + `test_ledger_primitives_spike.py`) recorded **GO**: the
+  four primitives are real in the Python core over the canonical `RewardRecord` — RFC 8785 JCS via `rfc8785`
+  (byte-exact on the official vectors **and** byte-identical to the RFC 8785 reference JS `canonicalize`, the
+  #29 parity shown), the KMS `Sign` call shape via boto3 (`MessageType=DIGEST`, ECDSA P-256 over JCS→SHA-256),
+  S3 Object Lock WORM (Compliance + conditional write-once) via boto3, and portable **offline** verify on real
+  `cryptography` (confirms `DECISIONS.md` I3 / 4B / §8 / T4, no floor change). **E4 follow-ups the spike
+  flagged:** (1) **moto's KMS crypto is non-functional** — a moto `Sign` doesn't verify against its own
+  `GetPublicKey`, so E4 must validate offline-verify against **real KMS** (the recipe is proven real on
+  `cryptography`); (2) **Object Lock is version-scoped** — the locked version is immutable and survives a new
+  PUT or a simple-delete marker, but key-level write-once needs `(key, versionId)` pinning **+ an E4 bucket
+  policy denying unconditioned PUT/DELETE + `BypassGovernanceRetention`** (the agent holds none of those, nor
+  `kms:Sign`); (3) the **real account-B `reward-ledger` package + the KMS key/bucket IAM policies** are E4's
+  build; (4) the production TS `canonicalize` + the locked golden-vector corpus (`contracts/vectors`) + the CI
+  byte-parity gate are **#28 / #29** — the spike used the official RFC 8785 vectors as a test fixture, distinct
+  from `contracts/vectors`. Spike deps (`rfc8785`/`boto3`/`moto`, `canonicalize`) live in the workspace dev
+  group / ts-contracts devDep, kept out of the agent-reachable env-server.
 - **OpenEnv env-server spike (#114) — GO; E5 (#6) inputs surfaced.** The E17-S1 feasibility spike
   (`py/packages/env-server`) recorded **GO on OpenEnv-native Python** (vs. a TS wire-only server): a
   runnable `create_app`/FastAPI env proves concurrent-session isolation over HTTP + `/ws`, the
@@ -27,8 +44,9 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   `docs/ARCHITECTURE.md` package map + episode flow, `CLAUDE.md` top-line + the skill-preflight AWS-read
   row) and **preserved the trust floor untouched**; the **OpenEnv reward-boundary invariant is locked
   non-waivable** (§8). **E2–E7 (#3–#8) are re-scoped to Python and gated on the feasibility spikes** —
-  the **OpenEnv/TRL spike (#114) is delivered: GO on OpenEnv-native Python → E5 (#6) unblocked** (see
-  below); the **ledger spike (#115, gates E4)** + **verifier-read (#80, boto3)** remain. **Open
+  the **OpenEnv/TRL spike (#114) is delivered: GO on OpenEnv-native Python → E5 (#6) unblocked** and the
+  **ledger spike (#115) is delivered: GO → E4 (#5) inputs surfaced** (both see above); **verifier-read
+  (#80, boto3)** remains. **Open
   migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
   built TS** — `@assayops/logger` (retire vs keep) + a Python structured-logging story, and a **boto3
   counterpart** to the `infra-local` LocalStack smoke; (2) **brain/wiki sync** — the raw plans
