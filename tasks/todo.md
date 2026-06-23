@@ -156,6 +156,16 @@ locks both schema-valid optional sides and the remaining parity-adjacent risks a
 #26/#27 and #29." Lesson: re-review the FIXED code, and re-check the *scope* of a finding (don't assume the
 reviewer named the only instance).
 
+**Codex findings validated (not taken on faith).** Each load-bearing claim was confirmed against the
+**source of truth** during the review — `ajv` (the conformant JSON Schema validator) on the actual schema +
+the real Pydantic models (`model_fields[...].is_required()`, `model_dump`) — e.g. `propertyDiffs:null`
+rejected "must be array", `expected/actual:null` valid, only DiffIR has optionals. The severity was my own
+call against the trust model (**flag, not Codex's "Block"**: the signed `RewardRecord` is unaffected,
+DiffIR isn't signed until E3/E4), which Codex's final pass agreed with (ship). Then grounded the underlying
+semantics against the **official docs** (json-schema.org `type` — null and array are distinct, so a
+`type:array` field rejects null; `combining` — `anyOf` = OR, one-or-more; Pydantic — `exclude_none` excludes
+None-valued fields): **all confirm, no corrections.**
+
 ---
 
 ## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)
