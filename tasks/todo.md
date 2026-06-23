@@ -110,6 +110,30 @@ TS-consumer).
   spike's two parallel canonicalize implementations are DRY'd onto the production recipe (the spike comments
   anticipated #28 doing this). No separate corpus README (matches `contracts/schemas/`).
 
+### `/review` (Claude adversarial subagent + Codex `gpt-5.5` xhigh) — findings handled
+
+Both models confirmed the core is sound: the cross-language test is **non-tautological** (Claude verified by
+mutating the TS output → test fails), determinism holds, the #115 spike DRY refactor changed **no signed
+bytes** (Codex confirmed), the trust boundary is intact, and the signed **`RewardRecord` is fully safe** (all
+7 fields required). Two real findings, both on the **not-yet-signed** `DiffIR`/`Trajectory`:
+
+- **Number domain (Claude, conf 9).** A large int in an open `Any` field validates, then the Python signer
+  (`rfc8785`) **fails closed** while a JS consumer rounds. → Added `diff-ir/numeric-property` (in-domain
+  numbers canonicalize identically) + a **fail-closed test** + documented the IEEE-754 / valid-Unicode domain
+  on both lanes + flagged the verify-path symmetric reject for **E4/#29**.
+- **Optional-field model/schema bug (Codex xhigh, High).** Python canonicalizes the `model_dump` form, a TS
+  consumer the raw object; they diverge on `DiffIR.Resource.propertyDiffs` (the one optional field): omitted →
+  Python emits `"propertyDiffs":null`, which is **also schema-invalid** (schema requires an array). A real
+  **#26/#27 model-vs-schema inconsistency** #28 surfaced — **not #28's to fix**. → Documented the
+  materialized-form contract on both lanes; **flagged the root-cause fix** (`propertyDiffs` → non-optional,
+  default `[]`) for **E3/#26/#27** in `ISSUES.md`; kept the corpus to **valid records only** (the
+  schema-invalid omitted-optional vector was added then reverted). Codex's "Block" is on a real bug **upstream
+  of #28**; #28's scope (canonicalize + corpus + parity for valid records) is met and the moat (the signed
+  reward-record) is provably safe.
+
+Net code-logic change from the review: **none** (the canonicalize recipe is unchanged) — the review added a
+vector, a boundary test, docs, and the flags. `bun run verify` green (14/14) after each round.
+
 ---
 
 ## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)
