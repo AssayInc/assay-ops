@@ -120,6 +120,12 @@
       "skillPath": ".agents/skills/openenv-cli/SKILL.md",
       "computedHash": "c9c6bdbb871a1288862fca0c1202443138a86b4cf12821627e2879ceb3f05842"
     },
+    "pydantic-v2": {
+      "source": "AssayInc/skills",
+      "sourceType": "github",
+      "skillPath": "pydantic-v2/SKILL.md",
+      "computedHash": "7130cff4b4d849631f773f7bb8a0b568b565db9ab332b324093448d400109c29"
+    },
     "python-design-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",

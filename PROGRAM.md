@@ -22,13 +22,22 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
   (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync), #127 (4
-  wshobson Python skills, epic-gated), #128 (homegrown Pydantic-v2 skill).
+  wshobson Python skills, epic-gated).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff
   parity gate, now unblocked — #27/#28 landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes
   both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team
   gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **Pydantic-v2 skill — authored + vendored (closes #128).** A homegrown Pydantic v2 skill for the contract
+  spine (`AssayInc/skills#9`, merged): the load-bearing **`model_dump_json` isn't JCS-canonical** rule
+  (canonicalize `model_dump(mode='json')` before signing), `frozen`/`extra='forbid'`/`strict` hardening, the
+  `pydantic.mypy` `disallow_any_explicit` gotcha (ties to #124), validators/`TypeAdapter`/`pydantic-settings`.
+  Grounded in the official Pydantic v2 docs (load-bearing claims **primary-source-verified**); reviewed Codex
+  `gpt-5.5` xhigh **×5 to convergence**; eval = a with/without A/B + the **optimizer-run** trigger set
+  (**0/10 false triggers**; recall is the capable-model confound). Vendored into `.agents/skills/pydantic-v2`
+  (+ `.claude`/`.hermes` symlinks + `skills-lock.json`) with a `CLAUDE.md` preflight row.
 
 - **#129 (closes #126): config-DRY — shared ruff config hoisted to root via `extend`.** The duplicated
   `[tool.ruff]` (line-length / target-version / lint.select) now lives once in the root `pyproject.toml`;
