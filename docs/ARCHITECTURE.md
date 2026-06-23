@@ -47,20 +47,20 @@ assay-ops/
 │
 ├─ contracts/ ................. ◻ E1 — THE SPINE: JSON Schema (Draft 2020-12) source of truth [5A/I3]
 │  ├─ schemas/ ................ ◻ reward-record · trajectory · diff-ir · task-spec
-│  └─ vectors/ ................ ◻ golden JCS byte-parity fixtures — fixture-change only (#28)
+│  └─ vectors/ ................ ✅ golden JCS byte-parity corpus — fixture-change only (#28)
 │     (codegen = the root `just codegen` recipe: quicktype (TS) + datamodel-code-generator (Py) [#27])
 │
 ├─ ts/                          # ── Bun + Turborepo — consumer / web / tooling surface ──
 │  └─ packages/
 │     ├─ typescript-config/ ... ✅ shared tsconfig (base + bun)
 │     ├─ biome-config/ ........ ✅ shared lint/format
-│     ├─ contracts/ ........... ✅ E1 generated TS binding (quicktype) — the PUBLIC `@assayops/contracts` (assay-web / npm / TS labs) [#27]; ◻ JCS verify-side [#28]
+│     ├─ contracts/ ........... ✅ E1 generated TS binding (quicktype) — the PUBLIC `@assayops/contracts` (assay-web / npm / TS labs) [#27]; ✅ JCS canonicalize [#28]
 │     └─ logger/ .............. ✅ pino structured logging for the TS surface (`@assayops/logger`)
 │                                  (no ts/apps yet — assayctl is Python; see py/ below)
 │
 ├─ py/                          # ── UV workspace — THE proof-critical core (each pkg: thin package.json wrapper → uv) ──
 │  └─ packages/
-│     ├─ contracts/ ........... ✅ E1 generated Pydantic v2 (datamodel-codegen) — the INTERNAL core contract [#27]; ◻ rfc8785 canon. [#28] (the ledger E4 signs)
+│     ├─ contracts/ ........... ✅ E1 generated Pydantic v2 (datamodel-codegen) — the INTERNAL core contract [#27]; ✅ rfc8785 canon. [#28] (the ledger E4 signs)
 │     ├─ diff-ir/ ............. ◻ E3 normalized diff IR + shared reward core [6A]
 │     ├─ adapter-terraform/ ... ◻ E3 Terraform → diff IR (the A-spike engine) [T2]
 │     ├─ adapter-cdk/ ......... ◻ E3 CDK adapter [T3]

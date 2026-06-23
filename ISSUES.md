@@ -19,10 +19,11 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   PUT or a simple-delete marker, but key-level write-once needs `(key, versionId)` pinning **+ an E4 bucket
   policy denying unconditioned PUT/DELETE + `BypassGovernanceRetention`** (the agent holds none of those, nor
   `kms:Sign`); (3) the **real account-B `reward-ledger` package + the KMS key/bucket IAM policies** are E4's
-  build; (4) the production TS `canonicalize` + the locked golden-vector corpus (`contracts/vectors`) + the CI
-  byte-parity gate are **#28 / #29** — the spike used the official RFC 8785 vectors as a test fixture, distinct
-  from `contracts/vectors`. Spike deps (`rfc8785`/`boto3`/`moto`, `canonicalize`) live in the workspace dev
-  group / ts-contracts devDep, kept out of the agent-reachable env-server.
+  build; (4) the production `canonicalize` (both sides) + the locked golden-vector corpus
+  (`contracts/vectors`) **landed in #28**; the CI byte-parity / regenerate-and-diff gate is **#29** — the
+  spike used the official RFC 8785 vectors as a test fixture, distinct from `contracts/vectors`. Spike deps
+  (`rfc8785`/`boto3`/`moto`, `canonicalize`) live in the workspace dev group / ts-contracts devDep
+  (`rfc8785` is now also a runtime dep of `assayops-contracts`), kept out of the agent-reachable env-server.
 - **OpenEnv env-server spike (#114) — GO; E5 (#6) inputs surfaced.** The E17-S1 feasibility spike
   (`py/packages/env-server`) recorded **GO on OpenEnv-native Python** (vs. a TS wire-only server): a
   runnable `create_app`/FastAPI env proves concurrent-session isolation over HTTP + `/ws`, the
@@ -66,20 +67,20 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   every PR. **Branch protection on `main` is applied** — a repository ruleset requires the `ts` + `py`
   checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
   gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
-  ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is deferred to its own issue
-  (blocked-by #27/#28; the schemas exist (E1-1) but codegen + golden vectors don't yet), and the
-  **`fixture-change` guard** (a CI
-  path+label check or a CODEOWNERS rule on the ruleset) activates when `contracts/vectors` (#28) /
-  `tools/red-team` (#56) land.
+  ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is **now unblocked** (#27 codegen +
+  #28 golden vectors both landed) — its own issue: regenerate from `contracts/schemas` (`just codegen`) +
+  `contracts/vectors` (`just vectors`), assert no diff vs the committed artifacts, check the golden-vector
+  sha256 in both lanes. The **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS
+  rule + the `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
 - **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are
   **enabled** repo-side (GitHub-native; the org has Advanced Security) — proven by a planted
   push-protection-supported secret rejected on push (`google_api_key` is detection-only, so it doesn't test
   push protection). `.github/CODEOWNERS` (global owner), the PR template (documents `Closes #`), and
   `CONTRIBUTING.md` ship in PR #108. Two deferrals: (1) **require-code-owner-review is not wired into the
   `main` ruleset** — a single collaborator would deadlock every solo PR (no one else can approve); enable it
-  with a second reviewer. (2) The **per-path CODEOWNERS rules for the locked grader** (`contracts/vectors`
-  #28 / `tools/red-team` #56) land in those epics' `fixture-change` PRs — the dirs don't exist yet (see
-  below). Together these complete the `fixture-change` guard noted above.
+  with a second reviewer. (2) The **per-path CODEOWNERS rule for `contracts/vectors`** landed with **#28**
+  (its `fixture-change` PR); the **`tools/red-team`** rule lands with **#56**. Together these complete the
+  `fixture-change` guard noted above.
 - **The committed skill layer — #85 + #86 landed.** The skills.sh lock + consumer `.agents/skills/`
   wiring (PR #89) and the **prefer-official cloud/IaC/training/eval packs** (**E0-10 / #85**) are in: 25
   skills (18 official-vendor + 3 maintainer-authored Inspect AI + 4 well-adopted community `wshobson/agents`) — `skill-creator`, AWS `aws-cdk` / `aws-sdk-js-v3-usage` / `aws-cloudformation` / `aws-iam`,
@@ -103,7 +104,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   (manual `git diff` of the full vendored skill dir — all non-`SKILL.md` files, especially executable `scripts/*` —
   after any sync) is the current guard. A full-dir hash check in CI is a **fast-follow on top of the
   two-lane gate** (out of E0-2's ACs); the lock today is restore-grade, not part of `bun run verify`.
-- **Locked-fixtures directories don't exist yet.** `contracts/vectors` (#28, E1-3) and `tools/red-team`
-  (#56, E10-1) are scaffolded by their owning epics; the locked-fixtures rule in
-  `CLAUDE.md`/`DECISIONS.md` binds the moment they do. Listed so the rule isn't mistaken for stale config
-  pointing at nothing — no action until those epics run.
+- **Locked-fixtures directories: `contracts/vectors` now exists (#28); `tools/red-team` not yet (#56).**
+  `contracts/vectors` (the JCS golden corpus) landed with **E1-3 (#28)** — the locked-fixtures rule
+  (`CLAUDE.md`/`DECISIONS.md` §8) **now binds it**, enforced by its CODEOWNERS rule + the `fixture-change`
+  label. `tools/red-team` (#56, E10-1) is still scaffolded by its owning epic; the rule binds it the moment
+  it lands.

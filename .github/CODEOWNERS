@@ -4,3 +4,7 @@
 # owner must approve changes to the matched paths.
 
 * @samuelcastro
+
+# Locked grader fixtures (DECISIONS.md §8): the JCS golden-vector corpus changes only in a
+# `fixture-change` PR reviewed by the fixture owner — the agent that writes code never edits the grader.
+/contracts/vectors/ @samuelcastro

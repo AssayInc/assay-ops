@@ -1,0 +1,107 @@
+{
+  "$comment": "Locked JCS golden corpus (DECISIONS.md I3, Section 8) -- edit only in a fixture-change PR; regenerate with `just vectors`. Per vector: record -> canonical (RFC 8785 JCS) -> sha256. Python `rfc8785` and TS `canonicalize` must reproduce it byte-for-byte.",
+  "vectors": [
+    {
+      "canonical": "{\"attempt\":0,\"gradedAt\":\"1782518400000000000\",\"graderVersion\":\"grader@1.0.0\",\"nonce\":\"5f4dcc3b5aa765d61d8327deb882cf99\",\"reportDigest\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"reward\":1,\"trajectory_id\":\"traj-01J9Z3K8QmR2\"}",
+      "name": "reward-record/reward-one",
+      "record": {
+        "attempt": 0,
+        "gradedAt": "1782518400000000000",
+        "graderVersion": "grader@1.0.0",
+        "nonce": "5f4dcc3b5aa765d61d8327deb882cf99",
+        "reportDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reward": 1,
+        "trajectory_id": "traj-01J9Z3K8QmR2"
+      },
+      "schema": "reward-record",
+      "sha256": "2663e85468f04027c825c19537dae036f3f36262aa992c8cf3959a395c5f387f"
+    },
+    {
+      "canonical": "{\"attempt\":1,\"gradedAt\":\"1782604800000000000\",\"graderVersion\":\"grader@1.0.0\",\"nonce\":\"ad0234829205b9033196ba818f7a872b\",\"reportDigest\":\"2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae\",\"reward\":0,\"trajectory_id\":\"traj-01J9Z3K8QmR3\"}",
+      "name": "reward-record/reward-zero",
+      "record": {
+        "attempt": 1,
+        "gradedAt": "1782604800000000000",
+        "graderVersion": "grader@1.0.0",
+        "nonce": "ad0234829205b9033196ba818f7a872b",
+        "reportDigest": "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+        "reward": 0,
+        "trajectory_id": "traj-01J9Z3K8QmR3"
+      },
+      "schema": "reward-record",
+      "sha256": "d5c84d3de25224b5ba6f3634e0458cc81c5851276326866b5b12f2f9202dcf11"
+    },
+    {
+      "canonical": "{\"createdAt\":\"1782518400000000000\",\"steps\":[{\"action\":{},\"index\":0,\"observation\":{}}],\"task_id\":\"task-s3-versioning-001\",\"trajectory_id\":\"traj-01J9Z3K8QmR2\"}",
+      "name": "trajectory/with-step",
+      "record": {
+        "createdAt": "1782518400000000000",
+        "steps": [
+          {
+            "action": {},
+            "index": 0,
+            "observation": {}
+          }
+        ],
+        "task_id": "task-s3-versioning-001",
+        "trajectory_id": "traj-01J9Z3K8QmR2"
+      },
+      "schema": "trajectory",
+      "sha256": "d640b422961e252a69c9b32102490a0eaa757e284b551b5a515dc4b51e6989d4"
+    },
+    {
+      "canonical": "{\"resources\":[{\"address\":\"AppBucket\",\"change\":\"modified\",\"propertyDiffs\":[{\"actual\":\"Suspended\",\"expected\":\"Enabled\",\"path\":\"VersioningConfiguration.Status\"}],\"type\":\"AWS::S3::Bucket\"},{\"address\":\"LogBucket\",\"change\":\"unchanged\",\"propertyDiffs\":[],\"type\":\"AWS::S3::Bucket\"}]}",
+      "name": "diff-ir/modified-and-unchanged",
+      "record": {
+        "resources": [
+          {
+            "address": "AppBucket",
+            "change": "modified",
+            "propertyDiffs": [
+              {
+                "actual": "Suspended",
+                "expected": "Enabled",
+                "path": "VersioningConfiguration.Status"
+              }
+            ],
+            "type": "AWS::S3::Bucket"
+          },
+          {
+            "address": "LogBucket",
+            "change": "unchanged",
+            "propertyDiffs": [],
+            "type": "AWS::S3::Bucket"
+          }
+        ]
+      },
+      "schema": "diff-ir",
+      "sha256": "f6747618d0c04fd661ad6ec8f91bec02893c7f320dd2d573e31b50aad0c9769b"
+    },
+    {
+      "canonical": "{\"description\":\"Deploy an S3 bucket with versioning enabled.\",\"seed\":\"seed-9a3f1c2e\",\"task_id\":\"task-s3-versioning-001\",\"title\":\"Enable versioning on the app S3 bucket\",\"tool\":\"terraform\"}",
+      "name": "task-spec/terraform",
+      "record": {
+        "description": "Deploy an S3 bucket with versioning enabled.",
+        "seed": "seed-9a3f1c2e",
+        "task_id": "task-s3-versioning-001",
+        "title": "Enable versioning on the app S3 bucket",
+        "tool": "terraform"
+      },
+      "schema": "task-spec",
+      "sha256": "2019bc968a7f7679360fc950e0466ed39ddb41db489acf813391f9c730be8467"
+    },
+    {
+      "canonical": "{\"description\":\"Déployer une instance RDS avec le chiffrement au repos activé.\",\"seed\":\"seed-7b2e4f1a\",\"task_id\":\"task-rds-encryption-002\",\"title\":\"Activer le chiffrement RDS\",\"tool\":\"cdk\"}",
+      "name": "task-spec/cdk-unicode",
+      "record": {
+        "description": "Déployer une instance RDS avec le chiffrement au repos activé.",
+        "seed": "seed-7b2e4f1a",
+        "task_id": "task-rds-encryption-002",
+        "title": "Activer le chiffrement RDS",
+        "tool": "cdk"
+      },
+      "schema": "task-spec",
+      "sha256": "5c96deabc23ff9b43a304be43b45080174c29d618db8864a893211acb2b2e4c2"
+    }
+  ]
+}
