@@ -15,20 +15,32 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
 - **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes: **#114 (OpenEnv/TRL,
   gates E5) LANDED — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, `b91da87`); **#115 (ledger
-  rfc8785/KMS/Object-Lock, gates E4) — feasibility proven, GO** (PR #122, awaiting review); **#80** (boto3
-  read coverage) + **account infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts
-  on stale TS assumptions**. The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28**
-  (JCS + golden vectors) then **#29** (CI parity).
+  rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80** (boto3 read coverage) + **account
+  infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
+  The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
+  then **#29** (CI parity).
 - **Type checker:** `mypy --strict` is the bridge; **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
   (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
 - **Next ready work:** **#28** (contract-spine JCS canonicalization + golden vectors) + **#80** (boto3 read
-  coverage) — the remaining gates for E2–E7 (**#115** ledger spike **in progress**; **E5/#6** unblocked by
-  the #114 GO). **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the
-  permanent owner).
+  coverage) — the remaining gates for E2–E7 (**#114** + **#115** spikes both landed GO; **E5/#6** unblocked
+  by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
+  RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E17-S2 (#115): reward-ledger primitives feasibility spike (PR #122).** A runnable proof that the four
+  reward-ledger primitives are real in the Python core, over the canonical `@assayops/contracts`
+  `RewardRecord`: **RFC 8785 JCS** via `rfc8785` (byte-exact on the official vectors **and** byte-identical
+  to the RFC 8785 reference JS `canonicalize` — the #29 parity shown), the **KMS `Sign`** call shape via
+  boto3 (`MessageType=DIGEST`, ECDSA P-256 over JCS→SHA-256), **S3 Object Lock WORM** (Compliance +
+  conditional write-once) via boto3, and portable **offline verify** on real `cryptography`. **GO** —
+  confirms `DECISIONS.md` I3/4B/§8/T4 with no floor change. Lives in `py/packages/contracts/tests/` (imports
+  the real `RewardRecord`; keeps signing/KMS/S3 out of the agent-reachable env-server). Cross-model
+  `/review` (Claude + Codex `gpt-5.5` xhigh) caught a real fail-closed gap (`verify_offline` now pins P-256)
+  + the Object-Lock checksum requirement; the KMS/S3 contract was verified against the **primary AWS docs**.
+  **E4 builds the real account-B ledger** (real KMS validation + a bucket deny-policy; the agent holds no
+  `kms:Sign`/`s3:BypassGovernanceRetention`). `bun run verify` green (16 spike tests).
 - **E17-S1 (#114): OpenEnv-native Python env-server feasibility spike (PR #121, `b91da87`).** A minimal
   runnable OpenEnv-native Python `create_app`/FastAPI env-server (`py/packages/env-server`) proving four ACs
   against a real uvicorn server + WebSocket clients — concurrent-session isolation, terminal/delayed reward
