@@ -148,6 +148,14 @@ docs** — post-hoc, after the founder asked "did you ground every implementatio
 low-stakes utilities cross-verified by tests — `hashlib`/`node:crypto` sha256, `json.dumps` — or the
 already-grounded #26 `ajv` pattern.)
 
+**Re-review convergence.** The founder asked whether I re-reviewed the *fixed* code with Codex xhigh. I had
+not, so I ran post-fix passes: pass-2 caught that I'd mislabeled `propertyDiffs` "the lone optional field"
+(`expected`/`actual` are optional too); pass-3 confirmed (2) fixed + no other surfaces, but flagged I'd only
+locked the `actual:null` half; pass-4 (after locking both sides) **confirms ship** — "the golden corpus now
+locks both schema-valid optional sides and the remaining parity-adjacent risks are explicitly scoped to
+#26/#27 and #29." Lesson: re-review the FIXED code, and re-check the *scope* of a finding (don't assume the
+reviewer named the only instance).
+
 ---
 
 ## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)

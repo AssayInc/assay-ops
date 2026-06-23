@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-06-23 — re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope
+- **Mistake:** In the E1-3 (#28) `/review`, after a Codex xhigh pass flagged the `DiffIR.propertyDiffs`
+  canonicalization divergence I implemented a fix and committed it **without re-running Codex xhigh on the
+  fix**. The founder asked "did you call gpt-5.5 xhigh to re-review it after changes?" The re-review I then
+  ran caught that my fix's **diagnosis was under-scoped** — I'd called `propertyDiffs` "the lone optional
+  field," but `PropertyDiff.expected`/`actual` are optional too; a further pass caught I'd locked only one of
+  the two optional sides. It took three post-fix passes to converge to "ship."
+- **Rule:** When a cross-model review (Codex **gpt-5.5 xhigh**) finds a real issue and you **change code in
+  response, re-run the review on the FIXED code** before claiming done — the fix can be incomplete,
+  mis-scoped, or introduce a new defect; iterate to convergence (a clean/ship verdict), don't stop at the
+  first fix. And when responding to a finding, **re-check the finding's SCOPE yourself** — sweep the whole
+  schema/type for sibling instances rather than assuming the reviewer named the only one (Codex named
+  `propertyDiffs`; the same class also hit `expected`/`actual`). A single pass on the pre-fix code is not the
+  bar. Sharpens [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
+- **Context:** E1-3 (#28) JCS canonicalize `/review`; the #114 spike already set the "re-review the FIXED
+  code with xhigh" precedent (the founder asked the same there — see the #114 post-fix re-review). Pairs with
+  [[verify-against-official-docs-and-skills-before-acting]].
+
 ## 2026-06-23 — reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production
 - **Mistake:** Building E1-3 (#28), I wrote the production JCS `canonicalize` by **reusing the #115 spike's
   `rfc8785` recipe + empirical testing + the shipped `canonicalize` `.d.ts`**, and cached knowledge for
