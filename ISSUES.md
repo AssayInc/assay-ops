@@ -10,17 +10,17 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
   the TS `any` ban — `object` + a runtime narrow (Pydantic) is the `unknown` equivalent — with `S`/`LOG`/`G`/
   `ASYNC` ruff rules and `ruff format --check` gated, and **structlog** named as the Python logging lib (the
-  pino analog; advances the #113 "Python structured-logging story"). **Open tails:** (1) **config-DRY hoist**
-  — both `pyproject.toml`s still byte-duplicate `[tool.ruff]`/`[tool.mypy]`/`[tool.pytest]`; hoist shared
-  config to root (`[tool.ruff]` + `extend`; a root `[tool.mypy]` with the boto3/openenv `ignore_missing_imports`
-  overrides moved up), keeping only local bits (the codegen-model + tests ignores, env-server `filterwarnings`).
-  NEEDS CARE — mypy has no config merge, so a leftover per-package `[tool.mypy]` silently shadows root;
-  re-verify strict typecheck on both packages after. (2) **a homegrown Pydantic-v2 skill** — Pydantic v2 is
-  the contract spine (the ledger signs Pydantic-canonicalized bytes) but there is **no official** core-modeling
-  skill (pydantic/skills ships only PydanticAI/Logfire); author one in `AssayInc/skills` grounded in official
-  Pydantic docs (frozen/`extra=forbid` models, deterministic `model_dump_json` → RFC 8785 JCS, `TypeAdapter`,
-  discriminated unions), not the 1-star community option. The official **FastAPI** skill (`fastapi/fastapi`)
-  is vendored in a follow-up PR.
+  pino analog; advances the #113 "Python structured-logging story"). **Tracked follow-ups (now GitHub issues,
+  not orphaned):** **#126** config-DRY — the shared **ruff** config is hoisted to a root `[tool.ruff]` + `extend`
+  in each member; **mypy/pytest stay per-package by design** (mypy has no config-merge, and the two packages
+  run divergent `disallow_any_explicit` strategies — contracts global incl. `scripts/`, env-server scoped so
+  its OpenEnv/TRL-mock tests keep `Any` — so it is intentional divergence, not duplication). **#128** a
+  homegrown **Pydantic-v2 skill** (`AssayInc/skills`, grounded in official Pydantic docs — frozen/`extra=forbid`,
+  deterministic `model_dump_json` → RFC 8785 JCS, `TypeAdapter`; Pydantic is the contract spine and has no
+  official skill). **#127** the 4 epic-gated **wshobson Python skills** (resilience / observability /
+  error-handling / configuration — vendor with their consuming epics, not speculatively). The official
+  **FastAPI** skill is **not** vendored — AssayOps never hand-writes FastAPI (OpenEnv's `create_app` owns the
+  routes), so it is YAGNI (founder call).
 
 - **Reward-ledger primitives spike (#115) — GO; E4 (#5) inputs surfaced.** The E17-S2 feasibility spike
   (`py/packages/contracts/tests/ledger_spike.py` + `test_ledger_primitives_spike.py`) recorded **GO**: the

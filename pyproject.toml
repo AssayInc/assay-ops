@@ -13,3 +13,17 @@ dev = [
     "rfc8785>=0.1.4",
     "ruff>=0.8",
 ]
+
+[tool.ruff]
+# Shared by every py/packages/* member via `extend` — the single source for line-length / target-version /
+# lint.select. Each package's pyproject keeps only its own [tool.ruff.lint.per-file-ignores]. (mypy/pytest
+# are NOT centralized: mypy has no config-merge and the two packages run divergent `disallow_any_explicit`
+# strategies; pytest is first-found and env-server carries local `filterwarnings`.)
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F/I/UP/B + ANN (ANN401 bans `Any` in signatures — the Python mirror of the TS `any` ban), S
+# (flake8-bandit — security, for a trust-boundary verifier), LOG+G (structured logging, no bare `print`),
+# ASYNC. Per-package mypy `disallow_any_explicit` covers `Any` in field/variable annotations ANN401 can't.
+select = ["E", "F", "I", "UP", "B", "ANN", "S", "ASYNC", "LOG", "G"]
