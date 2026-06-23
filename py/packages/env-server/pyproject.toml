@@ -16,13 +16,9 @@ dependencies = ["openenv[core]==0.3.1"]
 package = false
 
 [tool.ruff]
-line-length = 100
-target-version = "py312"
-
-[tool.ruff.lint]
-# E/F/I/UP/B + ANN (ANN401 bans `Any` in signatures — the Python mirror of the TS `any` ban), S
-# (flake8-bandit — security), LOG+G (structured logging, no bare `print`), ASYNC (the FastAPI env-server).
-select = ["E", "F", "I", "UP", "B", "ANN", "S", "ASYNC", "LOG", "G"]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
 
 [tool.ruff.lint.per-file-ignores]
 # Tests assert (S101), use loose/`Any`-typed fixtures (ANN) mirroring TRL/OpenEnv, and seed a non-crypto

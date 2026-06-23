@@ -21,13 +21,24 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
-  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
+  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync), #126
+  (config-DRY ruff hoist — this PR), #127 (4 wshobson Python skills, epic-gated), #128 (homegrown Pydantic-v2 skill).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff
   parity gate, now unblocked — #27/#28 landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes
   both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team
   gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **#124: Python type-safety parity — forbid explicit `Any` (mypy + ruff).** The Python lane now mirrors the
+  TS `any` ban: mypy **`disallow_any_explicit`** (which `--strict` does NOT enable, confirmed vs the mypy
+  docs) + ruff **`ANN401`**; `object` (the `unknown` equivalent) / a Pydantic model at boundaries — proven to
+  fire (a probe `Any` is rejected by both). Also added ruff `S`/`LOG`/`G`/`ASYNC` + `ruff format --check`
+  gating, cleaned the env-server `dict[str, Any]` → `dict[str, object]` (surfacing the real 3-level
+  cloud-state nesting), and `CLAUDE.md` got the `Any` rule + **structlog** named (the pino analog) + a
+  Python-skills preflight row. Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh; re-reviewed after the
+  scripts-gap fix → ship). Closed **#125**; follow-ups tracked as **#126** (config-DRY), **#127** (4 wshobson
+  Python skills, epic-gated), **#128** (homegrown Pydantic-v2 skill). `bun run verify` green 14/14.
 
 - **E1-3 (#28): JCS canonicalization + golden vectors.** The contract spine's canonical-byte recipe is now
   **production on both sides + locked by a golden corpus**: `assayops_contracts.jcs.canonicalize` (PyPI
