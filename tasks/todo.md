@@ -130,7 +130,7 @@ bytes** (Codex confirmed), the trust boundary is intact, and the signed **`Rewar
   found `propertyDiffs`; the **post-fix re-review caught** that I'd mislabeled it "the lone optional field"
   (expected/actual are optional too). → Corrected the claim; documented the materialized-form contract on both
   lanes; **flagged the root-cause fix** for **E3/#26/#27** in `ISSUES.md`; kept the corpus to **valid records**
-  and **locked the schema-valid materialized parity** (`diff-ir/optional-property-side`; the schema-invalid
+  and **locked the schema-valid materialized parity, both sides** (`diff-ir/optional-property-sides`; the schema-invalid
   `propertyDiffs:null` vector was reverted). The signed **`RewardRecord` is provably safe** (all 7 fields
   required).
 

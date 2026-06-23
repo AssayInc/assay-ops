@@ -87,7 +87,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     (E3/#26/#27):** align model + schema (e.g. `propertyDiffs` non-optional, default `[]`), or have the
     canonical path drop omitted optionals (`exclude_none`) so the materialized form matches a sparse wire
     form. #28 keeps the corpus to **valid records** (the schema-invalid `propertyDiffs:null` vector was
-    reverted) and **locks the schema-valid materialized parity** (`diff-ir/optional-property-side`).
+    reverted) and **locks the schema-valid materialized parity, both sides** (`diff-ir/optional-property-sides`).
   - **Out-of-domain values.** Numbers must be IEEE-754-representable + strings valid Unicode; the signer
     (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4/#29:** the verify side must reject
     out-of-domain values, or verify over the stored payload bytes (never re-canonicalize a sparse object).

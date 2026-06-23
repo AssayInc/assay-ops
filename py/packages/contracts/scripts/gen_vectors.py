@@ -23,8 +23,8 @@ from assayops_contracts.jcs import canonicalize
 GOLDEN = pathlib.Path(__file__).resolve().parents[4] / "contracts" / "vectors" / "jcs-golden.json"
 
 # The authored corpus. The reward-record (the signed artifact) covers both reward values + the
-# ns-timestamp digit string. diff-ir vectors carry a number in an open `Any` field and an omitted
-# optional property-side (null). One task-spec carries non-ASCII (raw UTF-8). Numbers stay
+# ns-timestamp digit string. diff-ir vectors carry a number in an open `Any` field and omitted
+# optional property-sides (null). One task-spec carries non-ASCII (raw UTF-8). Numbers stay
 # IEEE-754-representable (the contract strings large values, #26); rfc8785 fails closed otherwise.
 # EDIT ONLY IN A `fixture-change` PR (DECISIONS.md Section 8).
 
@@ -105,10 +105,10 @@ _DIFF_IR_NUMERIC = DiffIR.model_validate(
     }
 )
 
-# Omits the optional `actual` of a propertyDiff (anyOf requires one of expected/actual): the model
-# materializes it to `"actual":null`, which IS schema-valid. Locks the PropertyDiff optional parity.
-# (`propertyDiffs` itself -> a schema-INVALID null -- the #26/#27 bug, flagged not fixed.)
-_DIFF_IR_OPTIONAL_SIDE = DiffIR.model_validate(
+# Two propertyDiffs, each omitting one optional side (anyOf requires one of expected/actual). The
+# model materializes the missing side to null (`actual:null` / `expected:null`), both schema-valid.
+# Locks the PropertyDiff optional parity, both sides. `propertyDiffs` -> INVALID null (#26/#27 bug).
+_DIFF_IR_OPTIONAL_SIDES = DiffIR.model_validate(
     {
         "resources": [
             {
@@ -116,7 +116,8 @@ _DIFF_IR_OPTIONAL_SIDE = DiffIR.model_validate(
                 "type": "AWS::S3::Bucket",
                 "change": "modified",
                 "propertyDiffs": [
-                    {"path": "VersioningConfiguration.Status", "expected": "Enabled"}
+                    {"path": "VersioningConfiguration.Status", "expected": "Enabled"},
+                    {"path": "LoggingConfiguration.Enabled", "actual": "true"},
                 ],
             }
         ]
@@ -151,7 +152,7 @@ def _records() -> list[tuple[str, str, BaseModel]]:
         ("trajectory/with-step", "trajectory", _TRAJECTORY),
         ("diff-ir/modified-and-unchanged", "diff-ir", _DIFF_IR),
         ("diff-ir/numeric-property", "diff-ir", _DIFF_IR_NUMERIC),
-        ("diff-ir/optional-property-side", "diff-ir", _DIFF_IR_OPTIONAL_SIDE),
+        ("diff-ir/optional-property-sides", "diff-ir", _DIFF_IR_OPTIONAL_SIDES),
         ("task-spec/terraform", "task-spec", _TASK_TERRAFORM),
         ("task-spec/cdk-unicode", "task-spec", _TASK_CDK_UNICODE),
     ]
