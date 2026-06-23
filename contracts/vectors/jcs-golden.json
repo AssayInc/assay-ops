@@ -100,6 +100,28 @@
       "sha256": "0590ab64e3c63e70748ed2b9315ba86461ab3f420c190a052f3f186dfad87e66"
     },
     {
+      "canonical": "{\"resources\":[{\"address\":\"AppBucket\",\"change\":\"modified\",\"propertyDiffs\":[{\"actual\":null,\"expected\":\"Enabled\",\"path\":\"VersioningConfiguration.Status\"}],\"type\":\"AWS::S3::Bucket\"}]}",
+      "name": "diff-ir/optional-property-side",
+      "record": {
+        "resources": [
+          {
+            "address": "AppBucket",
+            "change": "modified",
+            "propertyDiffs": [
+              {
+                "actual": null,
+                "expected": "Enabled",
+                "path": "VersioningConfiguration.Status"
+              }
+            ],
+            "type": "AWS::S3::Bucket"
+          }
+        ]
+      },
+      "schema": "diff-ir",
+      "sha256": "f98189b93ef27b8392d1324ebbb1c0b15dfeda3e9e96e852fcc48a991a49a738"
+    },
+    {
       "canonical": "{\"description\":\"Deploy an S3 bucket with versioning enabled.\",\"seed\":\"seed-9a3f1c2e\",\"task_id\":\"task-s3-versioning-001\",\"title\":\"Enable versioning on the app S3 bucket\",\"tool\":\"terraform\"}",
       "name": "task-spec/terraform",
       "record": {

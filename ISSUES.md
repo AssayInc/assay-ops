@@ -77,13 +77,17 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   canonicalizes the **raw** object. They agree on the same materialized JSON (the corpus locks this), and
   the signed **`RewardRecord` is fully safe** (all 7 fields required — no optional/large-number exposure).
   Two residuals on the **not-yet-signed** `DiffIR`/`Trajectory`:
-  - **Optional-field modeling (`DiffIR.Resource.propertyDiffs`).** The generated Pydantic model defaults
-    this lone optional contract field to `None`, so `model_dump` emits `"propertyDiffs":null` — which is
-    **schema-invalid** (the schema requires an `array`) **and** diverges from a TS consumer canonicalizing
-    the raw object (key omitted). A real **#26/#27 model-vs-schema inconsistency** that #28's canonicalization
-    surfaced. **Root-cause fix (E3/#26/#27):** make `propertyDiffs` non-optional with default `[]` (or align
-    model + schema) so the form is unambiguous + valid. #28 keeps the corpus to valid records (the invalid
-    omitted-optional vector was reverted on review).
+  - **Optional-field materialization (DiffIR).** The generated Pydantic model materializes an **omitted**
+    optional field to `None` → `model_dump` emits `null`, while a TS consumer canonicalizing the raw object
+    **omits the key** — a model_dump-vs-raw divergence on any sparse record. DiffIR has **three** optional
+    surfaces (a Codex xhigh re-review corrected an earlier "lone field" misread): `Resource.propertyDiffs`
+    (omitted → `"propertyDiffs":null`, **schema-invalid** — the schema requires an `array`) and
+    `PropertyDiff.expected`/`actual` (the `anyOf` requires one side; the other → `null`, which **is**
+    schema-valid). The signed **`RewardRecord` has no optional fields** (unaffected). **Root-cause fix
+    (E3/#26/#27):** align model + schema (e.g. `propertyDiffs` non-optional, default `[]`), or have the
+    canonical path drop omitted optionals (`exclude_none`) so the materialized form matches a sparse wire
+    form. #28 keeps the corpus to **valid records** (the schema-invalid `propertyDiffs:null` vector was
+    reverted) and **locks the schema-valid materialized parity** (`diff-ir/optional-property-side`).
   - **Out-of-domain values.** Numbers must be IEEE-754-representable + strings valid Unicode; the signer
     (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4/#29:** the verify side must reject
     out-of-domain values, or verify over the stored payload bytes (never re-canonicalize a sparse object).

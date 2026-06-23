@@ -121,15 +121,18 @@ bytes** (Codex confirmed), the trust boundary is intact, and the signed **`Rewar
   (`rfc8785`) **fails closed** while a JS consumer rounds. → Added `diff-ir/numeric-property` (in-domain
   numbers canonicalize identically) + a **fail-closed test** + documented the IEEE-754 / valid-Unicode domain
   on both lanes + flagged the verify-path symmetric reject for **E4/#29**.
-- **Optional-field model/schema bug (Codex xhigh, High).** Python canonicalizes the `model_dump` form, a TS
-  consumer the raw object; they diverge on `DiffIR.Resource.propertyDiffs` (the one optional field): omitted →
-  Python emits `"propertyDiffs":null`, which is **also schema-invalid** (schema requires an array). A real
-  **#26/#27 model-vs-schema inconsistency** #28 surfaced — **not #28's to fix**. → Documented the
-  materialized-form contract on both lanes; **flagged the root-cause fix** (`propertyDiffs` → non-optional,
-  default `[]`) for **E3/#26/#27** in `ISSUES.md`; kept the corpus to **valid records only** (the
-  schema-invalid omitted-optional vector was added then reverted). Codex's "Block" is on a real bug **upstream
-  of #28**; #28's scope (canonicalize + corpus + parity for valid records) is met and the moat (the signed
-  reward-record) is provably safe.
+- **Optional-field model/schema bug (Codex xhigh, High; sharpened by a post-fix Codex xhigh re-review).**
+  Python canonicalizes the `model_dump` form, a TS consumer the raw object; they diverge wherever the model
+  **materializes an omitted optional to `null`**. DiffIR has **three** such surfaces: `Resource.propertyDiffs`
+  (omitted → `"propertyDiffs":null`, **schema-invalid**) + `PropertyDiff.expected`/`actual` (each optional via
+  the `anyOf`; the omitted side → `null`, **schema-valid**). A **#26/#27 model-vs-schema inconsistency** #28
+  surfaced — **not #28's to fix** (the canonicalize faithfully serializes the model). The first Codex pass
+  found `propertyDiffs`; the **post-fix re-review caught** that I'd mislabeled it "the lone optional field"
+  (expected/actual are optional too). → Corrected the claim; documented the materialized-form contract on both
+  lanes; **flagged the root-cause fix** for **E3/#26/#27** in `ISSUES.md`; kept the corpus to **valid records**
+  and **locked the schema-valid materialized parity** (`diff-ir/optional-property-side`; the schema-invalid
+  `propertyDiffs:null` vector was reverted). The signed **`RewardRecord` is provably safe** (all 7 fields
+  required).
 
 Net code-logic change from the review: **none** (the canonicalize recipe is unchanged) — the review added a
 vector, a boundary test, docs, and the flags. `bun run verify` green (14/14) after each round.
