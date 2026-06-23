@@ -26,6 +26,13 @@ python_version = "3.12"
 strict = true
 mypy_path = "src"
 
+[[tool.mypy.overrides]]
+# boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The reward-ledger
+# primitives spike exercises the KMS/S3 boto3 call shapes in tests only; the real account-B ledger (E4)
+# can adopt boto3-stubs there. moto ships py.typed, so it needs no override.
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

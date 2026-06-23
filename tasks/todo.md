@@ -6,7 +6,98 @@ when done.
 
 ---
 
-## E17-S1 (#114) — OpenEnv-native Python env-server feasibility spike — IN PROGRESS (branch `spike/114-openenv-env-server`)
+## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)
+
+**Goal (AC — the spike, not the E4 build):** a **minimal runnable** proof (+ recorded **go/no-go**) that the
+four reward-ledger primitives are real in the Python core, over the canonical `@assayops/contracts`
+`RewardRecord` (`reward∈{0,1}`), keyed by `trajectory_id`. Prove:
+1. **RFC 8785 JCS** via `rfc8785` (ToB) — conformant (official vectors) **and byte-identical to a TS
+   `canonicalize`** (the #29 Python-signer ↔ TS-consumer parity, shown).
+2. **KMS `Sign`** — ECDSA P-256, `MessageType=DIGEST` over the JCS→SHA-256 digest (I3), via boto3.
+3. **S3 Object Lock WORM** — Compliance (immutable) + conditional write-once (`If-None-Match`); a re-grade
+   **appends** a new attempt, never overwrites.
+4. **Portable/public verify** — a buying lab verifies the signed record **offline** with just the public key.
+
+**Validation (issue vs. DECISIONS + brain + official docs — don't trust the AI-written issue blindly):**
+- Grounded in `DECISIONS.md` **I3 / 4B / §8 / T4** (KMS-signed + Object-Lock WORM, append-only,
+  trajectory-keyed; never a mutable row; the agent holds no `kms:Sign`/`s3:BypassGovernanceRetention`; all in
+  account B) + the **`reward-ledger-worm`** skill (three properties; the JCS→SHA-256→DIGEST-sign recipe;
+  offline verify) + an **assay-brain** recall (top: `concepts/reward-hacking`, `write-isolated-verifier` —
+  forgeable reward is the #1 thesis risk; JCS pins cross-runtime bytes where Protobuf is non-canonical).
+- **Reconciled the issue:** it says "byte-identical to **the TS `canonicalize`**" — but `#28` (JCS + golden
+  vectors) is **unbuilt**, so there is **no production TS `canonicalize` yet**. → prove conformance against
+  the **authoritative RFC 8785 vectors** (the language-neutral reference both sides must match) and show
+  Python↔JS parity via the **RFC 8785 reference JS impl** (`canonicalize`, erdtman); flag that **#28 owns the
+  production TS canonicalize + locked `contracts/vectors`**, **#29 owns the CI byte-parity gate**.
+- **Official-docs-first (founder standing rule; I wrote the #114 mock from memory — don't repeat it):**
+  `rfc8785` v0.1.4 (Trail of Bits) confirmed on PyPI; `moto` 5.x + `boto3` confirmed; **no AWS creds/CLI**
+  here → the proof runs locally (moto + real `cryptography`) with **recorded findings** for the real-AWS
+  path (consistent with LocalStack-first / T7-gated). **moto's enforcement fidelity** (KMS asymmetric
+  sign→offline-verify; S3 Object Lock Compliance; `If-None-Match`) is **discovered empirically** (a throwaway
+  smoke), never assumed — per `local-aws-emulator-must-prove-read-api`.
+
+**Design (smallest change; `py/packages/contracts/tests/`, uv workspace, mypy --strict + Pydantic v2):**
+- **Home = `py/packages/contracts/tests/`** (not env-server): imports the **real** `assayops_contracts.RewardRecord`
+  (DRY — types ← the schema), reuses the cross-runtime **bun-shell precedent** (`test_roundtrip.py`), is where
+  #28 JCS lands, and **keeps all signing/KMS/S3/WORM machinery out of the agent-reachable env-server**
+  (reinforces the boundary; env-server runtime stays `openenv`-only).
+- **Spike deps in the workspace-root `dev` group** (shared, never A-side runtime): `rfc8785`, `boto3`, `moto`.
+  TS parity devDep `canonicalize` (erdtman) → `ts/packages/contracts`. mypy `ignore_missing_imports` override
+  for `boto3.*`/`botocore.*`/`moto.*` if needed (mirrors env-server's openenv override).
+- **Files:** `tests/ledger_spike.py` (the real primitives: `canonicalize()` via rfc8785; `kms_sign_record()`
+  via boto3/moto KMS `Sign(MessageType=DIGEST, ECDSA_SHA_256)`; `verify_offline()` via `cryptography` +
+  SPKI public key; `worm_put()` via boto3/moto S3 Object-Lock Compliance + `IfNoneMatch="*"`, key
+  `<trajectory_id>#<attempt>`); `tests/test_ledger_primitives_spike.py` (the 4-AC proof);
+  `tests/fixtures/rfc8785_vectors.*` (official vectors, spike-scoped — **NOT** the locked `contracts/vectors`);
+  `ts/packages/contracts/scripts/jcs-canonicalize.ts` (stdin JSON → erdtman canonicalize → stdout).
+- **Out of spike scope (note as E4/#28/#29 follow-ups):** the real account-B `py/packages/reward-ledger`
+  package + IAM/key/bucket policies; the locked golden-vector corpus (`contracts/vectors`, #28); the CI
+  byte-parity gate (#29); real KMS/S3 against a live account (T7-gated). The spike proves feasibility, not E4.
+
+**Steps (TDD — each AC = a failing test first, watched fail, then minimal green):**
+- [x] Branch `spike/115-reward-ledger-primitives`; ground (DECISIONS I3/4B/§8/T4 + skill + brain + issue); set #115 board → In Progress; update PROGRAM.
+- [x] Add deps (`rfc8785 boto3 moto` → workspace dev group; `canonicalize` → ts/contracts devDep); `uv lock`+`uv sync`+`bun install`; **verified `bun install --frozen-lockfile` + `uv sync --locked`** (the #114 lockfile lesson); both lockfiles committed.
+- [x] Throwaway smoke (scratchpad) learned moto KMS/S3 fidelity + the `rfc8785`/`canonicalize` APIs; then wrote committed tests test-first (RED on missing `ledger_spike` → GREEN).
+- [x] **AC1** JCS: `rfc8785` byte-exact on all 6 official conformance vectors; diverges from sorted-key JSON on unicode + small floats (why #114's hand-roll was insufficient); **byte-identical to the TS `canonicalize`** over the vectors + the real record.
+- [x] **AC2** KMS Sign: moto KMS `ECC_NIST_P256`/`SIGN_VERIFY`; `Sign(MessageType=DIGEST, ECDSA_SHA_256)` over `sha256(JCS(record))` → returns a sig + a P-256 SPKI public key (call shape proven).
+- [x] **AC4** offline verify: `cryptography` verifies the signed record **offline** with only the SPKI public key; tamper → fails; foreign-key sig → fails; malformed → False (no raise).
+- [x] **AC3** WORM: `IfNoneMatch="*"` first-writer-wins (2nd → 412 `PreconditionFailed`, original byte-unchanged); Compliance blocks deleting the signed version (`AccessDenied`); version-scoped caveat shown; a re-grade appends `attempt=1` (new key), `attempt=0` intact + still verifies.
+- [x] `bun run verify` green (14/14, both lanes); go/no-go + boto3 call map + moto-fidelity findings recorded (Review below + the **#115 comment**; **not** DECISIONS.md — the floor already locks I3/4B/§8, which the spike confirms).
+- [ ] Focused PR **`Closes #115`** (sub-issue, single deliverable → `Closes` is correct; **NOT `Closes #113`** — #113 is the epic, per `dont-close-an-epic-on-its-first-deliverable-pr`); `/review` (Claude + Codex `gpt-5.5` **xhigh**); **await explicit merge approval**.
+
+### Review (the spike — `bun run verify` green 14/14)
+
+- **GO — the four reward-ledger primitives are real in the Python core.** A runnable proof in
+  `py/packages/contracts/tests/` over the real `@assayops/contracts` `RewardRecord` (15 tests; the suite
+  also exercises a real `bun` subprocess for cross-runtime parity). E4 can build on these exact primitives.
+- **AC1 — RFC 8785 JCS (`rfc8785`, Trail of Bits).** Byte-exact on all 6 official conformance vectors
+  (UTF-16 key sort, surrogate pairs, control escapes, ECMAScript number forms) and **byte-identical to the
+  RFC 8785 reference JS impl (`canonicalize`)** over the vectors + the real record — the #29 Python-signer
+  ↔ TS-consumer parity, shown. A divergence test pins *why* #114's sorted-key `json.dumps` was only a
+  stand-in (it escapes unicode + uses `1e-06`, JCS uses raw UTF-8 + `0.000001`).
+- **AC2 — KMS Sign (boto3).** The exact E4 call — `ECC_NIST_P256`/`SIGN_VERIFY`, `Sign(MessageType=DIGEST,
+  ECDSA_SHA_256)` over `sha256(JCS)`, `GetPublicKey` → SPKI — integrates against moto.
+- **AC4 — portable offline verify.** Proven on real `cryptography`: verify with **only** the SPKI public
+  key, offline; tamper/foreign-key/malformed all fail-closed. The full lifecycle (sign → WORM-store →
+  read back → offline verify → decode to the contract record) is a capstone test.
+- **AC3 — S3 Object Lock WORM (boto3).** moto enforces conditional write-once (`If-None-Match` → 412) and
+  Compliance immutability of the signed version (delete → `AccessDenied`); re-grade appends a new attempt.
+- **Findings flagged for E4 (prove-it-or-flag-it, not papered over):** (1) **moto's KMS crypto is
+  non-functional** — a moto `Sign` does not verify against its own `GetPublicKey`; offline-verify must be
+  validated against **real KMS** in E4 (the recipe itself is proven real on `cryptography`). (2) **Object
+  Lock is version-scoped** — an unconditioned overwrite makes a new version; the design pins
+  `(key, versionId)` + the conditional write, and **E4 adds a bucket policy denying unconditioned PUTs +
+  the agent holds no `s3:BypassGovernanceRetention`/`kms:Sign`** (§8). (3) Real KMS/S3/IAM + the key/bucket
+  policies + the real account-B `reward-ledger` package are **E4's build**, not this spike.
+- **Grounding (founder docs-first rule; I wrote the #114 mock from memory — didn't repeat it):** `rfc8785`
+  v0.1.4 + `canonicalize` v3 confirmed against PyPI/npm; the JCS recipe against the **official RFC 8785
+  vectors** (committed as a spike fixture, distinct from the locked `contracts/vectors` #28); the
+  `MessageType=DIGEST` ↔ `cryptography` `Prehashed` equivalence smoke-verified; moto fidelity discovered
+  empirically (`local-aws-emulator-must-prove-read-api`), never assumed.
+
+---
+
+## E17-S1 (#114) — OpenEnv-native Python env-server feasibility spike — LANDED (PR #121, `b91da87`)
 
 **Goal (AC — the spike, not the E5 build):** a **minimal runnable** OpenEnv-native Python env-server
 (`create_app`/FastAPI) + a recorded **go/no-go** (OpenEnv-native Python vs. a TS wire-only server), proving

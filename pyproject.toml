@@ -3,10 +3,13 @@ members = ["py/packages/*"]
 
 [dependency-groups]
 dev = [
+    "boto3>=1.40",
     "cryptography>=42",
     "datamodel-code-generator>=0.65",
     "httpx>=0.27",
+    "moto>=5.1",
     "mypy>=1.13",
     "pytest>=8.3",
+    "rfc8785>=0.1.4",
     "ruff>=0.8",
 ]
