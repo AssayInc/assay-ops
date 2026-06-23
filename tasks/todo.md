@@ -26,7 +26,8 @@ standalone follow-up (not an epic) → `Closes #127` is correct.
 - [x] CLAUDE.md skill-preflight: one focused "Python lane (runtime robustness)" row mapping the 4 to their surfaces.
 - [x] `bun run verify` green **14/14**; NO `bun.lock`/`uv.lock` change (skills-lock.json separate). Lock diff = 4 well-formed `wshobson/agents` entries.
 - [x] PROGRAM.md (Recently Landed + dropped #127 from the pending follow-ups) + ISSUES.md (#127/#126 marked done).
-- [ ] PR `Closes #127`; `/review` if warranted; AWAIT explicit merge approval ([[never-merge-without-explicit-user-approval]]); on "merge" → `gh pr merge --squash --delete-branch`
+- [x] PR **#131** `Closes #127` opened.
+- [ ] `/review` if warranted; AWAIT explicit merge approval ([[never-merge-without-explicit-user-approval]]); on "merge" → `gh pr merge --squash --delete-branch`
 
 ## Python type-safety parity — ban `Any` + ruff/mypy hardening + skills routing — IN PROGRESS (branch `feat/py-type-safety-parity`)
 

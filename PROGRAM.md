@@ -41,7 +41,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **markdown-only** (no bundled scripts → no `skills-sync-hygiene` script surface; the `python-resilience`
   "Critical Risk (Gen)" scanner rating is a false positive on example `httpx` calls in a doc). A lean
   `CLAUDE.md` preflight row maps each to its surface. `bun run verify` green 14/14; no `bun.lock`/`uv.lock`
-  change (skills-lock.json is separate from the package locks).
+  change (skills-lock.json is separate from the package locks). (PR #131.)
 
 - **Pydantic-v2 skill — authored + vendored (closes #128).** A homegrown Pydantic v2 skill for the contract
   spine (`AssayInc/skills#9`, merged): the load-bearing **`model_dump_json` isn't JCS-canonical** rule
