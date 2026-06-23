@@ -52,7 +52,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   independently regenerated golden + cross-account boto3 read (#80) are the production pieces). The spike
   models the **independent read** via `cloud_state.CLOUD` and mints the join key **out-of-band**
   (`reset(episode_id=...)`), but `CLOUD` is a lossless **echo** — modeling deploy-vs-requested divergence
-  is the real boto3 read's job (#80). Board nit: the `area:env-server` label still reads "OpenEnv **TS**
+  is the real boto3 read's job (#80); the #124 cross-model review also flagged that `CLOUD` snapshots shallow-copy nested values (pre-existing, moot once the read is real cross-account boto3). Board nit: the `area:env-server` label still reads "OpenEnv **TS**
   env-server" (pre-E17 stale).
 - **E17 Python-first rebaseline (#113) — decision PR landed; migration follow-ups open.** The
   proof-critical core is rebaselined TypeScript → **Python** (verifier, diff/reward, adapters, ledger,

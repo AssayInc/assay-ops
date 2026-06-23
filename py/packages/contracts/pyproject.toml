@@ -34,16 +34,15 @@ select = ["E", "F", "I", "UP", "B", "ANN", "S", "ASYNC", "LOG", "G"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
-
-[[tool.mypy.overrides]]
-# Ban explicit `Any` in the hand-written core — the Python mirror of the TS lane's `any` ban. `--strict`
-# does NOT enable this. Use `object` (must be narrowed before use, like TS `unknown`) or a Pydantic model.
-module = ["assayops_contracts.*"]
+# Ban explicit `Any` in hand-written code — the Python mirror of the TS lane's `any` ban; `--strict` does
+# NOT enable this. Use `object` (must be narrowed before use, like TS `unknown`) or a Pydantic model. Set
+# globally (not per-package) so it also covers scripts/ (the locked-vector generator), which mypy sees as a
+# top-level module outside the `assayops_contracts.*` namespace.
 disallow_any_explicit = true
 
 [[tool.mypy.overrides]]
 # Codegen output models open JSON-Schema objects as `Any` (generated, not hand-maintained); mypy --strict
-# still typechecks it structurally. More specific than the package-wide ban above, so it wins here.
+# still typechecks it structurally. A per-module override beats the global ban above, so it wins here.
 module = ["assayops_contracts.models.*"]
 disallow_any_explicit = false
 

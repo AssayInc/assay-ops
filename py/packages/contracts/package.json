@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",
     "format": "uv run --frozen ruff format .",
-    "typecheck": "uv run --frozen mypy src tests",
+    "typecheck": "uv run --frozen mypy src tests scripts",
     "test": "uv run --frozen pytest -q"
   }
 }

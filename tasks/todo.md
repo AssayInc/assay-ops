@@ -72,6 +72,20 @@ hoist deferred to its own PR.
   the `Any` ban is an operating rule (lives in `CLAUDE.md`, where the TS `any` ban lives). No new deps → no
   lockfile change.
 
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — one fix applied, verify green 14/14
+
+- Both models **verified the mypy override precedence** (codegen models exempt, hand-written src banned) and
+  cleared the `&&` format gate, the `S` test-scoping, and the env-server `object`/nested-dict types.
+- **Fix applied (both flagged):** the contracts `typecheck` ran `mypy src tests` and the ban was scoped to
+  `assayops_contracts.*`, leaving `scripts/gen_vectors.py` (hand-written locked-vector generator) unguarded
+  for variable/field `Any`. → `disallow_any_explicit` made **global** in contracts + `scripts` added to the
+  typecheck. Proven: a `dict[str, Any]` *variable* in `scripts/` now errors `[explicit-any]`. Zero churn
+  (gen_vectors already strict-clean).
+- **Flagged, not fixed (out of scope):** Codex rated the `cloud_state` shallow-copy aliasing High, but it is
+  **pre-existing** (this PR changed only annotations, not the `dict()` copy) and lives in a documented spike
+  stand-in the production boto3 cross-account read (#80/E2) replaces — noted in `ISSUES.md`. Severity is my
+  call against the architecture (the lessons' "flag, not Block" precedent), not Codex's verbatim.
+
 ## E1-3 (#28) — JCS canonicalization + golden vectors — IN PROGRESS (branch `feat/e1-3-jcs-golden-vectors`)
 
 **Goal (AC):** (1) **both sides canonicalize identically** — production `canonicalize` from PyPI `rfc8785`
