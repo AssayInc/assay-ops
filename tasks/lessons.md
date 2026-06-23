@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-06-22 — ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them
+- **Mistake:** In the E17-S2 ledger spike (#115) I grounded the AWS KMS/S3 specifics — KMS `Sign` returns a
+  DER ECDSA sig + `MessageType=DIGEST` doesn't re-hash, `GetPublicKey` returns SPKI DER, the S3
+  Object-Lock-put checksum requirement — via the doc-distilled `reward-ledger-worm` skill + empirical
+  `moto`, **not the primary AWS docs**, then reported "grounded." The founder probed ("did you ground
+  everything with official docs?"). The gap was load-bearing because **moto fakes the KMS crypto** (its
+  `Sign` doesn't verify against its own `GetPublicKey`), so the emulator literally cannot confirm the real
+  signature/key formats, and a vendored skill is a secondary distillation.
+- **Rule:** When a spike/feature's correctness rests on an external API's exact contract (signature/key
+  encoding, required headers, error semantics) **and the local emulator (moto/LocalStack) fakes or only
+  partially implements that behavior**, grounding via a vendored skill + the emulator is **insufficient** —
+  verify the exact contract against the **primary vendor docs** and cite the quote before claiming
+  "grounded." A faked-emulator green proves the call shape integrates, not that the real service behaves as
+  assumed. Browsing the AWS docs confirmed all three and showed the S3 checksum is **required** for
+  Object-Lock puts (validating the `/review` fix as doc-mandated, not optional). Sharpens
+  [[ground-in-official-docs-first]] + [[local-aws-emulator-must-prove-read-api]] with the explicit
+  emulator-fakes-it → primary-docs trigger.
+- **Context:** E17-S2 (#115) / PR #122; AWS KMS `Sign` / `GetPublicKey` + S3 `PutObject` API references
+  (verified via `/browse`). Pairs with [[verify-against-official-docs-and-skills-before-acting]].
+
 ## 2026-06-22 — bun-lock-and-uv-lock-after-adding-a-py-package
 - **Mistake:** Added `py/packages/env-server` (a **Python** package) with a thin `package.json` turbo
   wrapper, ran `uv lock`/`uv sync`, and `bun run verify` was green locally — but **CI failed at
