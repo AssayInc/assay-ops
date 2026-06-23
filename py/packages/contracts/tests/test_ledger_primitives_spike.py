@@ -37,7 +37,6 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from ledger_spike import (
     ALG,
     AccountBSigningKey,
-    canonicalize,
     envelope_json,
     parse_envelope,
     verify_offline,
@@ -45,7 +44,7 @@ from ledger_spike import (
 )
 from moto import mock_aws
 
-from assayops_contracts import RewardRecord
+from assayops_contracts import RewardRecord, canonicalize
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[4]
 TS_CANONICALIZE = REPO_ROOT / "ts" / "packages" / "contracts" / "scripts" / "jcs-canonicalize.ts"

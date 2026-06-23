@@ -43,6 +43,14 @@ codegen:
       --target-python-version 3.12 \
       --output py/packages/contracts/src/assayops_contracts/models
 
+# Regenerate the locked JCS golden-vector corpus (contracts/vectors/jcs-golden.json) from the authored
+# record set. Deterministic (rfc8785 + sha256, both pinned) -> re-running produces no diff (the #29
+# parity-gate precondition). Edit the record set ONLY in a `fixture-change` PR (DECISIONS.md Section 8):
+# the agent that writes code never edits the grader. PYTHONPATH mirrors how pytest resolves the package src.
+vectors:
+    PYTHONPATH=py/packages/contracts/src uv run --frozen python py/packages/contracts/scripts/gen_vectors.py
+    @echo "wrote contracts/vectors/jcs-golden.json"
+
 # Bring licensed LocalStack up and wait for the gateway to report healthy.
 # Requires LOCALSTACK_AUTH_TOKEN, taken from the environment or a gitignored .env (never committed).
 up:

@@ -1,9 +1,11 @@
 [project]
 name = "assayops-contracts"
 version = "0.0.0"
-description = "AssayOps contract models (Pydantic v2). E0-1 shell; E1 generates the models from contracts/schemas."
+description = "AssayOps contract models (Pydantic v2) + RFC 8785 JCS canonicalization. Generated from contracts/schemas."
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.10"]
+# rfc8785 is a runtime dep: assayops_contracts.jcs canonicalizes records to the exact bytes the account-B
+# reward ledger signs (DECISIONS.md I3). Pin matches the workspace dev group.
+dependencies = ["pydantic>=2.10", "rfc8785>=0.1.4"]
 
 [tool.uv]
 package = false

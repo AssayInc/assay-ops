@@ -15,6 +15,45 @@ Entry format:
 
 ---
 
+## 2026-06-23 — re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope
+- **Mistake:** In the E1-3 (#28) `/review`, after a Codex xhigh pass flagged the `DiffIR.propertyDiffs`
+  canonicalization divergence I implemented a fix and committed it **without re-running Codex xhigh on the
+  fix**. The founder asked "did you call gpt-5.5 xhigh to re-review it after changes?" The re-review I then
+  ran caught that my fix's **diagnosis was under-scoped** — I'd called `propertyDiffs` "the lone optional
+  field," but `PropertyDiff.expected`/`actual` are optional too; a further pass caught I'd locked only one of
+  the two optional sides. It took three post-fix passes to converge to "ship."
+- **Rule:** When a cross-model review (Codex **gpt-5.5 xhigh**) finds a real issue and you **change code in
+  response, re-run the review on the FIXED code** before claiming done — the fix can be incomplete,
+  mis-scoped, or introduce a new defect; iterate to convergence (a clean/ship verdict), don't stop at the
+  first fix. And when responding to a finding, **re-check the finding's SCOPE yourself** — sweep the whole
+  schema/type for sibling instances rather than assuming the reviewer named the only one (Codex named
+  `propertyDiffs`; the same class also hit `expected`/`actual`). A single pass on the pre-fix code is not the
+  bar. Sharpens [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
+- **Context:** E1-3 (#28) JCS canonicalize `/review`; the #114 spike already set the "re-review the FIXED
+  code with xhigh" precedent (the founder asked the same there — see the #114 post-fix re-review). Pairs with
+  [[verify-against-official-docs-and-skills-before-acting]].
+
+## 2026-06-23 — reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production
+- **Mistake:** Building E1-3 (#28), I wrote the production JCS `canonicalize` by **reusing the #115 spike's
+  `rfc8785` recipe + empirical testing + the shipped `canonicalize` `.d.ts`**, and cached knowledge for
+  Pydantic `model_dump(mode="json")` — without reading the **official docs** for any of them this session.
+  The founder asked "did you ground every implementation from the official docs?" Grounding them after the
+  fact (rfc8785.py README, erdtman/canonicalize README, Pydantic serialization docs via `/browse`)
+  **confirmed every claim** — but the primary-source check should have come first, not in response to the
+  question.
+- **Rule:** A **landed spike's** library usage, an **empirical green**, and a shipped **`.d.ts`** are all
+  **secondary** sources. Promoting a spike's external-library usage to production code is a **new grounding
+  obligation**: read the **official docs FIRST** and cite them, even when the spike already proved the
+  behavior and the tests pass — especially for a **security/correctness primitive** (here, the exact bytes a
+  KMS signature covers). The cheap primary-source pass settles it (rfc8785: "All APIs raise
+  `CanonicalizationError`… on serialization failures" → the documented fail-closed; canonicalize: "crypto
+  safe… as defined by RFC8785"; `model_dump(mode="json")`: "ensure JSON-compatible types are used"). Don't
+  let "the spike already did it" or "the tests are green" substitute for [[ground-in-official-docs-first]].
+- **Context:** E1-3 (#28) JCS canonicalize; `rfc8785` (Trail of Bits) / `canonicalize` (erdtman) / Pydantic
+  v2 serialization docs. Sharpens [[ground-in-official-docs-first]] +
+  [[ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them]] with the
+  spike→production re-grounding trigger.
+
 ## 2026-06-22 — ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them
 - **Mistake:** In the E17-S2 ledger spike (#115) I grounded the AWS KMS/S3 specifics — KMS `Sign` returns a
   DER ECDSA sig + `MessageType=DIGEST` doesn't re-hash, `GetPublicKey` returns SPKI DER, the S3

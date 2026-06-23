@@ -29,16 +29,9 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 
 from assayops_contracts import RewardRecord
+from assayops_contracts.jcs import canonicalize  # production recipe (E1-3 #28)
 
 ALG = "ECDSA_SHA_256"  # KMS SigningAlgorithm: ECDSA P-256 over a SHA-256 digest (DECISIONS.md I3)
-
-
-def canonicalize(record: RewardRecord) -> bytes:
-    """RFC 8785 (JCS) canonical bytes of the record — the bytes the signature covers.
-
-    JSON mode so ``reward`` serializes to a bare ``0``/``1``; a conformant library
-    (not hand-rolled ``json.dumps``) makes the bytes identical across runtimes."""
-    return rfc8785.dumps(record.model_dump(mode="json"))
 
 
 @dataclasses.dataclass(frozen=True)

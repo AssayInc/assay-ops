@@ -6,6 +6,7 @@ package re-exports the public models. Regenerate with ``just codegen``; never ha
 generated modules under ``models/``.
 """
 
+from assayops_contracts.jcs import canonical_digest, canonicalize
 from assayops_contracts.models.diff_ir_schema import (
     Change,
     DiffIR,
@@ -29,4 +30,6 @@ __all__ = [
     "TaskSpec",
     "Tool",
     "Trajectory",
+    "canonical_digest",
+    "canonicalize",
 ]

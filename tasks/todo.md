@@ -6,6 +6,168 @@ when done.
 
 ---
 
+## E1-3 (#28) — JCS canonicalization + golden vectors — IN PROGRESS (branch `feat/e1-3-jcs-golden-vectors`)
+
+**Goal (AC):** (1) **both sides canonicalize identically** — production `canonicalize` from PyPI `rfc8785`
+(the Python **signer**) + npm `canonicalize` (the TS **consumer**); a **locked golden-vector corpus**
+(`contracts/vectors`, record → expected canonical bytes → sha256), authored via this **`fixture-change`**
+PR (the E0-6 exception). (2) **A cross-language test asserts identical canonical bytes** (Python-signer ↔
+TS-consumer).
+
+**Validation (issue vs. DECISIONS + brain + code — don't trust the AI-written issue blindly):**
+- Grounded in **`DECISIONS.md` I3** (signing path `record → RFC 8785 JCS → UTF-8 → SHA-256 → KMS ECDSA
+  P-256, `MessageType=DIGEST`; the optional TS side *verifies* the same bytes → byte-parity is
+  **Python-signer ↔ TS-consumer**; Protobuf disqualified; Zod is TS-ergonomics-only) + **§8** (locked
+  fixtures: `contracts/vectors` editable **only** in `fixture-change` PRs **from #28** — so this PR is the
+  inaugural owner) + **assay-brain** (`[[concepts/write-isolated-verifier]]`, current as of E17/#115:
+  "JCS is the load-bearing choice … proven by a golden-vector parity gate"). No brain hit for a
+  `reportDigest ↔ canonical diff-IR` relationship and no locked required record-set → `reportDigest` is an
+  opaque hex field; corpus coverage is an engineering call (below).
+- **Scope split with #29 (ISSUES.md):** #28 = production canonicalize (both sides) + the golden corpus +
+  the cross-language **test**. **#29 = the CI regenerate-and-diff / parity *gate*.** So the generator is
+  **deterministic** (the #29 precondition) but I do **not** build the CI regen gate here.
+- **Reuses the #115 spike** which already proved `rfc8785` byte-exact on the official RFC 8785 vectors **and**
+  byte-identical to npm `canonicalize`. The spike's `jcs-canonicalize.ts` comment + its fixtures README
+  explicitly defer the *production* canonicalize + the locked `contracts/vectors` to **#28** — exactly this.
+- **Pins (grounded):** `rfc8785` 0.1.4 ships `py.typed` (mypy-strict safe); npm `canonicalize@3.0.0` types
+  `(input: unknown) => string | undefined` (no `any` — clean to wrap). `canonicalize` is already a
+  `ts/packages/contracts` dep; `rfc8785` is a workspace dev dep → **becomes a runtime dep of
+  `assayops-contracts`** once `canonicalize` moves to `src` (add to its `[project].dependencies`; `uv lock`).
+
+**Design (smallest change that meets the AC; one source of truth for the signed-byte recipe):**
+- **Python production canonicalize** → `py/packages/contracts/src/assayops_contracts/jcs.py`:
+  `canonicalize(record: BaseModel) -> bytes` = `rfc8785.dumps(record.model_dump(mode="json"))`;
+  `canonical_digest(record) -> bytes` = `sha256(canonicalize(record))` (the I3 signed digest). Re-export
+  both from the hand-written `__init__.py`. This is the single definition the E4 ledger imports.
+- **TS production canonicalize** → `ts/packages/contracts/src/jcs.ts`: `canonicalize(value: unknown):
+  string` wrapping npm `canonicalize` (throws on the not-serializable `undefined` case). Re-export from
+  `src/index.ts`. The consumer/verify side's single definition.
+- **Locked corpus** → `contracts/vectors/jcs-golden.json` (+ `README.md`): `{vectors:[{name, schema,
+  record, canonical, sha256}]}`. `record` = the model's `model_dump(mode="json")` fixed point (exactly the
+  bytes the signer canonicalizes); `canonical` = its rfc8785 bytes (UTF-8 string); `sha256` = hex of the
+  signed digest. Storing `canonical` (not just sha256) makes a parity break **diagnosable** + the golden
+  **auditable** — appropriate for a trust-critical fixture.
+- **Generator** → `py/packages/contracts/scripts/gen_vectors.py` + root **`just vectors`** (mirrors
+  `just codegen`): authors the records via the Pydantic models (type-safe + valid by construction),
+  canonicalizes, writes the manifest **deterministically** (sorted keys, trailing newline). Re-run = no
+  diff (#29's precondition). **Edit the record set ONLY in a fixture-change PR.**
+- **Corpus coverage (engineering call — no locked set):** the **reward-record** is the signed artifact →
+  cover both `reward∈{0,1}` (locks the binary int, never `0.0`/`1.0`) + the ns-timestamp **digit-string**
+  (stays quoted, not number-canonicalized) + key-sort + hex fields. Plus one representative vector each for
+  **trajectory / diff-ir / task-spec** (nested structures, empty objects, the `tool` enum) to lock the full
+  spine's serialization once (cheap now, a fixture-change PR later). Library-level JCS unicode/number
+  conformance is already covered by the official vectors in the #115 spike — not duplicated here.
+- **Cross-language test** = belt **and** suspenders: (a) **Python lane** (`tests/test_jcs_golden_vectors.py`)
+  — each record validates through its model (a `model_dump` fixed point), `canonicalize` reproduces the
+  golden `canonical` bytes, `canonical_digest().hex()` == `sha256`; (b) **TS lane**
+  (`tests/jcs-golden.test.ts`) — each record validates via ajv against its schema, `canonicalize` ===
+  golden `canonical`, sha256 === golden `sha256`. Both pinned to the **same committed bytes** ⇒ identical,
+  transitively + drift-locked. Plus (c) one **direct** Python↔TS identity test over the corpus (Python
+  `rfc8785` vs the TS harness via `bun`, the #115 subprocess pattern) — the literal "asserts identical
+  canonical bytes."
+- **DRY the spike onto the production canonicalize** (the spike comments anticipate it): point
+  `tests/ledger_spike.py` `canonicalize` and `scripts/jcs-canonicalize.ts` at the new production functions
+  (no second definition that must agree). Minimal, verify green; defer if it risks the spike's green.
+- **Wiring:** `turbo.json` `globalDependencies += "contracts/vectors/**"` (a vector change busts the
+  test cache — mirrors `contracts/schemas/**`); `.github/CODEOWNERS` per-path rule for `/contracts/vectors/`
+  (the deferred E0-4 item — activates the locked-fixtures guard); a `fixture-change` label on the PR;
+  `docs/ARCHITECTURE.md` brief note; `PROGRAM.md` + `ISSUES.md`.
+
+**Steps (TDD — each AC = a failing test first, watched fail, then minimal green):**
+- [x] Branch `feat/e1-3-jcs-golden-vectors`; ground (DECISIONS I3/§8 + brain + the #115 spike + ISSUES #28/#29 split).
+- [x] Add `rfc8785` to `assayops-contracts` `[project].dependencies`; `uv lock`; verified `uv sync --locked` + `bun install --frozen-lockfile` (the #114 lockfile lesson) — clean minimal lock change (dependency edge only).
+- [x] **RED**: `tests/test_jcs_golden_vectors.py` (Python) → `ModuleNotFoundError: assayops_contracts.jcs`; `tests/jcs-golden.test.ts` (TS) → `Cannot find module ../src/jcs`. Watched both fail.
+- [x] **GREEN**: `src/assayops_contracts/jcs.py` (`canonicalize` + `canonical_digest`) + `__init__` re-export; `src/jcs.ts` (`canonicalize`) + index re-export; `gen_vectors.py` + `just vectors` → committed `contracts/vectors/jcs-golden.json` (6 vectors). Both lane tests green. (No README — matches `contracts/schemas/`; documented in ARCHITECTURE.md + the JSON `$comment` + CODEOWNERS + DECISIONS.md §8.)
+- [x] **RED→GREEN**: the direct Python↔TS identity test over the corpus (subprocess via `bun`).
+- [x] DRY the #115 spike onto the production canonicalize (`jcs-canonicalize.ts` + `ledger_spike.py` → the production recipe); spike green (24 py tests).
+- [x] `turbo.json` globalDeps += `contracts/vectors/**`; `.github/CODEOWNERS` `/contracts/vectors/` rule; `docs/ARCHITECTURE.md` ◻→✅ markers; `fixture-change` label created.
+- [x] `bun run verify` green (14/14, both lanes, 0 cached — full re-run); `just vectors` deterministic (re-run = identical sha).
+- [x] `PROGRAM.md` + `ISSUES.md` updated.
+- [ ] PR **`Closes #28`** (#28 is a sub-issue of E1 #2, single deliverable → `Closes` correct; **not** `Closes #2`), labeled **`fixture-change`**; `/review` (Claude + Codex `gpt-5.5` **xhigh**); **await explicit merge approval**.
+
+### Review (`bun run verify` green 14/14, both lanes)
+
+- **Done + proven (both ACs).** The contract spine's canonical-byte recipe is production on **both sides** and
+  locked by a golden corpus. **AC1:** `assayops_contracts.jcs.canonicalize` (PyPI `rfc8785`, the account-B
+  signer) and `@assayops/contracts` `canonicalize` (npm `canonicalize`, the TS consumer/verify side) emit
+  byte-identical RFC 8785 JCS (`DECISIONS.md` I3); the locked **`contracts/vectors/jcs-golden.json`** (record →
+  canonical bytes → sha256, deterministic via `just vectors`) covers all four contract records. **AC2:** the
+  cross-language byte-parity is asserted three ways — the Python lane + the TS lane each reproduce the
+  committed corpus (drift-locked) **and** a direct Python↔TS subprocess identity test.
+- **Grounding (issue vs. floor):** confirmed `DECISIONS.md` I3 + §8 (the §8 checklist names **#28** as the
+  owning `fixture-change` PR for `contracts/vectors` — so this PR is authorized to create it) and the brain
+  (`[[concepts/write-isolated-verifier]]`: JCS load-bearing, Protobuf disqualified, "proven by a golden-vector
+  parity gate"). **No brain hit** for `reportDigest ↔ canonical diff-IR` → treated `reportDigest` as an opaque
+  hex field (not coupled). **#28/#29 scope split** (ISSUES.md): #28 = canonicalize + corpus + cross-language
+  **test**; **#29** = the CI regenerate-and-diff *gate* (kept out; the generator is deterministic as its
+  precondition).
+- **Corpus coverage (engineering call — no locked set):** reward-record (the signed artifact) gets both
+  `reward∈{0,1}` + the ns-timestamp digit string + key-sort + hex; one representative vector each for
+  trajectory / diff-ir / task-spec (nested structures, empty objects, the `tool` enum); one non-ASCII vector
+  for raw-UTF-8 parity. Library-level JCS conformance is already covered by the #115 spike's official vectors —
+  not duplicated.
+- **Smallest change + DRY:** the canonicalize recipe is defined **once** per lane and imported; the #115
+  spike's two parallel canonicalize implementations are DRY'd onto the production recipe (the spike comments
+  anticipated #28 doing this). No separate corpus README (matches `contracts/schemas/`).
+
+### `/review` (Claude adversarial subagent + Codex `gpt-5.5` xhigh) — findings handled
+
+Both models confirmed the core is sound: the cross-language test is **non-tautological** (Claude verified by
+mutating the TS output → test fails), determinism holds, the #115 spike DRY refactor changed **no signed
+bytes** (Codex confirmed), the trust boundary is intact, and the signed **`RewardRecord` is fully safe** (all
+7 fields required). Two real findings, both on the **not-yet-signed** `DiffIR`/`Trajectory`:
+
+- **Number domain (Claude, conf 9).** A large int in an open `Any` field validates, then the Python signer
+  (`rfc8785`) **fails closed** while a JS consumer rounds. → Added `diff-ir/numeric-property` (in-domain
+  numbers canonicalize identically) + a **fail-closed test** + documented the IEEE-754 / valid-Unicode domain
+  on both lanes + flagged the verify-path symmetric reject for **E4/#29**.
+- **Optional-field model/schema bug (Codex xhigh, High; sharpened by a post-fix Codex xhigh re-review).**
+  Python canonicalizes the `model_dump` form, a TS consumer the raw object; they diverge wherever the model
+  **materializes an omitted optional to `null`**. DiffIR has **three** such surfaces: `Resource.propertyDiffs`
+  (omitted → `"propertyDiffs":null`, **schema-invalid**) + `PropertyDiff.expected`/`actual` (each optional via
+  the `anyOf`; the omitted side → `null`, **schema-valid**). A **#26/#27 model-vs-schema inconsistency** #28
+  surfaced — **not #28's to fix** (the canonicalize faithfully serializes the model). The first Codex pass
+  found `propertyDiffs`; the **post-fix re-review caught** that I'd mislabeled it "the lone optional field"
+  (expected/actual are optional too). → Corrected the claim; documented the materialized-form contract on both
+  lanes; **flagged the root-cause fix** for **E3/#26/#27** in `ISSUES.md`; kept the corpus to **valid records**
+  and **locked the schema-valid materialized parity, both sides** (`diff-ir/optional-property-sides`; the schema-invalid
+  `propertyDiffs:null` vector was reverted). The signed **`RewardRecord` is provably safe** (all 7 fields
+  required).
+
+Net code-logic change from the review: **none** (the canonicalize recipe is unchanged) — the review added a
+vector, a boundary test, docs, and the flags. `bun run verify` green (14/14) after each round.
+
+**Grounding (founder docs-first rule).** The three load-bearing libraries were grounded against **primary
+docs** — post-hoc, after the founder asked "did you ground every implementation from the official docs?"
+(lesson [[reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production]] added):
+**`rfc8785`** (Trail of Bits README — RFC 8785 JCS, `dumps(obj)→UTF-8 bytes`, "All APIs raise
+`CanonicalizationError`… on serialization failures" = the documented fail-closed), **`canonicalize`**
+(erdtman README — "crypto safe… as defined by RFC8785", default export → canonical string, TS types),
+**Pydantic `model_dump(mode="json")`** (official docs — "ensure JSON-compatible types are used"). All three
+**confirm** the implementation + the committed doc claims; **no corrections**. (The other deps are
+low-stakes utilities cross-verified by tests — `hashlib`/`node:crypto` sha256, `json.dumps` — or the
+already-grounded #26 `ajv` pattern.)
+
+**Re-review convergence.** The founder asked whether I re-reviewed the *fixed* code with Codex xhigh. I had
+not, so I ran post-fix passes: pass-2 caught that I'd mislabeled `propertyDiffs` "the lone optional field"
+(`expected`/`actual` are optional too); pass-3 confirmed (2) fixed + no other surfaces, but flagged I'd only
+locked the `actual:null` half; pass-4 (after locking both sides) **confirms ship** — "the golden corpus now
+locks both schema-valid optional sides and the remaining parity-adjacent risks are explicitly scoped to
+#26/#27 and #29." Lesson: re-review the FIXED code, and re-check the *scope* of a finding (don't assume the
+reviewer named the only instance).
+
+**Codex findings validated (not taken on faith).** Each load-bearing claim was confirmed against the
+**source of truth** during the review — `ajv` (the conformant JSON Schema validator) on the actual schema +
+the real Pydantic models (`model_fields[...].is_required()`, `model_dump`) — e.g. `propertyDiffs:null`
+rejected "must be array", `expected/actual:null` valid, only DiffIR has optionals. The severity was my own
+call against the trust model (**flag, not Codex's "Block"**: the signed `RewardRecord` is unaffected,
+DiffIR isn't signed until E3/E4), which Codex's final pass agreed with (ship). Then grounded the underlying
+semantics against the **official docs** (json-schema.org `type` — null and array are distinct, so a
+`type:array` field rejects null; `combining` — `anyOf` = OR, one-or-more; Pydantic — `exclude_none` excludes
+None-valued fields): **all confirm, no corrections.**
+
+---
+
 ## E17-S2 (#115) — Reward-ledger primitives in Python (rfc8785 · KMS Sign · S3 Object Lock · public verify) — IN PROGRESS (branch `spike/115-reward-ledger-primitives`)
 
 **Goal (AC — the spike, not the E4 build):** a **minimal runnable** proof (+ recorded **go/no-go**) that the

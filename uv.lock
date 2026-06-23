@@ -93,10 +93,14 @@ version = "0.0.0"
 source = { virtual = "py/packages/contracts" }
 dependencies = [
     { name = "pydantic" },
+    { name = "rfc8785" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "rfc8785", specifier = ">=0.1.4" },
+]
 
 [[package]]
 name = "assayops-env-server"
