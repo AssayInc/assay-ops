@@ -21,14 +21,27 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
-  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync), #127 (4
-  wshobson Python skills, epic-gated).
+  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff
   parity gate, now unblocked — #27/#28 landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes
   both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team
   gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **4 wshobson Python skills — vendored (closes #127); the Python-first hardening batch is complete.** The
+  four `wshobson/agents` Python skills are now in the committed layer (`.agents/skills/` + `.claude`/`.hermes`
+  symlinks + `skills-lock.json` hash-pins): **`python-resilience`** (the verifier's transient-vs-genuine-failure
+  rule, `deterministic-verification`, + boto3 adaptive retries — E2/#80), **`python-error-handling`** (parsing
+  untrusted IaC/boto3 responses at the verifier/adapter boundary — E2/E3), **`python-configuration`** (typed
+  settings + secrets via `pydantic-settings` for the ledger/account creds — E4), and **`python-observability`**
+  (the **structlog** logging decision + eval/verifier metrics). Founder elected to **vendor all four now**,
+  overriding #127's epic-gating — community-skill vendoring is cheap and auto-loads by relevance — which closes
+  the Python-first hardening batch (#124 `Any` ban, #126 config-DRY, #128 Pydantic-v2 skill). All four are
+  **markdown-only** (no bundled scripts → no `skills-sync-hygiene` script surface; the `python-resilience`
+  "Critical Risk (Gen)" scanner rating is a false positive on example `httpx` calls in a doc). A lean
+  `CLAUDE.md` preflight row maps each to its surface. `bun run verify` green 14/14; no `bun.lock`/`uv.lock`
+  change (skills-lock.json is separate from the package locks). (PR #131.)
 
 - **Pydantic-v2 skill — authored + vendored (closes #128).** A homegrown Pydantic v2 skill for the contract
   spine (`AssayInc/skills#9`, merged): the load-bearing **`model_dump_json` isn't JCS-canonical** rule
