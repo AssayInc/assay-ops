@@ -14,7 +14,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   not orphaned):** **#126** config-DRY — the shared **ruff** config is hoisted to a root `[tool.ruff]` + `extend`
   in each member; **mypy/pytest stay per-package by design** (mypy has no config-merge, and the two packages
   run divergent `disallow_any_explicit` strategies — contracts global incl. `scripts/`, env-server scoped so
-  its OpenEnv/TRL-mock tests keep `Any` — so it is intentional divergence, not duplication). **#128** a
+  its OpenEnv/TRL-mock tests keep `Any` — so it is intentional divergence, not duplication). **#128 (done — AssayInc/skills#9, vendored)** the
   homegrown **Pydantic-v2 skill** (`AssayInc/skills`, grounded in official Pydantic docs — frozen/`extra=forbid`,
   deterministic `model_dump_json` → RFC 8785 JCS, `TypeAdapter`; Pydantic is the contract spine and has no
   official skill). **#127** the 4 epic-gated **wshobson Python skills** (resilience / observability /
