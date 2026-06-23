@@ -17,6 +17,7 @@ import shutil
 import subprocess
 from typing import TypedDict
 
+import pytest
 from pydantic import BaseModel
 
 from assayops_contracts import DiffIR, RewardRecord, TaskSpec, Trajectory
@@ -87,6 +88,27 @@ def test_canonicalize_keeps_the_ns_timestamp_a_quoted_string() -> None:
 
 def test_canonical_digest_is_sha256_of_the_canonical_bytes() -> None:
     assert canonical_digest(record()) == hashlib.sha256(canonicalize(record())).digest()
+
+
+def test_canonicalize_fails_closed_on_a_non_representable_number() -> None:
+    # JCS numbers must be IEEE-754-representable (RFC 8785) -- the contract strings large values.
+    # In an open `Any` field a raw out-of-range int still validates, but `canonicalize` fails CLOSED
+    # (rfc8785 raises a ValueError, never silently rounds), so the signer can't sign wrong bytes.
+    # The TS consumer's symmetric reject (JS rounds at parse time) is tracked for E4/#29.
+    out_of_domain = DiffIR.model_validate(
+        {
+            "resources": [
+                {
+                    "address": "X",
+                    "type": "AWS::S3::Bucket",
+                    "change": "modified",
+                    "propertyDiffs": [{"path": "P", "expected": "0", "actual": 10**20}],
+                }
+            ]
+        }
+    )
+    with pytest.raises(ValueError):
+        canonicalize(out_of_domain)
 
 
 # --- the locked golden corpus: both sides reproduce identical canonical bytes (#28 AC) ---

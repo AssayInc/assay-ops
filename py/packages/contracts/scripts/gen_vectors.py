@@ -23,8 +23,10 @@ from assayops_contracts.jcs import canonicalize
 GOLDEN = pathlib.Path(__file__).resolve().parents[4] / "contracts" / "vectors" / "jcs-golden.json"
 
 # The authored corpus -- representative of every contract record type. The reward-record (the signed
-# artifact) covers both binary reward values + the ns-timestamp digit string; one vector carries
-# non-ASCII to lock raw-UTF-8 parity. EDIT ONLY IN A `fixture-change` PR (DECISIONS.md Section 8).
+# artifact) covers both binary reward values + the ns-timestamp digit string; one diff-ir carries a
+# number in an open `Any` field; one task-spec carries non-ASCII (raw UTF-8). Numbers stay
+# IEEE-754-representable -- the contract strings large values (#26); rfc8785 fails closed otherwise
+# (see the jcs test). EDIT ONLY IN A `fixture-change` PR (DECISIONS.md Section 8).
 
 _REWARD_ONE = RewardRecord.model_validate(
     {
@@ -84,6 +86,25 @@ _DIFF_IR = DiffIR.model_validate(
     }
 )
 
+_DIFF_IR_NUMERIC = DiffIR.model_validate(
+    {
+        "resources": [
+            {
+                "address": "LogBucket",
+                "type": "AWS::S3::Bucket",
+                "change": "modified",
+                "propertyDiffs": [
+                    {
+                        "path": "LifecycleConfiguration.Rules[0].ExpirationInDays",
+                        "expected": 30,
+                        "actual": 7,
+                    }
+                ],
+            }
+        ]
+    }
+)
+
 _TASK_TERRAFORM = TaskSpec.model_validate(
     {
         "task_id": "task-s3-versioning-001",
@@ -111,6 +132,7 @@ def _records() -> list[tuple[str, str, BaseModel]]:
         ("reward-record/reward-zero", "reward-record", _REWARD_ZERO),
         ("trajectory/with-step", "trajectory", _TRAJECTORY),
         ("diff-ir/modified-and-unchanged", "diff-ir", _DIFF_IR),
+        ("diff-ir/numeric-property", "diff-ir", _DIFF_IR_NUMERIC),
         ("task-spec/terraform", "task-spec", _TASK_TERRAFORM),
         ("task-spec/cdk-unicode", "task-spec", _TASK_CDK_UNICODE),
     ]

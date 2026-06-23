@@ -72,6 +72,13 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   `contracts/vectors` (`just vectors`), assert no diff vs the committed artifacts, check the golden-vector
   sha256 in both lanes. The **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS
   rule + the `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
+  **Verify-path follow-up (E4/#29), surfaced by the #28 `/review`:** `canonicalize` requires
+  IEEE-754-representable numbers. The Python signer (`rfc8785`) **fails closed** on a violation in an open
+  `Any` field (`DiffIR.propertyDiffs`, `Trajectory` observation/action), but a TS consumer **rounds** it at
+  JSON-parse time. The signed **`RewardRecord` is unaffected** (large values are string-typed, #26); but
+  when `DiffIR`/`Trajectory` enter a cross-language signed/digested path, the verify side must reject
+  non-representable numbers symmetrically. #28 locks the in-domain parity + the signer's fail-closed
+  (`test_jcs_golden_vectors.py`).
 - **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are
   **enabled** repo-side (GitHub-native; the org has Advanced Security) — proven by a planted
   push-protection-supported secret rejected on push (`google_api_key` is detection-only, so it doesn't test

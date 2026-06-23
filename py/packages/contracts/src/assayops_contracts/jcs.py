@@ -20,6 +20,9 @@ def canonicalize(record: BaseModel) -> bytes:
 
     JSON mode so the binary ``reward`` is a bare ``0``/``1`` and ns-timestamps stay quoted strings;
     ``rfc8785`` pins every other degree of freedom (key sort, number form, string escapes).
+
+    Numbers must be IEEE-754-representable (the contract strings large values, #26). A violation in
+    an open ``Any`` field fails CLOSED (``rfc8785`` raises), never silently-rounded bytes.
     """
     return rfc8785.dumps(record.model_dump(mode="json"))
 

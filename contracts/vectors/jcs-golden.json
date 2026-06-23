@@ -78,6 +78,28 @@
       "sha256": "f6747618d0c04fd661ad6ec8f91bec02893c7f320dd2d573e31b50aad0c9769b"
     },
     {
+      "canonical": "{\"resources\":[{\"address\":\"LogBucket\",\"change\":\"modified\",\"propertyDiffs\":[{\"actual\":7,\"expected\":30,\"path\":\"LifecycleConfiguration.Rules[0].ExpirationInDays\"}],\"type\":\"AWS::S3::Bucket\"}]}",
+      "name": "diff-ir/numeric-property",
+      "record": {
+        "resources": [
+          {
+            "address": "LogBucket",
+            "change": "modified",
+            "propertyDiffs": [
+              {
+                "actual": 7,
+                "expected": 30,
+                "path": "LifecycleConfiguration.Rules[0].ExpirationInDays"
+              }
+            ],
+            "type": "AWS::S3::Bucket"
+          }
+        ]
+      },
+      "schema": "diff-ir",
+      "sha256": "0590ab64e3c63e70748ed2b9315ba86461ab3f420c190a052f3f186dfad87e66"
+    },
+    {
       "canonical": "{\"description\":\"Deploy an S3 bucket with versioning enabled.\",\"seed\":\"seed-9a3f1c2e\",\"task_id\":\"task-s3-versioning-001\",\"title\":\"Enable versioning on the app S3 bucket\",\"tool\":\"terraform\"}",
       "name": "task-spec/terraform",
       "record": {
