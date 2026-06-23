@@ -11,10 +11,12 @@ import jsonCanonicalize from "canonicalize"
  * signs (record → JCS → UTF-8 → SHA-256 → KMS Sign). Throws if the value is not JSON-serializable
  * (npm `canonicalize` returns `undefined` for `undefined`/function inputs); a contract record never is.
  *
- * Numbers must be IEEE-754-representable (the contract models large values as strings). A consumer
- * verifying a signature must reject a non-representable number before verifying — JS rounds it at
- * JSON-parse time, where the Python signer's `rfc8785` fails closed — so that reject is a verify-path
- * concern tracked for E4/#29, not done here.
+ * Canonicalize the MATERIALIZED record (the Python signer's `model_dump` form), not a hand-built sparse
+ * object: re-derive from the same materialized record, or verify over the stored canonical payload bytes.
+ *
+ * Numbers must be IEEE-754-representable, strings valid Unicode (the contract models large values as
+ * strings). The Python signer's `rfc8785` fails closed on a violation; JS rounds/escapes instead, so a
+ * verifying consumer must reject out-of-domain values before verifying — tracked for E4/#29.
  */
 export function canonicalize(value: unknown): string {
   const canonical = jsonCanonicalize(value)

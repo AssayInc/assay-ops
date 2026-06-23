@@ -72,13 +72,22 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   `contracts/vectors` (`just vectors`), assert no diff vs the committed artifacts, check the golden-vector
   sha256 in both lanes. The **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS
   rule + the `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
-  **Verify-path follow-up (E4/#29), surfaced by the #28 `/review`:** `canonicalize` requires
-  IEEE-754-representable numbers. The Python signer (`rfc8785`) **fails closed** on a violation in an open
-  `Any` field (`DiffIR.propertyDiffs`, `Trajectory` observation/action), but a TS consumer **rounds** it at
-  JSON-parse time. The signed **`RewardRecord` is unaffected** (large values are string-typed, #26); but
-  when `DiffIR`/`Trajectory` enter a cross-language signed/digested path, the verify side must reject
-  non-representable numbers symmetrically. #28 locks the in-domain parity + the signer's fail-closed
-  (`test_jcs_golden_vectors.py`).
+  **Canonicalization cross-language follow-ups (E3/#26 + E4/#29), surfaced by the #28 `/review` (Claude +
+  Codex xhigh).** The Python signer canonicalizes the **materialized** `model_dump` form; a TS consumer
+  canonicalizes the **raw** object. They agree on the same materialized JSON (the corpus locks this), and
+  the signed **`RewardRecord` is fully safe** (all 7 fields required — no optional/large-number exposure).
+  Two residuals on the **not-yet-signed** `DiffIR`/`Trajectory`:
+  - **Optional-field modeling (`DiffIR.Resource.propertyDiffs`).** The generated Pydantic model defaults
+    this lone optional contract field to `None`, so `model_dump` emits `"propertyDiffs":null` — which is
+    **schema-invalid** (the schema requires an `array`) **and** diverges from a TS consumer canonicalizing
+    the raw object (key omitted). A real **#26/#27 model-vs-schema inconsistency** that #28's canonicalization
+    surfaced. **Root-cause fix (E3/#26/#27):** make `propertyDiffs` non-optional with default `[]` (or align
+    model + schema) so the form is unambiguous + valid. #28 keeps the corpus to valid records (the invalid
+    omitted-optional vector was reverted on review).
+  - **Out-of-domain values.** Numbers must be IEEE-754-representable + strings valid Unicode; the signer
+    (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4/#29:** the verify side must reject
+    out-of-domain values, or verify over the stored payload bytes (never re-canonicalize a sparse object).
+    #28 locks the fail-closed (`test_canonicalize_fails_closed_on_a_non_representable_number`).
 - **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are
   **enabled** repo-side (GitHub-native; the org has Advanced Security) — proven by a planted
   push-protection-supported secret rejected on push (`google_api_key` is detection-only, so it doesn't test

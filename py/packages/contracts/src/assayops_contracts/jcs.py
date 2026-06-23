@@ -18,11 +18,14 @@ from pydantic import BaseModel
 def canonicalize(record: BaseModel) -> bytes:
     """The RFC 8785 (JCS) canonical bytes of a contract record -- the bytes the reward ledger signs.
 
-    JSON mode so the binary ``reward`` is a bare ``0``/``1`` and ns-timestamps stay quoted strings;
-    ``rfc8785`` pins every other degree of freedom (key sort, number form, string escapes).
+    Canonicalizes the ``model_dump(mode="json")`` form, so a consumer re-deriving the bytes must
+    canonicalize that same materialized form (not a hand-built sparse object). JSON mode keeps the
+    binary ``reward`` a bare ``0``/``1`` and ns-timestamps quoted; ``rfc8785`` pins key sort, number
+    form, and escapes.
 
-    Numbers must be IEEE-754-representable (the contract strings large values, #26). A violation in
-    an open ``Any`` field fails CLOSED (``rfc8785`` raises), never silently-rounded bytes.
+    Domain: numbers must be IEEE-754-representable and strings valid Unicode (the contract strings
+    large values, #26). An out-of-domain value in an open ``Any`` field fails CLOSED (``rfc8785``
+    raises), never silently-transformed bytes; a JS consumer rounds/escapes (verify reject: E4/#29).
     """
     return rfc8785.dumps(record.model_dump(mode="json"))
 
