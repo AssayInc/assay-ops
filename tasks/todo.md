@@ -6,6 +6,71 @@ when done.
 
 ---
 
+## E17-F4 (#132) — Python structlog logger for the proof-critical core — IN PROGRESS (branch `feat/132-py-structlog-logger`)
+
+**Goal (AC):** a new `py/packages/logger` (`assayops_logger`) — the Python mirror of the TS `@assayops/logger`
+(pino) — for the env-server (E5) / verifier (E2) / reward ledger (E4): structlog JSON→stdout + dev pretty,
+ISO levels, a **deny-by-key redaction censor** (the one load-bearing security item — structlog ships none),
+the stdlib bridge folding boto3/uvicorn into one pipeline, `trajectory_id` via `contextvars`, the perf
+config, and the trust-boundary hardening (never botocore DEBUG; `show_locals=False`). Carves the
+"Python structured-logging story" out of **#116** (which keeps its LocalStack boto3 smoke + boto3/language-flip).
+
+**Validation (issue vs DECISIONS + brain + official docs — don't trust the AI-written issue blindly):**
+- `DECISIONS.md` §1/§8: this is trust-boundary-**adjacent** (consumed by account-B verifier/ledger + account-A
+  env-server). The issue's hardening — **never botocore/boto3 DEBUG** (wire-level logs leak AWS creds /
+  `SecretString` no pattern catches, boto3 #2292) + **`show_locals=False`** on the KMS-signing exception path —
+  directly serves §8 ("don't leak KMS material/creds"); `trajectory_id` is the §1/§8 join key. **No floor
+  conflict.** Redaction is **defense-in-depth, NOT the control** (primary rule: don't log secrets).
+- **assay-brain:** no logging-specific decision beyond the trust boundary (`write-isolated-verifier`, already
+  in §1/§8). structlog is the standing `CLAUDE.md` choice; the issue's 10-agent adversarial pass (loguru / OTel
+  / stdlib+Logfire all returned `structlog-still-best`) is research, already settled → KEEP, no re-litigation.
+- **Primary structlog docs read this pass (the repo's #1 rule; issue's citations are secondary):**
+  processors.html (*"You're explicitly allowed to modify the event_dict … a copy has been created before
+  calling the first processor"* → the censor mutates in place, **no clone** = avoids PR #110), standard-library.html
+  (the `ProcessorFormatter` + `foreign_pre_chain` + `wrap_for_formatter` + `remove_processors_meta` bridge —
+  one shared list ⇒ redaction in both native + foreign), contextvars.html (`merge_contextvars` first; the
+  per-concurrency isolation gotcha), exceptions.html (`dict_tracebacks`=`ExceptionDictTransformer`; pin
+  `show_locals=False`), performance.html (`make_filtering_bound_logger` + `cache_logger_on_first_use` not
+  pickleable → fresh per process; path-b `BytesLoggerFactory` = the deferred fast lane), logging-best-practices.html
+  (`sys.stderr.isatty()` → ConsoleRenderer / else `dict_tracebacks`+`JSONRenderer`).
+
+**Design (smallest change; one shared `_config` module = single source of truth):**
+- **Perf decision (issue step 3):** default **path (a)** the unified `ProcessorFormatter` stdlib bridge
+  (the AC requires folding boto3/uvicorn into one pipeline; `make_filtering_bound_logger` still gives native
+  `return None`-fast filtering). **Path (b)** (`BytesLoggerFactory`+orjson, our logs off the stdlib path) is
+  the documented future optimization for the env-server async hot path, **gated on a measured bottleneck**
+  (the verifier is I/O-bound on cloud reads, not log-CPU-bound) → no orjson dep now (YAGNI).
+- **Shared chain** (one censor object referenced in both native + foreign): `merge_contextvars` (first),
+  `add_log_level`, `TimeStamper(iso, utc)`, [`ExtraAdder` foreign-only], `StackInfoRenderer`, `redact_secrets`.
+  native = chain + `wrap_for_formatter`; `foreign_pre_chain` = the foreign variant. Renderer tail (isatty):
+  dev `[ConsoleRenderer]`; prod `[ExceptionRenderer(ExceptionDictTransformer(show_locals=False)), JSONRenderer]`,
+  in `ProcessorFormatter(processors=[remove_processors_meta, *tail])`. Handler → **unbuffered `sys.stdout`**.
+- **Redaction:** deny-by-key **recursive** censor (dicts + lists), deny-set = TS `SECRET_KEYS` (13) ∪
+  `x-api-key`/`set-cookie`, censor `[redacted]`. Recursive closes pino's depth/array gap (a safe superset);
+  same key set, kept in lockstep by a **parity test** parsing `ts/packages/logger/src/index.ts`. Preserves
+  Errors (only redacts dict keys, leaves the `exc_info`/exception object for `dict_tracebacks`).
+- **Hardening secure-by-default (every consumer):** clamp `botocore`/`boto3`/`urllib3`/`s3transfer` to
+  never-below-INFO; `show_locals=False` on the prod JSON exception renderer.
+- **API (structlog-idiomatic mirror, documented):** `configure_logging(level=,pretty=,stream=,extra_redact_keys=)`,
+  `get_logger(name, **values)` (+ native `.bind()` = child), `resolve_log_level(value)->int`, `SECRET_KEYS`,
+  `LOG_LEVELS`, `redact_secrets`. `stream` param = test seam (StringIO) to assert rendered output end-to-end.
+- **TS retire-vs-keep (#116):** **KEEP** `@assayops/logger`, scoped to the TS consumer/web surface
+  (`assay-web`/dashboards/npm); the two lanes share the `SECRET_KEYS` redaction contract via the parity test.
+
+**Steps (TDD — each AC = a failing test first, watched fail, then minimal green):**
+- [x] Branch + ground (DECISIONS §1/§8 + brain + the 6 primary structlog doc pages + the TS contract).
+- [x] Scaffold `py/packages/logger` (pyproject/package.json/src) + add `structlog>=25` (resolved 26.1.0); `uv lock` + `bun install`; verified `uv sync --locked` + `bun install --frozen-lockfile`.
+- [x] Smoke-verified the structlog API against the **installed** lib — **show_locals defaults to True** (so the explicit `=False` is load-bearing); `make_filtering_bound_logger` ∘ `LoggerFactory` ∘ `wrap_for_formatter` ∘ `ProcessorFormatter` composes (native + foreign → JSON, child binding redacted).
+- [x] RED→GREEN redaction censor (top-level/nested/child-binding/lists; **secrets never reach stdout**; Errors preserved; non-secrets untouched). **Negative-controlled** (disable censor → 11 tests fail).
+- [x] RED→GREEN level resolution + JSON/stdout + ISO ts + isatty dev/prod gating + make_filtering_bound_logger/cache.
+- [x] RED→GREEN `trajectory_id` (async-emit path + spawned-coroutine isolation + parent-inheritance).
+- [x] RED→GREEN stdlib bridge (foreign record → JSON + redacted + trajectory_id) + botocore/boto3/urllib3/s3transfer INFO clamp + `show_locals=False`. Both hardening tests **negative-controlled** (flip → tests fail).
+- [x] TS parity test (SECRET_KEYS extracted from `ts/.../index.ts`, == Python, non-vacuous 13 keys) + no bare `print` in src; TS file gets a scope comment (KEEP, consumer/web surface).
+- [x] `bun run verify` green **17/17** (logger: ruff+format+mypy clean, 53 tests); both lockfiles frozen-checked; PROGRAM.md + ISSUES.md + #116 de-scoped.
+- [ ] PR `Closes #132`; `/review` (Claude + Codex `gpt-5.5` xhigh; re-review fixed code on any finding); await explicit merge approval.
+
+---
+
 ## Vendor 4 wshobson Python skills (#127) — IN PROGRESS (branch `feat/vendor-wshobson-python-skills`)
 
 **Trigger + scope:** founder asked to resolve #127; confirmed via AskUserQuestion → **vendor all 4 now**

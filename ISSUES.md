@@ -67,8 +67,12 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   **ledger spike (#115) is delivered: GO → E4 (#5) inputs surfaced** (both see above); **verifier-read
   (#80, boto3)** remains. **Open
   migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
-  built TS** — `@assayops/logger` (retire vs keep) + a Python structured-logging story, and a **boto3
-  counterpart** to the `infra-local` LocalStack smoke; (2) **brain/wiki sync** — the raw plans
+  built TS** — the **`@assayops/logger` retire-vs-keep + the Python structured-logging story carved out
+  to #132 and landed**: **KEEP** `@assayops/logger` (scoped to the TS consumer/web surface) and the new
+  `py/packages/logger` (`assayops_logger`) is the structlog mirror for the proof-critical core (JSON→stdout,
+  deny-by-key redaction, the boto3/uvicorn stdlib bridge, `trajectory_id` contextvars; the two lanes share
+  the `SECRET_KEYS` contract, parity-tested). **#116 retains** the **boto3 counterpart** to the `infra-local`
+  LocalStack smoke + the boto3/Cloud-Control skill; (2) **brain/wiki sync** — the raw plans
   (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) + wiki pages still
   describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** and finish the
   `CLAUDE.md`/skill-layer language flip beyond the top-line + AWS row.
