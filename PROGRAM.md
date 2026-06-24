@@ -53,9 +53,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `contracts/schemas/` dir (`LC_ALL=C` glob, byte-identical to the prior explicit list) so a newly added
   schema reaches **both** generators — a hardcoded list had let a new schema's TS type go ungenerated and
   thus invisible to the gate; it also fixes an opaque removed-schema crash. Residual hardcoded-list nits (TS
-  ajv test, reward-pin breadth, `just` version pin) are tracked in **#140**. **CI-wiring + a codegen-recipe
+  ajv test, reward-pin breadth) are tracked in **#140**. **CI-wiring + a codegen-recipe
   fix** — no `contracts/schemas|vectors` or generated-file edits → not a fixture-change PR; the agent that
-  writes code never edits the grader. `just` pinned via `extractions/setup-just`; codegen tools pinned
+  writes code never edits the grader. `just` action SHA-pinned + binary version-pinned (`just-version` 1.53.0,
+  in both ci.yml `parity` and localstack-smoke); codegen tools pinned
   (bun.lock/uv.lock) → deterministic. `bun run verify` green 17/17. (PR #139.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
