@@ -182,12 +182,9 @@ and auto-loaded by name/description — the lock is the source of truth for what
 Before writing code against **any external library, API, or framework** — including a "stable" one you think
 you know (a validator like `ajv`, a logger like `pino`, an SDK) — load its **skill (or the official docs)
 FIRST** and follow them. Verify **config, idioms, and test tooling** against the primary source, **never
-cached knowledge**. Hand-rolling what a library already provides (redaction, validation, **retries**) is a
-defect magnet. *(A repeated correction — see `tasks/lessons.md`.)* The table below maps the project's
-fast-moving domains to their vendored skills; the rule applies beyond it — and **beyond the library you
-call**: validate the code's **craft** (retries/transient handling, error-handling, tests, the `Any`
-boundary) against the matching skill too (`python-resilience` · `python-error-handling` ·
-`python-testing-patterns` · `python-type-safety`), not just the API/library skill.
+cached knowledge**. Hand-rolling what a library already provides (redaction, validation) is a defect magnet.
+*(A repeated correction — see `tasks/lessons.md`.)* The table below maps the project's fast-moving domains to
+their vendored skills; the rule applies beyond it.
 
 | Domain | Skill(s) | Surface |
 |--------|----------|---------|

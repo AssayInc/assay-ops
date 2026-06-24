@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-06-24 — change-claude-md-with-extreme-caution
+- **Mistake:** To capture a correction (the #116 skills-validation gap) I added a clause + 4 skill names to
+  the `CLAUDE.md` skill-preflight rule — but the preflight **table already listed those skills** and a fresh
+  `tasks/lessons.md` entry already held the rule, so it was redundant. The founder flagged it: CLAUDE.md is
+  loaded **every session by every agent (Claude Code AND Codex)**, so each addition is permanent context cost
+  that compounds into bloat over months. Reverted it.
+- **Rule:** Default to **NOT editing CLAUDE.md.** A correction's preventing rule goes in `tasks/lessons.md`
+  (its designated home), not the constitution. Touch CLAUDE.md ONLY for a load-bearing fact an agent genuinely
+  can't infer from the repo/lessons; prefer **sharpening/replacing an existing line over adding one**; never
+  duplicate what the preflight table or a lesson already says. When unsure, leave it. (The #116 *language
+  flip* — Toolchain ordering + the AWS row — was legitimate, scoped by the issue; the extra preflight clause
+  was not.)
+- **Context:** #116 / PR #134. Sharpens [[claude-md-is-lean-no-issue-numbers]] (content rules) with a
+  *change-bar*; pairs with [[claude-md-serves-all-agents-no-dedupe]] (Codex loads it too).
+
 ## 2026-06-23 — validate-against-all-relevant-vendored-skills-not-just-the-api-skill
 - **Mistake:** Building the LocalStack boto3 smoke (E17-F1 / #116) I grounded the boto3 mechanics against
   `aws-sdk-python-usage` (the API skill) but **skipped the Python craft skills the repo vendors**
