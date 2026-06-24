@@ -1,0 +1,42 @@
+[project]
+name = "assayops-logger"
+version = "0.0.0"
+description = "Structured logging for the AssayOps proof-critical Python core (env-server / verifier / reward ledger) — structlog mirror of the TS @assayops/logger: JSON-to-stdout, deny-by-key secret redaction, trajectory_id correlation."
+requires-python = ">=3.12"
+# structlog is the structured-logging emitter (the standing CLAUDE.md choice / pino analog). It ships no
+# built-in redaction, so the secret-masking censor is ours (a processor). No orjson: the BytesLoggerFactory
+# fast path is a deferred, measured-bottleneck optimization for the env-server hot path, not needed now.
+dependencies = ["structlog>=25"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101), use loose/`Any`-typed fixtures (ANN) — e.g. json.loads of captured output — and
+# carry hardcoded SENTINEL secrets to prove redaction (S105/S106 hardcoded-password). Not the
+# typed/security-critical core; S/ANN stay active in src.
+"tests/**" = ["S101", "S105", "S106", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# Ban explicit `Any` in the hand-written core — the Python mirror of the TS lane's `any` ban. `--strict`
+# does NOT enable this. Use `object` (must be narrowed, like TS `unknown`) + `isinstance` for our own data;
+# at the structlog framework-adapter boundary use its documented processor types (Processor / WrappedLogger
+# / EventDict / FilteringBoundLogger, from `structlog.typing`), whose internal `Any` is structlog's
+# intentional API design (a processor's logger + event-dict are open by nature). `disallow_any_explicit`
+# flags only literal in-module `Any`, not these aliases. Tests (top-level modules) keep `Any` for json.loads.
+module = ["assayops_logger.*"]
+disallow_any_explicit = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -20,14 +20,35 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
-  E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** #116
-  (re-home built TS `@assayops/logger` + LocalStack smoke + boto3 skill), #117 (brain/wiki sync).
+  E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
+  (Python structlog logger — landed; carved from #116)**, #116 (LocalStack boto3 smoke + boto3 skill),
+  #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage) + **#29** (the contract-spine CI regenerate-and-diff
   parity gate, now unblocked — #27/#28 landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes
   both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team
   gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **E17-F4 (#132): Python structlog logger for the proof-critical core.** New `py/packages/logger`
+  (`assayops_logger`) — the structlog mirror of the TS `@assayops/logger` (pino) — for the env-server (E5),
+  verifier (E2), and reward ledger (E4). JSON one-event-per-line to **unbuffered stdout** (dev `ConsoleRenderer`
+  gated on `sys.stderr.isatty()`), ISO-8601 UTC timestamps, `make_filtering_bound_logger` fast filtering +
+  `cache_logger_on_first_use`. The load-bearing item is a **deny-by-key redaction censor** (structlog ships
+  none): a processor mirroring the TS `SECRET_KEYS` exactly (parity-tested against `ts/.../index.ts`), recursive
+  (dicts + lists — closing pino's depth/array gap), mutating the already-copied event_dict **in place** (not a
+  clone — the PR #110 mistake). The **unified `ProcessorFormatter` stdlib bridge** folds boto3/uvicorn records
+  into the same JSON pipeline + redaction + `trajectory_id` (one shared chain = one censor). **Trust-boundary
+  hardening (DECISIONS.md §8), secure-by-default:** botocore/boto3/urllib3/s3transfer clamped to never-below-INFO
+  (wire-level DEBUG leaks AWS creds no pattern catches), and `show_locals=False` on the prod exception renderer
+  (a KMS-signing crash can't dump key material from frame locals). `trajectory_id` via `structlog.contextvars`
+  (tested on the async-emit path AND spawned-coroutine isolation). The redaction + clamp + `show_locals` tests
+  were **proven real** by negative controls (disable → tests fail). **Grounded in the official structlog docs**
+  (processors / standard-library / contextvars / exceptions / performance / logging-best-practices, structlog
+  26.1.0) read this pass, not cached knowledge. **#116's logger task is complete** (decided: KEEP the TS
+  `@assayops/logger`, scoped to the consumer/web surface; #116 retains the LocalStack boto3 smoke + boto3 skill).
+  `bun run verify` green **17/17** (logger: 53 py tests; both lockfiles updated, frozen-checked). OTel
+  export/trace-correlation + prometheus metrics are out of scope (later / #79). (PR #132.)
 
 - **4 wshobson Python skills — vendored (closes #127); the Python-first hardening batch is complete.** The
   four `wshobson/agents` Python skills are now in the committed layer (`.agents/skills/` + `.claude`/`.hermes`

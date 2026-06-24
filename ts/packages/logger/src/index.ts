@@ -1,3 +1,7 @@
+// The TypeScript-lane structured logger — scoped to the consumer/web surface (assay-web, dashboards,
+// npm consumers). The proof-critical Python core (env-server / verifier / reward ledger) uses the
+// structlog mirror `assayops_logger`; both lanes share the SECRET_KEYS redaction contract, kept in
+// lockstep by a Python parity test.
 import pino from "pino"
 import type { Bindings, LevelWithSilent, Logger, LoggerOptions } from "pino"
 
