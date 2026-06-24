@@ -108,11 +108,14 @@ CC-readable types."
     `Route53::RecordSetGroup` also absent; added the per-asserted-property gate (write-only omission).
   - Refined AC2(b) (read-after-create → 7A), AC4 (GO-with-conditions + R2/§6 representativeness caveat),
     demoted `ReadOnlyAccess` to bootstrap; `kms:Decrypt` correctly absent.
+- **Codex xhigh re-review (pass 2) of the revised decision: "prior fixes correct, no new substantive error"**
+  ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]). One residual applied verbatim:
+  the closed-world enumeration must be **exhaustive / paginated / Region+global-service-aware / fail-closed**
+  (a truncated/errored list must never read as "no extra resources"). Converged.
 - **Verdict: GO with conditions** (closed-world via T7; per-property gate; corrected IAM) — feasibility holds;
   conditions are inputs to #3/#4/T2/T7, not spike blockers. Surfaced a **new T7 requirement** (SCP create-
   allow-list aligned to CC-listable types + Regions). Trust boundary (§8) intact (no agent-code exec; no A→B;
-  read-only). Per [[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]], re-review the revised
-  decision with Codex xhigh, then post the comment + await merge approval.
+  read-only). Next: post the recorded-decision comment on #80, then await explicit merge approval.
 
 ---
 

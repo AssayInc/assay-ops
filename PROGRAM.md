@@ -47,8 +47,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Read-but-not-List. **Unsupported/unreadable = FAIL-CLOSED**; and **extra/over-provisioned resources** (the
   moat-critical half — `list_resources` is per-`TypeName`/per-Region) require a **closed-world** predicate
   (deployed set ≡ golden set), enforced primarily by **T7 SCP create-allow-lists** (a closed set of
-  CC-listable types + Regions makes an out-of-scope resource unreachable by construction) + union-enumeration —
-  reads alone can't close vector #15. **Read-only IAM** = **`cloudformation:GetResource`/`ListResources`**
+  CC-listable types + Regions makes an out-of-scope resource unreachable by construction) + exhaustive,
+  paginated, Region/global-service-aware, fail-closed union-enumeration — reads alone can't close vector #15. **Read-only IAM** = **`cloudformation:GetResource`/`ListResources`**
   (Cloud Control's IAM prefix is `cloudformation`, verified) with `Resource:"*"`, + the union of in-scope
   types' `handlers.read`∪`list` permissions (least-privilege via `describe-type`); account-B verifier assumes a
   read-only role in account A (SCP-protected; no A→B path). **Go/no-go = GO with conditions** (closed-world via

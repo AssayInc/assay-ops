@@ -29,8 +29,9 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     moat-critical half:** `list_resources` is per-`TypeName`/per-Region, so reads alone can't see an extra
     resource of an out-of-scope/non-listable type or in an unscanned Region → reward must be **deployed set ≡
     golden set**, enforced primarily by **T7 SCP create-allow-lists** (a closed set of CC-listable types +
-    Regions makes an out-of-scope resource unreachable by construction) + union-enumeration as
-    defense-in-depth.
+    Regions makes an out-of-scope resource unreachable by construction) + **exhaustive, paginated,
+    Region/global-service-aware, fail-closed** union-enumeration as defense-in-depth (a truncated/errored
+    enumeration must never read as "no extra resources").
   - **Read-only IAM (AC3):** control-plane = **`cloudformation:GetResource` + `cloudformation:ListResources`**
     (Cloud Control's IAM service prefix is `cloudformation`, verified) with **`Resource:"*"`** (no ARN
     scoping); underneath, the union of in-scope types' **`handlers.read.permissions` ∪
