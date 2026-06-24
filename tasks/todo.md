@@ -34,11 +34,11 @@ the determinism + value-representability contract). Report serializes with `excl
 `../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
 plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
 
-**Steps:** [x] all — TDD (43 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
+**Steps:** [x] all — TDD (44 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
 green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
 `/review`; issue comment.
 
-### Review (`bun run verify` green 20/20 forced; 43 tests)
+### Review (`bun run verify` green 20/20 forced; 44 tests)
 
 - **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
   dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
@@ -57,6 +57,16 @@ green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #14
   gate**; (4) **shallow `frozen` + `model_dump`/`copy.deepcopy` laundering** (a `__deepcopy__`/serializer
   transforms a non-JSON value into JSON *before* validation) → a single **validate-and-copy** (exact-type
   identity gate, node-by-node, no transform step) at construction + `grade` re-validation; (5) NaN /
-  present-`None` / `$type` / report-aliasing guards. +20 hardening tests. **Pass 6 converged: Findings: None**
+  present-`None` / `$type` / report-aliasing guards. +21 hardening tests. **Pass 6 converged: Findings: None**
   — the only residuals require trusted account-B code to inject pathological objects post-construction
   (`model_construct`/monkeypatch), outside the agent threat model.
+- **Grounded against PRIMARY docs (not just the skills) + the Python craft skills.** Verified the
+  load-bearing Pydantic v2 behaviors on `docs.pydantic.dev` myself: an after-mode `field_validator`
+  **returns-and-stores** the (transformed) value — "important to return the validated value" + the
+  mutating-value example — so the validate-and-copy snapshot is documented-correct; **`frozen` does NOT
+  deep-freeze** — the "Faux immutability" Caution + `foobar.b['apple']='grape'` example — the documented
+  basis for the `grade` re-validation; `exclude_none` = "Exclude all fields whose value is None";
+  `model_validator(after)` returns `self`. Validated against `python-error-handling` (→ `UntrustedInputError`
+  now subclasses **`ValueError`**, Pattern 4 invalid-input + consistent with the validators; +1 test) and
+  `python-design-patterns` (KISS/SRP/composition/small-functions confirmed, no change). `mode="after"` made
+  explicit per the doc examples.

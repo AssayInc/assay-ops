@@ -28,11 +28,12 @@ from assayops_diff_ir.normalized_state import NormalizedResource, NormalizedStat
 _TYPE_PATH = "$type"
 
 
-class UntrustedInputError(Exception):
+class UntrustedInputError(ValueError):
     """Raised when the reward core is handed anything but {deployed read, golden target}.
 
-    The code-level expression of T1: the verifier grades only the B-side deployed-state read and the
-    independently regenerated golden -- never the agent's ``plan``/``show``/state. Fail closed.
+    A ``ValueError`` (invalid input) -- the code-level T1: the verifier grades only the B-side
+    deployed-state read and the regenerated golden, never the agent's ``plan``/``show``/state.
+    Fail closed.
     """
 
 

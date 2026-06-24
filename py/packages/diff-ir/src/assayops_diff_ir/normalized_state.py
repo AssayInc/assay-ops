@@ -77,7 +77,7 @@ class NormalizedResource(BaseModel):
     # property values type-strictly; order-insensitive collections are sorted by the adapter.
     properties: dict[str, object] = Field(default_factory=dict)
 
-    @field_validator("properties")
+    @field_validator("properties", mode="after")
     @classmethod
     def _properties_are_a_validated_snapshot(
         cls, properties: dict[str, object]

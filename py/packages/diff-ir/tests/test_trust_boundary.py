@@ -54,3 +54,12 @@ def test_normalized_state_rejects_duplicate_addresses() -> None:
             provenance=Provenance.GOLDEN_TARGET,
             resources=(res("dup"), res("dup")),
         )
+
+
+def test_untrusted_input_error_is_in_the_value_error_family() -> None:
+    # Invalid input -> ValueError (python-error-handling Pattern 4), consistent with the value
+    # validators, so a caller can catch any malformed grade input uniformly as ValueError.
+    assert issubclass(UntrustedInputError, ValueError)
+    tainted = NormalizedState(provenance=Provenance.AGENT_PLAN, resources=(res("x"),))
+    with pytest.raises(ValueError):
+        grade(tainted, golden(res("x")))
