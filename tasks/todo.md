@@ -34,11 +34,11 @@ the determinism + value-representability contract). Report serializes with `excl
 `../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
 plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
 
-**Steps:** [x] all — TDD (44 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
+**Steps:** [x] all — TDD (45 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
 green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
 `/review`; issue comment.
 
-### Review (`bun run verify` green 20/20 forced; 44 tests)
+### Review (`bun run verify` green 20/20 forced; 45 tests)
 
 - **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
   dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
@@ -51,8 +51,9 @@ green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #14
   `python-testing-patterns`. Brain recall confirmed the diff-owner is open design space → chose the core.
 - **Cross-model `/review` (Claude adversarial + test-audit subagents + Codex `gpt-5.5` xhigh, 6 passes to
   convergence) caught real reward holes — the value of running both.** Each fixed TDD (RED-first): (1) **false
-  reward 1 via value-type collapse** (`True==1`, `1==1.0`) → **type-strict comparison** (bool≠int≠float,
-  recursive); (2) **non-string nested dict keys** (`{1:…}`/`{True:…}` collide) → **recursive JSON-domain
+  reward 1 via value-type collapse** (`True==1`) → comparison where **`bool` ≠ a number** but `int`/`float`
+  compare by value (`90==90.0`; the founder corrected an over-strict first cut that flagged `90`≠`90.0` — a
+  false-negative); (2) **non-string nested dict keys** (`{1:…}`/`{True:…}` collide) → **recursive JSON-domain
   validation**; (3) **scalar *subclasses*** (overloaded `__eq__` pass `isinstance`) → **exact `type(...) is`
   gate**; (4) **shallow `frozen` + `model_dump`/`copy.deepcopy` laundering** (a `__deepcopy__`/serializer
   transforms a non-JSON value into JSON *before* validation) → a single **validate-and-copy** (exact-type

@@ -157,11 +157,16 @@ def _property_diffs(
 
 
 def _values_equal(golden: object, deployed: object) -> bool:
-    """Type-strict structural equality: ``bool`` != ``int`` != ``float``, recursive over dict/list.
+    """Equality on validated JSON values: ``bool`` != a number; int/float compare by value.
 
-    Python ``==`` collapses ``True == 1`` and ``1 == 1.0``; comparing types first stops a value-type
-    divergence (golden ``1`` vs deployed ``True``) from being graded in-sync -- a false reward 1.
+    JSON has one number type, so ``int``/``float`` of the same value are equal (``90 == 90.0``; JCS
+    canonicalizes them the same) -- distinguishing them is a false-negative drift. But ``bool`` is a
+    JSON boolean, NOT a number: ``True`` must never equal ``1`` (``==`` collapses them, grading a
+    boolean property in-sync with a numeric one -- a false reward 1). Inputs are validated to exact
+    JSON types upstream, so no subclass / NaN reaches here.
     """
+    if _is_json_number(golden) and _is_json_number(deployed):
+        return golden == deployed
     if type(golden) is not type(deployed):
         return False
     if isinstance(golden, dict) and isinstance(deployed, dict):
@@ -173,3 +178,8 @@ def _values_equal(golden: object, deployed: object) -> bool:
             return False
         return all(_values_equal(g, d) for g, d in zip(golden, deployed, strict=True))
     return golden == deployed
+
+
+def _is_json_number(value: object) -> bool:
+    # A JSON number is an exact int or float; `bool` is a JSON boolean, not a number.
+    return type(value) is int or type(value) is float

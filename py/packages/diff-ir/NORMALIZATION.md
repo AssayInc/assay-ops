@@ -35,11 +35,12 @@ the `deterministic-verification` skill's checklist; that skill and DECISIONS.md 
 - **Canonical ordering.** Resources are matched by `address` and emitted **sorted by address**;
   `propertyDiffs` are **sorted by path**. The DiffIR is therefore independent of the order resources or
   properties were supplied in — the same two states always produce the same DiffIR.
-- **Type-strict structural comparison.** Property values are compared recursively and
-  key-order-independently for mappings, but **type-strictly**: `bool`, `int`, and `float` are distinct
-  (Python's `==` collapses `True == 1` and `1 == 1.0`, which would grade a real value-type divergence
-  as in-sync — a false reward 1). Lists compare order-sensitively (the adapter sorts order-insensitive
-  collections).
+- **Structural comparison (`bool` distinct from numbers).** Property values are compared recursively
+  and key-order-independently for mappings. **`bool` is a JSON boolean, distinct from numbers** — `True`
+  never equals `1` (Python's `==` collapses them, which would grade a boolean property in-sync with a
+  numeric one, a false reward 1) — but **`int` and `float` of the same value are equal** (`90 == 90.0`;
+  JSON has one number type and JCS canonicalizes them identically, so treating them distinct would be a
+  false-negative drift). Lists compare order-sensitively (the adapter sorts order-insensitive collections).
 - **Value representability (fail closed).** Property values must be the **JSON domain** — finite
   numbers and **string object keys**, recursively. A `NormalizedResource` rejects, at construction, what
   would forge a reward or break the signed digest: a **non-string nested key** (`{1: …}` and `{True: …}`

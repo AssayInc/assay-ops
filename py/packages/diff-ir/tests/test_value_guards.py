@@ -17,18 +17,26 @@ from factories import by_address, deployed, golden, res
 
 from assayops_diff_ir import NormalizedResource, grade
 
-# --- type-strict comparison: no value-type coercion can forge a reward 1 (F1/F3) ---
+# --- value comparison: bool != number (no type collapse), but int/float compare by value ---
 
 
 def test_bool_and_int_property_values_are_not_equal() -> None:
     # golden requires the integer 1; deployed reads back the boolean True -- a real divergence.
+    # `bool` is a JSON boolean, NOT a number, so True must never equal 1 (would forge a reward 1).
     outcome = grade(deployed(res("r", flag=True)), golden(res("r", flag=1)))
     assert outcome.reward is Reward.number_0
     assert by_address(outcome)["r"].change is Change.modified
 
 
-def test_int_and_float_property_values_are_not_equal() -> None:
+def test_int_and_float_of_the_same_value_are_equal() -> None:
+    # JSON has one number type: 90 and 90.0 are the same number (JCS canonicalizes them the same),
+    # so a golden `90` vs a deployed `90.0` is in-sync, not a (false-negative) drift.
     outcome = grade(deployed(res("r", n=90.0)), golden(res("r", n=90)))
+    assert outcome.reward is Reward.number_1
+
+
+def test_different_numbers_are_a_diff() -> None:
+    outcome = grade(deployed(res("r", n=91)), golden(res("r", n=90)))
     assert outcome.reward is Reward.number_0
 
 
