@@ -17,9 +17,12 @@ verified) -- drift-read coverage is the #80/E2 job against real AWS.
 Cold-start: botocore's own bounded retries (``Config(retries=...)``) cover transient connection /
 5xx errors while a service warms after the gateway reports healthy -- the library's mechanism, no
 hand-rolled loop (verified clean across cold ``just up`` cycles). Standard mode does NOT retry a
-4xx like ``ResourceNotFoundException``, so the negative test fails fast on the modeled error. Runs
-only via ``just smoke`` against a running LocalStack (the ``localstack-smoke.yml`` workflow), never
-in the hermetic ``bun run verify`` gate -- the package exposes a ``smoke`` script, not ``test``.
+4xx like ``ResourceNotFoundException``, so the negative test fails fast on the modeled error. A
+read-after-create 404 is a non-issue here -- LocalStack's S3 ``CreateBucket`` is synchronous (the
+read sees the bucket immediately, verified); real-AWS eventual consistency is the #80/E2 job, like
+drift. Runs only via ``just smoke`` against a running LocalStack (the ``localstack-smoke.yml``
+workflow), never in the hermetic ``bun run verify`` gate -- the package exposes a ``smoke`` script,
+not ``test``.
 """
 
 from __future__ import annotations
