@@ -32,29 +32,28 @@ class Provenance(StrEnum):
 
 
 def _validate_json_value(value: object) -> None:
-    """Fail closed unless ``value`` is a finite JSON value with string object keys (recursive).
+    """Fail closed unless ``value`` is an exact-type finite JSON value with string keys (recursive).
 
     Rejects what would forge a reward or break the signed digest: non-string dict keys (``{1: ...}``
     and ``{True: ...}`` collide under Python equality -- a false reward 1), non-finite numbers
-    (NaN/Infinity break determinism + RFC 8785 JCS), and non-JSON types (tuple/set/bytes/objects).
+    (NaN/Infinity break determinism + RFC 8785 JCS), and any non-JSON type -- including a scalar
+    *subclass* with an overloaded ``__eq__`` (it passes ``isinstance``, forging a reward). The type
+    gate is therefore **exact** (``type(...) is``), never ``isinstance``.
     """
-    if value is None or isinstance(value, (bool, int, str)):
-        return  # JSON scalars (bool is an int subclass; nested None is a legal JSON value)
+    if type(value) not in (type(None), bool, int, float, str, dict, list):
+        raise ValueError(f"property values must be JSON types, got {type(value).__name__}")
+    # value is now an EXACT JSON type (no subclasses); isinstance below only narrows for recursion.
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("property values must be finite numbers (no NaN/Infinity)")
-        return
-    if isinstance(value, dict):
+    elif isinstance(value, dict):
         for key, nested in value.items():
-            if not isinstance(key, str):
+            if type(key) is not str:
                 raise ValueError(f"object keys must be strings, got {type(key).__name__}")
             _validate_json_value(nested)
-        return
-    if isinstance(value, list):
+    elif isinstance(value, list):
         for nested in value:
             _validate_json_value(nested)
-        return
-    raise ValueError(f"property values must be JSON types, got {type(value).__name__}")
 
 
 class NormalizedResource(BaseModel):

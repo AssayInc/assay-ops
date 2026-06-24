@@ -75,6 +75,18 @@ def test_normalized_resource_rejects_a_non_json_property_value() -> None:
         res("r", bad=(1, 2))
 
 
+def test_normalized_resource_rejects_a_scalar_subclass_with_overloaded_eq() -> None:
+    # A bool/int/float/str SUBCLASS passes isinstance and can overload __eq__ to forge a reward 1.
+    class _Sneaky(int):
+        def __eq__(self, other: object) -> bool:
+            return True
+
+        __hash__ = int.__hash__
+
+    with pytest.raises(ValueError, match="JSON"):
+        res("r", v=_Sneaky(1))
+
+
 def test_grade_revalidates_inputs_and_rejects_post_construction_tampering() -> None:
     # frozen blocks attribute reassignment, NOT in-place mutation of the properties dict; grade
     # re-validates at the trust boundary so tampering past the construction guards fails closed.
