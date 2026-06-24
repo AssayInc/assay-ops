@@ -52,7 +52,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   recipe is the authoring-time coverage gate. Resolves the brain's open questions (Cloud Control vs CFN;
   drift `NOT_CHECKED`; LocalStack fidelity). Grounded against AWS primary docs (live) + `DECISIONS.md`
   §1/§5/§8 + brain. Decision recorded on #80; a **proposed `[spike]`→resolved `DECISIONS.md` note is flagged
-  for ratification** (not silently edited). (PR #PENDING.)
+  for ratification** (not silently edited). (PR #138.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv
