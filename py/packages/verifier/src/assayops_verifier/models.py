@@ -18,22 +18,39 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 _MAX_JCS_SAFE_INT = 9007199254740991
 
 
+def _require_utf8(text: str) -> None:
+    # An unpaired surrogate is a valid str but not UTF-8-encodable: model_dump coerces a surrogate
+    # KEY to the replacement char (distinct keys → one digest, a collision); rfc8785 raises on a
+    # surrogate VALUE (a raw leak). Reject both.
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"non-UTF-8 (surrogate?) string in golden properties: {text!r}") from exc
+
+
 def _assert_deterministic_json(value: object) -> None:
     """Reject a property value that would canonicalize non-deterministically or lose information.
 
     The golden is content-addressed (JCS → SHA-256), so every leaf must be a JSON type with a single
-    canonical form. A ``set``/``frozenset`` serializes in ``PYTHONHASHSEED``-dependent order
-    (non-deterministic bytes across processes); a non-finite float (NaN/inf) is silently coerced to
-    JSON ``null`` by ``model_dump`` (silent loss); an int outside the JCS-safe range is not
-    rfc8785-representable. ``bool`` is an ``int`` subclass, admitted before the bound check.
+    canonical form. Rejected: ``set``/``frozenset`` (``PYTHONHASHSEED``-ordered); a non-finite float
+    (NaN/inf — ``model_dump`` silently nulls it); an int outside the JCS-safe range; a non-UTF-8
+    (surrogate) string key/value (digest collision / raw leak). ``bool`` is admitted before the int
+    bound; JSON-type subclasses (e.g. ``IntEnum``) coerce to their base value; other non-JSON types
+    (bytes, tuple, ``datetime``, ``Decimal``, …) are rejected below.
     """
-    if value is None or isinstance(value, (str, bool)):
+    if value is None or isinstance(value, bool):
+        return
+    if isinstance(value, str):
+        _require_utf8(value)
         return
     if isinstance(value, int):
         if not -_MAX_JCS_SAFE_INT <= value <= _MAX_JCS_SAFE_INT:
             raise ValueError(f"int outside the JCS-safe range (±(2^53−1)): {value}")
         return
     if isinstance(value, float):
+        # No magnitude bound (unlike int): rfc8785 serializes any finite float deterministically, so
+        # there's no generate-succeeds-but-digest-fails gap — IEEE precision is the builder's type
+        # choice (use int for an exact large integer, which is bounded above).
         if not math.isfinite(value):
             raise ValueError(f"non-finite float in golden properties: {value!r}")
         return
@@ -41,6 +58,7 @@ def _assert_deterministic_json(value: object) -> None:
         for key, item in value.items():
             if not isinstance(key, str):
                 raise ValueError(f"non-string property key: {key!r}")
+            _require_utf8(key)
             _assert_deterministic_json(item)
         return
     if isinstance(value, list):
@@ -100,4 +118,9 @@ class GoldenTarget(BaseModel):
         duplicates = sorted({a for a in addresses if addresses.count(a) > 1})
         if duplicates:
             raise ValueError(f"duplicate resource addresses: {duplicates}")
+        for resource in resources:
+            # Re-check properties: a builder may have mutated a resource's open dict after the
+            # GoldenResource validator ran (frozen is shallow), and Pydantic doesn't re-validate
+            # nested instances by default — without this, generate() could return an invalid golden.
+            _assert_deterministic_json(resource.properties)
         return tuple(sorted(resources, key=lambda resource: resource.address))

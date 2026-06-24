@@ -16,7 +16,6 @@ from dataclasses import dataclass
 
 from assayops_contracts import TaskSpec
 from assayops_contracts.jcs import canonical_digest
-from pydantic import ValidationError
 
 from assayops_verifier.models import GoldenResource, GoldenTarget
 
@@ -49,8 +48,14 @@ class GoldenContext:
         """
         if not 1 <= length <= 64:
             raise ValueError("token length must be between 1 and 64")
-        material = "\x00".join((self.seed, *parts)).encode("utf-8")
-        return hashlib.sha256(material).hexdigest()[:length]
+        # Length-prefix each part so the encoding is injective: a delimiter-join would let a part
+        # containing the delimiter collide with a different (seed, *parts) split.
+        hasher = hashlib.sha256()
+        for part in (self.seed, *parts):
+            encoded = part.encode("utf-8")
+            hasher.update(len(encoded).to_bytes(8, "big"))
+            hasher.update(encoded)
+        return hasher.hexdigest()[:length]
 
 
 # The per-task golden "code": given the deterministic context, emit the expected resources. A
@@ -76,9 +81,10 @@ class GoldenRegistry:
         canonical golden (``seed = task.seed``) or a fresh per-episode variant (re-seeding for
         anti-memorization, vector #14) without mutating the task spec.
 
-        Failures fail closed: an unregistered task → ``UnknownTaskError``; an invalid golden (a bad
-        resource value, an empty or duplicate-address set) → ``GoldenError``. A builder's own
-        programming bug (e.g. a bad ``GoldenContext.token`` length) propagates unwrapped.
+        Failures fail closed to a **single** exception type so the reward core (E2-3/#32) can catch
+        one thing and quarantine: an unregistered task → ``UnknownTaskError``; **any** builder
+        failure (an invalid golden, a builder returning ``None``/raising, ``RecursionError`` on
+        cyclic properties) is wrapped as ``GoldenError`` (chained). Never a silent/partial golden.
         """
         try:
             builder = self._builders[task.task_id]
@@ -87,10 +93,12 @@ class GoldenRegistry:
         try:
             resources = list(builder(GoldenContext(task=task, seed=seed)))
             return GoldenTarget(resources=tuple(resources))
-        except ValidationError as exc:
-            # A builder bug (bad resource, empty/ambiguous set) fails closed as a GoldenError — the
-            # engine's single failure type — not a silent or partial golden (vector #15).
-            raise GoldenError(f"invalid golden for task_id={task.task_id!r}: {exc}") from exc
+        except GoldenError:
+            raise
+        except Exception as exc:
+            # Any builder failure (bad value → ValidationError, None/raise → TypeError, cyclic →
+            # RecursionError) fails closed as the engine's single GoldenError type (vector #15).
+            raise GoldenError(f"golden generation failed for {task.task_id!r}: {exc}") from exc
 
 
 def golden_digest(target: GoldenTarget) -> str:
@@ -99,13 +107,19 @@ def golden_digest(target: GoldenTarget) -> str:
     not a re-roll. Byte-identical regeneration ⇒ identical address, so a grade is reproducible from
     (task, seed).
 
-    Re-validates first: Pydantic ``frozen`` is shallow, so the account-B-internal golden could have
-    been mutated after construction (its open ``properties`` dicts stay mutable). Re-validation
-    makes the address pin a canonical, valid golden — a tampered one fails closed (``GoldenError``)
-    instead of yielding a misleading address.
+    Re-validates first: Pydantic ``frozen`` is shallow, so the account-B-internal golden's open
+    ``properties`` dicts stay mutable after construction. Re-validation re-runs the field validators
+    so the address always pins a *canonical, valid* golden — a mutation to an **invalid** value (a
+    set, a non-finite float) fails closed here (``GoldenError``). It is **not** tamper-evidence: a
+    mutation to a different *valid* value re-hashes to a new valid address — fine because the golden
+    is account-B-internal and never agent-reachable.
     """
     try:
         canonical = GoldenTarget.model_validate(target.model_dump())
-    except ValidationError as exc:
-        raise GoldenError(f"golden is not canonical (mutated after generation?): {exc}") from exc
-    return canonical_digest(canonical).hex()
+        return canonical_digest(canonical).hex()
+    except GoldenError:
+        raise
+    except Exception as exc:
+        # model_dump (cyclic → RecursionError), re-validation (mutated → invalid), or rfc8785 (a
+        # residual non-canonicalizable value) — any failure fails closed as the single GoldenError.
+        raise GoldenError(f"golden is not content-addressable: {exc}") from exc

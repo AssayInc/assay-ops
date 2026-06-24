@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from synthetic import SYNTHETIC_TASK_ID, make_task, s3_bucket_builder
 
-from assayops_verifier.golden import GoldenRegistry, golden_digest
+from assayops_verifier.golden import GoldenContext, GoldenRegistry, golden_digest
 
 
 def _registry() -> GoldenRegistry:
@@ -32,3 +32,13 @@ def test_same_seed_regenerates_the_same_golden() -> None:
     task = make_task()
 
     assert registry.generate(task, "episode-a") == registry.generate(task, "episode-a")
+
+
+def test_token_encoding_is_injective() -> None:
+    # Length-prefixed, so a part containing the old NUL delimiter can't collide with a different
+    # (seed, *parts) split — distinct ephemeral identifiers stay distinct.
+    ctx = GoldenContext(task=make_task(), seed="seed")
+    assert ctx.token("foo", "bar") != ctx.token("foo\x00bar")
+    seed_with_nul = GoldenContext(task=make_task(), seed="p\x00q").token()
+    seed_then_part = GoldenContext(task=make_task(), seed="p").token("q")
+    assert seed_with_nul != seed_then_part

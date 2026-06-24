@@ -38,6 +38,19 @@ def test_oversized_int_property_is_rejected() -> None:
         _resource_with(2**53)
 
 
+def test_surrogate_string_value_is_rejected() -> None:
+    # A lone surrogate is a valid str but not UTF-8-encodable → rfc8785 raises (a raw digest leak).
+    with pytest.raises(ValidationError):
+        _resource_with("\ud800")
+
+
+def test_surrogate_string_key_is_rejected() -> None:
+    # Distinct surrogate keys both dump to the replacement char → one digest (a content-address
+    # collision). Reject them at the boundary.
+    with pytest.raises(ValidationError):
+        GoldenResource(address="a", type="AWS::S3::Bucket", properties={"\ud800": 1})
+
+
 def test_nested_json_properties_are_accepted() -> None:
     resource = _resource_with({"nested": {"k": [1, "two", True, None]}})
     assert resource.properties == {"x": {"nested": {"k": [1, "two", True, None]}}}

@@ -39,9 +39,9 @@ def test_generate_is_byte_identical_across_k_runs() -> None:
 
 
 def test_digest_is_stable_across_python_hash_seeds() -> None:
-    # A single-process loop shares one PYTHONHASHSEED, so it cannot catch hash-seed-dependent
-    # serialization (e.g. a set in a property). Regenerate in fresh interpreters, varying the seed,
-    # and assert one content address — the real cross-run byte-identity AC1/#46 promises.
+    # Cross-process stability canary: a single-process loop shares one PYTHONHASHSEED. Regenerate in
+    # fresh interpreters varying the seed and assert one content address. (Sets — the hash-seed-
+    # sensitive case — are rejected at construction, so this guards the dict/scalar happy path.)
     tests_dir = Path(__file__).resolve().parent
     pkg_src = tests_dir.parent / "src"
     contracts_src = tests_dir.parents[1] / "contracts" / "src"

@@ -53,3 +53,27 @@ def test_duplicate_task_registration_is_rejected() -> None:
     registry.register("dup-reg", s3_bucket_builder)
     with pytest.raises(GoldenError):
         registry.register("dup-reg", s3_bucket_builder)
+
+
+def test_builder_returning_a_non_iterable_fails_closed() -> None:
+    # A builder bug (returns None) must fail closed as GoldenError, not leak a raw TypeError that a
+    # reward core's `except GoldenError` would miss.
+    def none_builder(_ctx: GoldenContext) -> list[GoldenResource]:
+        return None  # type: ignore[return-value]
+
+    registry = GoldenRegistry()
+    registry.register("none", none_builder)
+    with pytest.raises(GoldenError):
+        registry.generate(make_task(task_id="none"), "seed")
+
+
+def test_builder_raising_an_arbitrary_exception_fails_closed_as_golden_error() -> None:
+    def boom_builder(_ctx: GoldenContext) -> list[GoldenResource]:
+        raise RuntimeError("boom")
+
+    registry = GoldenRegistry()
+    registry.register("boom", boom_builder)
+    with pytest.raises(
+        GoldenError
+    ):  # RuntimeError is wrapped into the engine's single failure type
+        registry.generate(make_task(task_id="boom"), "seed")
