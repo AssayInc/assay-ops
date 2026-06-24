@@ -22,8 +22,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   allow-list)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
   The contracts spine (**E1 #2**) is **complete** (planned deliverables #26–#29 all landed),
   **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) and **#29** (the CI
-  regenerate-and-diff parity gate) landed; one review-surfaced codegen-hardening follow-up (**#140**) is
-  tracked under the epic.
+  regenerate-and-diff parity gate) landed; the review-surfaced codegen-hardening follow-up (**#140**)
+  **landed** (PR #144).
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
@@ -56,8 +56,33 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   states is what AC2 requires and keeps the determinism-critical diff in one place (the brain leaves the
   diff-owner open). **Wiring:** the first intra-workspace import (diff-ir → contracts via `pythonpath`/`mypy_path`;
   the `pydantic.mypy` plugin — first hand-written plain-`BaseModel` package under the `Any` ban —
-  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 23 tests, RED→GREEN
-  per behavior. `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
+  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 40 tests (a
+  cross-model `/review` hardened the diff against value-type-collapse false-reward-1 paths). `bun run verify`
+  green **20/20** (forced, 0-cached). (PR #145.)
+- **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
+  #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now
+  **disk-enumerates** `contracts/schemas/*.schema.json` for the Draft-2020-12 + ajv-compile coverage (a new
+  schema is validated automatically; the 4 bespoke instance/modeling tests stay keyed to fixtures). (2) The
+  `just codegen` **reward-pin** (`reward: number;` → `0 | 1;`, the §8 binary invariant quicktype can't emit as
+  a literal union) was a blanket file-wide rewrite asserting only ≥1 match — now **anchored** to the
+  `RewardRecord` interface block + an exactly-one fail-closed guard, so a future *unrelated* `reward: number;`
+  can't be silently narrowed (regeneration byte-identical to the committed `generated.ts`). (3) A fail-loud
+  **re-export parity test** (`test_model_reexports.py`): every `BaseModel`/`Enum` under `models/*.py` must be
+  in `assayops_contracts.__all__` + importable (datamodel-codegen leaves `models/__init__.py` empty, so the
+  top-level re-exports are hand-maintained; a *dynamic* re-export would break `mypy --strict` re-export
+  visibility, so harden with a test, not magic). **Quicktype globbing + `just-version` pinning were already on
+  `main` (PR #139)** — grounding against `origin/main` showed the issue body's "quicktype globbed" was
+  correct (the review-comment's "not globbed / never touched justfile" was stale: `origin/main` globs;
+  PR #139's squash changed `justfile` +11/−9) and the body's "just-version unpinned" was stale (pinned in
+  `ci.yml` + `localstack-smoke.yml`) — so neither was re-done. Proven RED→GREEN with a throwaway 5th schema
+  (reaches both generators + the ajv test + the parity test with no list edit), then removed → regeneration
+  byte-identical (codegen-parity gate stays green). **Not a `fixture-change` PR** (no `contracts/schemas|vectors`,
+  generated-file, or `tools/red-team` edits; `gen_vectors.py` untouched). **Cross-model `/review`** (Claude
+  adversarial + Codex `gpt-5.5` xhigh, 3 passes to convergence) hardened the §8 reward-pin to fail **closed**
+  on any quicktype-format drift — isolate the RewardRecord interface block by `export interface`-header count +
+  top-level-brace termination, `${var:-0}` count default, block-scoped pin-landed backstop — and switched the
+  re-export parity test to **object-identity** (catches a cross-module class-name collision); all changes keep
+  regeneration byte-identical. `bun run verify` green 17/17. (PR #144.)
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
   §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
   workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs

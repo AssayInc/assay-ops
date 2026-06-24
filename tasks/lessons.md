@@ -15,6 +15,26 @@ Entry format:
 
 ---
 
+## 2026-06-24 — act-decisively-on-airtight-code-evidence-dont-bounce-it-back
+- **Mistake:** Grounding #140 against `origin/main`, I proved **three ways** that quicktype is already globbed
+  (`git show origin/main:justfile` → `contracts/schemas/*.schema.json`; PR #139's squash `e641784` diff =
+  explicit-list → glob; `a4be645` not an ancestor of main) — contradicting the founder's correction comment.
+  But after laying out the receipts I still **asked the founder to re-run the check and "confirm before I open
+  the PR," and held the PR.** The founder pushed back ("Why don't you just check yourself? I just did it") —
+  they'd already verified it and wanted me to proceed on my own airtight evidence, not bounce the verification
+  back to them.
+- **Rule:** When I've **airtight-verified a fact against the code** (especially after being told to "ground
+  from the code"), **flag the contradiction with receipts and then PROCEED on that evidence** — don't stall
+  asking the founder to re-confirm what I've already proven. Confirmation-seeking on a settled, triple-checked
+  fact reads as not trusting my own grounding and wastes the founder's time. Reserve "stop and ask" for genuine
+  ambiguity I **can't** resolve from the code/docs (a real scope/judgment call) or an outward irreversible
+  action (a **merge** still needs the explicit go — [[never-merge-without-explicit-user-approval]]). Opening a
+  PR on verified evidence does **not**. Flag-and-proceed, not flag-and-wait.
+- **Context:** #140 / PR #144 — the quicktype-glob status (the review comment was stale vs `origin/main`).
+  Sharpens [[ground-in-decisions-and-brain-not-the-ai-written-issue]] +
+  [[verify-against-official-docs-and-skills-before-acting]] (verify, *then act*); pairs with
+  [[never-merge-without-explicit-user-approval]] (the one outward step that still waits).
+
 ## 2026-06-24 — codex-sandbox-has-no-github-network-paste-content-inline
 - **Mistake:** A Codex `gpt-5.5` xhigh review needed the bodies of issues #141/#53; every run hit
   `error connecting to api.github.com` — first with a `gh issue view ...` prompt, and **again after I retried
