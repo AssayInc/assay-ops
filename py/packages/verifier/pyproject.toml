@@ -19,9 +19,9 @@ package = false
 extend = "../../../pyproject.toml"
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert (S101) and use loose/`Any`-typed synthetic builders/fixtures (ANN) — not the typed,
-# security-critical core. S/ANN stay active in src.
-"tests/**" = ["S101", "ANN"]
+# Tests assert (S101), use loose/`Any`-typed synthetic builders/fixtures (ANN), and spawn a trusted
+# subprocess (S603 — the cross-hash-seed determinism check) — not the typed, security-critical core.
+"tests/**" = ["S101", "ANN", "S603"]
 
 [tool.mypy]
 python_version = "3.12"

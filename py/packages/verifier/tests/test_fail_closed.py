@@ -7,7 +7,7 @@ a downstream grader could read as "in sync" (DECISIONS.md §1 / vector #15: neve
 from __future__ import annotations
 
 import pytest
-from synthetic import make_task
+from synthetic import make_task, s3_bucket_builder
 
 from assayops_verifier.golden import GoldenContext, GoldenError, GoldenRegistry, UnknownTaskError
 from assayops_verifier.models import GoldenResource
@@ -31,3 +31,25 @@ def test_duplicate_addresses_are_rejected() -> None:
     registry.register("dup-task", dup_builder)
     with pytest.raises(GoldenError):
         registry.generate(make_task(task_id="dup-task"), "seed")
+
+
+def test_empty_golden_is_rejected() -> None:
+    # An empty golden means "the correct state is no resources" -> a no-op deploy grades reward 1
+    # under the closed-world check (deployed set ≡ golden set). A builder that falls through to []
+    # must fail, never mint a free reward.
+    def empty_builder(_ctx: GoldenContext) -> list[GoldenResource]:
+        return []
+
+    registry = GoldenRegistry()
+    registry.register("empty", empty_builder)
+    with pytest.raises(GoldenError):
+        registry.generate(make_task(task_id="empty"), "seed")
+
+
+def test_duplicate_task_registration_is_rejected() -> None:
+    # Silently overwriting a registered builder lets import order / corpus duplication change the
+    # golden for the same (task, seed) — fail closed instead.
+    registry = GoldenRegistry()
+    registry.register("dup-reg", s3_bucket_builder)
+    with pytest.raises(GoldenError):
+        registry.register("dup-reg", s3_bucket_builder)
