@@ -9,6 +9,8 @@ serialization. So the normalized IR fails closed on values that break determinis
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from assayops_contracts import Change, Reward
 from factories import by_address, deployed, golden, res
@@ -94,6 +96,19 @@ def test_grade_revalidates_inputs_and_rejects_post_construction_tampering() -> N
     tampered.properties["$evil"] = "x"
     with pytest.raises(ValueError):
         grade(deployed(tampered), golden(res("r", cfg="v")))
+
+
+def test_grade_revalidation_rejects_a_serializable_object_value_mutation() -> None:
+    # A BaseModel/dataclass value would be serialized to plain JSON by model_dump BEFORE validation;
+    # re-validation must check the RAW object graph so the injected non-JSON object fails closed.
+    @dataclasses.dataclass
+    class _Sneaky:
+        v: int
+
+    tampered = res("r", cfg="seed")
+    tampered.properties["cfg"] = _Sneaky(1)
+    with pytest.raises(ValueError):
+        grade(deployed(tampered), golden(res("r", cfg="seed")))
 
 
 # --- coverage regression guards (P2) ---

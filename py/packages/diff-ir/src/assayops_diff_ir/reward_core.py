@@ -71,8 +71,18 @@ def _require_trusted_inputs(deployed: NormalizedState, golden: NormalizedState) 
 
 
 def _revalidated(state: NormalizedState) -> NormalizedState:
-    """Re-run validation on a fresh dump so a post-construction mutation can't bypass the guards."""
-    return NormalizedState.model_validate(state.model_dump())
+    """Re-validate the RAW object graph so a post-construction mutation can't bypass the guards.
+
+    Rebuilds from the raw ``properties`` -- NOT ``model_dump()``, which would serialize a non-JSON
+    value (a BaseModel/dataclass injected by a mutation) into plain JSON before the validator runs.
+    """
+    return NormalizedState(
+        provenance=state.provenance,
+        resources=tuple(
+            NormalizedResource(address=r.address, type=r.type, properties=r.properties)
+            for r in state.resources
+        ),
+    )
 
 
 def _is_in_sync(diff: DiffIR) -> bool:
