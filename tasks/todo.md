@@ -152,6 +152,8 @@ interaction** — `infra-local` became a uv package outside `py/**`, so `ci.yml`
 on infra-local's uv-based lint/typecheck (local `bun run verify` masked it — the lockfile-lesson failure
 mode). **Fixed:** routed infra-local to the Python lane (`--filter '!./infra-local'` in ts, `'./infra-local'`
 in py); verified the partition via `turbo --dry` (8 packages, no drop/overlap, union = `bun run verify`).
+**[Superseded by #136]** these per-lane `--filter` flags were the root-location workaround; relocating
+`infra-local` → `py/packages/infra-local` removed them — the `./py/**` glob now routes it with no special case.
 Claude found a stale `biome.json` `infra-local/**` glob (inert, dropped). The read-after-create MEDIUM
 (Codex) was a **non-issue for LocalStack** (synchronous `CreateBucket`, verified by Claude + the probe;
 real-AWS consistency is #80/E2) — documented, not re-wrapped.
