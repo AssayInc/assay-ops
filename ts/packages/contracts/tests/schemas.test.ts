@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import Ajv2020, { type AnySchemaObject, type ValidateFunction } from "ajv/dist/2020"
 
@@ -8,10 +8,20 @@ import Ajv2020, { type AnySchemaObject, type ValidateFunction } from "ajv/dist/2
 // four levels below the repo root.
 const SCHEMA_DIR = join(import.meta.dir, "../../../../contracts/schemas")
 
-const SCHEMA_NAMES = ["reward-record", "trajectory", "diff-ir", "task-spec"] as const
-type SchemaName = (typeof SCHEMA_NAMES)[number]
+// Discover every schema from disk so a newly added schema is ajv-validated automatically — no hardcoded
+// list to forget (#140 codegen hardening). `just codegen`'s quicktype + datamodel-codegen already read the
+// whole dir; this aligns the TS ajv coverage with them.
+const ALL_SCHEMA_NAMES: string[] = readdirSync(SCHEMA_DIR)
+  .filter((f) => f.endsWith(".schema.json"))
+  .map((f) => f.slice(0, -".schema.json".length))
+  .sort()
 
-function loadSchema(name: SchemaName): AnySchemaObject {
+// The schemas with bespoke instance fixtures + modeling-rule tests below. The validity/compile coverage
+// runs over every schema on disk (ALL_SCHEMA_NAMES); these four add semantic, schema-specific assertions.
+const FIXTURED_NAMES = ["reward-record", "trajectory", "diff-ir", "task-spec"] as const
+type SchemaName = (typeof FIXTURED_NAMES)[number]
+
+function loadSchema(name: string): AnySchemaObject {
   return JSON.parse(readFileSync(join(SCHEMA_DIR, `${name}.schema.json`), "utf8")) as AnySchemaObject
 }
 
@@ -19,9 +29,9 @@ function loadSchema(name: SchemaName): AnySchemaObject {
 // API docs' idiomatic pattern). When codegen (#27) produces the TS types, `ajv.compile<T>` makes the
 // validator a type guard (`data is T`) for type-safe validation in the verifier/ledger.
 const ajv = new Ajv2020({ allErrors: true })
-const validators = new Map<SchemaName, ValidateFunction>()
+const validators = new Map<string, ValidateFunction>()
 
-function validatorFor(name: SchemaName): ValidateFunction {
+function validatorFor(name: string): ValidateFunction {
   const cached = validators.get(name)
   if (cached) {
     return cached
@@ -64,8 +74,10 @@ const VALID: Record<SchemaName, Record<string, unknown>> = {
 }
 
 describe("contract schemas (E1-1)", () => {
+  // Runs over EVERY schema on disk (not a hardcoded list): a newly added schema is automatically
+  // checked for Draft-2020-12 shape + ajv-compiled here, with no edit to this file (#140).
   describe("each is a valid Draft 2020-12 schema", () => {
-    for (const name of SCHEMA_NAMES) {
+    for (const name of ALL_SCHEMA_NAMES) {
       test(name, () => {
         const schema = loadSchema(name)
         expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema")
@@ -76,8 +88,27 @@ describe("contract schemas (E1-1)", () => {
     }
   })
 
+  describe("schema discovery is disk-derived (codegen hardening, #140)", () => {
+    test("covers every *.schema.json on disk, not a hardcoded subset", () => {
+      // Compare the full sorted name set (not just the count) so a same-length but divergent list
+      // — e.g. a future regression back to a hardcoded list — fails, not just a count mismatch.
+      const onDisk = readdirSync(SCHEMA_DIR)
+        .filter((f) => f.endsWith(".schema.json"))
+        .map((f) => f.slice(0, -".schema.json".length))
+        .sort()
+      expect(ALL_SCHEMA_NAMES).toEqual(onDisk)
+      expect(ALL_SCHEMA_NAMES.length).toBeGreaterThanOrEqual(FIXTURED_NAMES.length)
+    })
+
+    test("the bespoke-fixture schemas are all present on disk", () => {
+      for (const name of FIXTURED_NAMES) {
+        expect(ALL_SCHEMA_NAMES).toContain(name)
+      }
+    })
+  })
+
   describe("a well-formed instance validates", () => {
-    for (const name of SCHEMA_NAMES) {
+    for (const name of FIXTURED_NAMES) {
       test(name, () => {
         const validate = validatorFor(name)
         const ok = validate(VALID[name])
