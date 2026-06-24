@@ -6,6 +6,36 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **E3-4 (#80) boto3 read-coverage spike — GO; recorded decision (no floor change).** Resolves the E17 #113
+  verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md` §1/§5/§8 + brain
+  (`iac-verification-primitives`, `aws-cloud-control-api`):
+  - **Read path split by tool:** **Terraform → Cloud Control `GetResource`/`ListResources` only**
+    (provisioning-agnostic; no provider plugins — the T1 constraint). **CFN drift / `DescribeStackResources`
+    are CloudFormation-stack-scoped → the CDK adapter's (T3) path**, N/A for Terraform (it creates no stack).
+    Clarifies the AI-issue's "Cloud Control + CFN drift … Terraform" bundling (flag, not code-around).
+  - **Coverage (AC1):** authoritative = AWS "Resource types that support Cloud Control API" (per-type CRUD-L;
+    **1300** public types; readable = a `read` handler, enumerable = a `list` handler — can differ per type).
+    Common Terraform corpus ~fully covered; checked gaps = inline **`IAM::Policy`** (use
+    `ManagedPolicy`/`RolePolicy` instead) + **`Route53::RecordSet`** (service-specific
+    `route53:ListResourceRecordSets`). Exact matrix regenerated via `cloudformation list-types
+    --provisioning-type FULLY_MUTABLE|IMMUTABLE` + `describe-type` (`Schema.handlers`) — real-AWS, T7-gated;
+    **LocalStack is non-authoritative** for coverage (and doesn't serve `DetectStackDrift`).
+  - **Unsupported policy (AC2) = FAIL-CLOSED** (never silently reward — §5 vector #15): unsupported type →
+    quarantine the task family at authoring time; transient unreadable → `7A` transient/genuine classifier +
+    K-run; genuine unreadable → `reward=0`. `skip`-and-grade-the-rest rejected.
+  - **Read-only IAM (AC3):** `cloudcontrol:GetResource` + `cloudcontrol:ListResources` + the union of in-scope
+    types' `handlers.read.permissions` (least-privilege via `describe-type`; AWS-managed `ReadOnlyAccess` as a
+    broad fallback). The **account-B** verifier assumes (`sts:AssumeRole`) a **read-only role in account A**
+    (SCP-protected from the agent, T7; no A→B path). CDK/T3 adds `cloudformation:*StackDrift*` +
+    `DescribeStackResource*`. No write/mutate actions.
+  - **Go/no-go (AC4) = GO:** scope the Phase-1 Terraform corpus to CC-readable types — coverage is ample, the
+    read path stays a uniform `(TypeName, Identifier) → Properties` shape (no per-type fallback adapters in
+    Phase 1), and the moat (vector #15) stays intact; the `list-types`/`describe-type` recipe is the
+    authoring-time coverage gate. **Inputs #3/#4** (verifier core) + **T2** (Terraform adapter).
+  - **Proposed `DECISIONS.md` addition** (a `[spike]`→resolved note: Terraform = Cloud-Control-only; CFN drift =
+    CDK path; unreadable = FAIL-CLOSED; corpus scoped to CC-readable) is **flagged on #80 for founder
+    ratification** — not silently merged into the frozen floor.
+
 - **Python type-safety parity + its three hardening tails (#126, #128, #127) — all landed.** The Python
   lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
   the TS `any` ban — `object` + a runtime narrow (Pydantic) is the `unknown` equivalent — with `S`/`LOG`/`G`/

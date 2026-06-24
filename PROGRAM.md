@@ -15,22 +15,44 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
 - **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes: **#114 (OpenEnv/TRL,
   gates E5) LANDED — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, `b91da87`); **#115 (ledger
-  rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80** (boto3 read coverage) + **account
-  infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
+  rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80 (boto3 read coverage, gates E2/E3) LANDED —
+  GO** (Terraform read path = Cloud Control `GetResource`/`ListResources` only; CFN drift = the CDK path;
+  unreadable = FAIL-CLOSED; Phase-1 corpus scoped to CC-readable types); **account infra T7 (P1-BLOCKING)** +
+  LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
   The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
   **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **#80** (boto3 read coverage — now **grounded + unblocked by #116**: the vendored
-  `aws-sdk-python-usage` skill + the `infra-local` boto3 LocalStack smoke prove the Cloud Control
-  read path) + **#29** (the contract-spine CI regenerate-and-diff parity gate, now unblocked — #27/#28
-  landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes both landed GO; **E5/#6** unblocked
-  by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
+- **Next ready work:** **#29** (the contract-spine CI regenerate-and-diff parity gate, now unblocked —
+  #27/#28 landed) + **account infra T7 (P1-BLOCKING)** — the remaining gates for E2–E7 (**#114** + **#115**
+  spikes both landed GO; **#80** boto3 read-coverage spike landed **GO** (decision recorded; Terraform
+  read = Cloud Control only, unreadable = FAIL-CLOSED, corpus scoped to CC-readable); **E5/#6** unblocked by
+  the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
   RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **E3-4 (#80): boto3 deployed-state read-coverage spike — GO (recorded decision; no floor change).** The E17
+  (#113) verifier-read spike is resolved. **Terraform read path = boto3 Cloud Control
+  `GetResource`/`ListResources` only** — provisioning-agnostic (reads Terraform-created resources without
+  provider plugins, the T1 constraint); **CFN drift / `DescribeStackResources` are stack-scoped → the CDK
+  adapter's (T3) path, N/A for Terraform** (it creates no CFN stack — clarifies the AI-issue's bundling).
+  **Coverage:** the authoritative AWS "Resource types that support Cloud Control API" table (**1300** public
+  types; readable = a `read` handler, enumerable = a `list` handler) — the common Terraform corpus is ~fully
+  covered; the only gaps among checked corpus types are inline `IAM::Policy` (use `ManagedPolicy`/`RolePolicy`)
+  + `Route53::RecordSet` (service-specific fallback). **Unsupported/unreadable = FAIL-CLOSED** (never silently
+  reward — §5 vector #15): unsupported types quarantined at authoring time, transient unreadability via the
+  `7A` classifier, genuine unreadability → `reward=0`. **Read-only IAM** = `cloudcontrol:GetResource`/
+  `ListResources` + the union of in-scope types' `handlers.read.permissions` (least-privilege via
+  `describe-type`; `ReadOnlyAccess` broad fallback), assumed cross-account B→A into a read-only role in
+  account A (SCP-protected from the agent, T7). **Go/no-go = GO:** scope the Phase-1 corpus to CC-readable
+  types (uniform read path, no per-type fallback adapters, moat intact); the `list-types`/`describe-type`
+  recipe is the authoring-time coverage gate. Resolves the brain's open questions (Cloud Control vs CFN;
+  drift `NOT_CHECKED`; LocalStack fidelity). Grounded against AWS primary docs (live) + `DECISIONS.md`
+  §1/§5/§8 + brain. Decision recorded on #80; a **proposed `[spike]`→resolved `DECISIONS.md` note is flagged
+  for ratification** (not silently edited). (PR #PENDING.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv
