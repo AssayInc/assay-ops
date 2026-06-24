@@ -23,8 +23,8 @@ from assayops_contracts import (
 
 from assayops_diff_ir.normalized_state import NormalizedResource, NormalizedState, Provenance
 
-# Reserved structural marker for a resource-type mismatch at the same address. `$`-prefixed
-# paths are reserved by the IR, so this never collides with a property key (see NORMALIZATION.md).
+# Reserved structural marker for a resource-type mismatch at the same address. `$`-prefixed paths
+# are rejected as property keys (the NormalizedResource validator), so this never collides with one.
 _TYPE_PATH = "$type"
 
 
@@ -47,6 +47,11 @@ class GradeOutcome:
 def grade(deployed: NormalizedState, golden: NormalizedState) -> GradeOutcome:
     """Grade a B-side deployed-state read against the regenerated golden -> reward + diff report."""
     _require_trusted_inputs(deployed, golden)
+    # The reward core is the trust gate: re-validate inputs into fresh snapshots. `frozen` blocks
+    # attribute reassignment but NOT in-place mutation of a properties dict, so tampering past the
+    # construction guards is caught here -- fail closed, never grade a forged input.
+    deployed = _revalidated(deployed)
+    golden = _revalidated(golden)
     diff = _diff_states(deployed=deployed, golden=golden)
     reward = Reward.number_1 if _is_in_sync(diff) else Reward.number_0
     return GradeOutcome(reward=reward, diff=diff)
@@ -63,6 +68,11 @@ def _require_trusted_inputs(deployed: NormalizedState, golden: NormalizedState) 
             "the reward core grades only the regenerated golden target in the golden slot, "
             f"got provenance={golden.provenance.value} [T1]"
         )
+
+
+def _revalidated(state: NormalizedState) -> NormalizedState:
+    """Re-run validation on a fresh dump so a post-construction mutation can't bypass the guards."""
+    return NormalizedState.model_validate(state.model_dump())
 
 
 def _is_in_sync(diff: DiffIR) -> bool:
@@ -122,7 +132,7 @@ def _property_diffs(
         in_golden = path in golden
         in_deployed = path in deployed
         if in_golden and in_deployed:
-            if golden[path] != deployed[path]:
+            if not _values_equal(golden[path], deployed[path]):
                 diffs.append(PropertyDiffs(path=path, expected=golden[path], actual=deployed[path]))
         elif in_golden:
             # Missing from deployed -> expected present, actual absent.
@@ -131,3 +141,22 @@ def _property_diffs(
             # Extra in deployed -> actual present, expected absent.
             diffs.append(PropertyDiffs1(path=path, actual=deployed[path]))
     return diffs
+
+
+def _values_equal(golden: object, deployed: object) -> bool:
+    """Type-strict structural equality: ``bool`` != ``int`` != ``float``, recursive over dict/list.
+
+    Python ``==`` collapses ``True == 1`` and ``1 == 1.0``; comparing types first stops a value-type
+    divergence (golden ``1`` vs deployed ``True``) from being graded in-sync -- a false reward 1.
+    """
+    if type(golden) is not type(deployed):
+        return False
+    if isinstance(golden, dict) and isinstance(deployed, dict):
+        if golden.keys() != deployed.keys():
+            return False
+        return all(_values_equal(golden[key], deployed[key]) for key in golden)
+    if isinstance(golden, list) and isinstance(deployed, list):
+        if len(golden) != len(deployed):
+            return False
+        return all(_values_equal(g, d) for g, d in zip(golden, deployed, strict=True))
+    return golden == deployed

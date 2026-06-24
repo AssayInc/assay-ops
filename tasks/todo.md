@@ -50,6 +50,15 @@ green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR `Cl
   `write-isolated-verifier` (in-scope invariants); `pydantic-v2` (the plugin `Any`-gotcha + `exclude_none`);
   `uv` (workspace wiring); `python-type-safety` (`object` not `Any`); `python-testing-patterns`. Brain recall
   confirmed the diff-owner is open design space → chose the core, flagged on the issue.
+- **Cross-model `/review` (Claude adversarial + test-audit subagents + Codex `gpt-5.5` xhigh) caught real
+  reward holes — the value of running both.** All converged on findings the suite missed; each fixed TDD
+  (RED-first): (1) **false reward 1 via value-type collapse** — Python `==` collapses `True==1` / `1==1.0`,
+  so a golden `1` vs a deployed `True` graded in-sync → **type-strict comparison** (bool≠int≠float, recursive);
+  (2) **Codex-only CRITICAL: non-string nested dict keys** (`{1:…}`/`{True:…}` collide as keys) → **recursive
+  JSON-domain validation** (string keys, finite numbers, JSON types only); (3) **shallow `frozen` bypass**
+  (in-place properties mutation past the guards — Codex reproduced a reward-1) → **`grade` re-validates** its
+  inputs, fail closed; (4) NaN / present-`None` / `$type`-reserved guards. +16 hardening tests (39 total);
+  `bun run verify` green 20/20 forced. Re-reviewed the fixed code with Codex xhigh (see below).
 
 ---
 

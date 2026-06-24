@@ -35,13 +35,26 @@ the `deterministic-verification` skill's checklist; that skill and DECISIONS.md 
 - **Canonical ordering.** Resources are matched by `address` and emitted **sorted by address**;
   `propertyDiffs` are **sorted by path**. The DiffIR is therefore independent of the order resources or
   properties were supplied in — the same two states always produce the same DiffIR.
-- **Structural comparison.** Property values are compared with Python structural equality (`==`), which
-  is recursive and key-order-independent for mappings.
+- **Type-strict structural comparison.** Property values are compared recursively and
+  key-order-independently for mappings, but **type-strictly**: `bool`, `int`, and `float` are distinct
+  (Python's `==` collapses `True == 1` and `1 == 1.0`, which would grade a real value-type divergence
+  as in-sync — a false reward 1). Lists compare order-sensitively (the adapter sorts order-insensitive
+  collections).
+- **Value representability (fail closed).** Property values must be the **JSON domain** — finite
+  numbers and **string object keys**, recursively. A `NormalizedResource` rejects, at construction, what
+  would forge a reward or break the signed digest: a **non-string nested key** (`{1: …}` and `{True: …}`
+  collide under Python equality — a false reward 1), a **non-finite** number (NaN/Infinity break
+  determinism and RFC 8785 JCS), a **non-JSON value** (tuple/set/bytes/object), a present top-level
+  **`None`** (absent = omit the key; `exclude_none` can't tell `None` from absent), and a
+  **`$`-prefixed key** (reserved — see below). `grade` **re-validates** its inputs, so a
+  post-construction in-place mutation of a properties dict (which `frozen` does not prevent) is caught
+  at the trust boundary.
 - **Unique addresses.** A `NormalizedState` rejects duplicate addresses at construction — a duplicate
   would silently collapse in the address map and lose data (a wrong grade). Fail closed.
 - **Reserved paths.** `$`-prefixed property paths are reserved by the IR for structural markers. A
   resource-type mismatch at the same address emits a `$type` `propertyDiff`
-  (`expected`/`actual` = the two type strings); normalized property keys must never start with `$`.
+  (`expected`/`actual` = the two type strings); `$`-prefixed property keys are **rejected** at
+  construction so a real property can never collide with a marker.
 
 ## What the adapter must do (tool-specific) — the normalization checklist
 
