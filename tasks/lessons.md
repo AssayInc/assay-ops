@@ -15,6 +15,20 @@ Entry format:
 
 ---
 
+## 2026-06-24 — codex-review-prompts-must-tell-it-to-use-gh
+- **Mistake:** A Codex `gpt-5.5` xhigh review prompt asked it to `gh issue view #141/#53`, but the run returned
+  `error connecting to api.github.com` and its GitHub connector hit 404/permission — so it reviewed the
+  `DECISIONS.md` diff but **could not see the two issue bodies**, leaving part of the review unverified. I framed
+  the fetch generically instead of steering it to the authenticated tool.
+- **Rule (founder directive):** When Codex reviews anything that lives on GitHub (issue/PR bodies, comments,
+  the diff), **explicitly tell it to use the `gh` CLI** — `gh` is authenticated with full repo permissions here
+  (e.g. `gh issue view <n> --repo AssayInc/assay-ops --json body -q .body`, `gh pr diff <n>`,
+  `gh pr view <n> --json body -q .body`). Don't rely on Codex's GitHub connector/MCP (404s) or a raw API call
+  (sandbox network). If `gh` still can't reach the network in a given run, fall back to pasting the content
+  **inline** in the prompt. Pairs with [[gh-cli-first-for-pr-workflow]] +
+  [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
+- **Context:** #80 / PR #138 final pre-merge re-review.
+
 ## 2026-06-24 — todo-md-is-ephemeral-durable-records-go-elsewhere
 - **Mistake:** Resolving the #80 spike, I recorded durable outputs (a surfaced T7 requirement, the proposed
   `DECISIONS.md` note) in `tasks/todo.md` (+ ISSUES.md) and treated that as sufficient tracking. The founder

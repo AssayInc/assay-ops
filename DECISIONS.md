@@ -120,9 +120,11 @@ The verifier-read coverage spike resolved **GO**, refining the §1 read path (de
 - **Closed-world.** Reward is **`deployed set ≡ golden set`**, not just "every golden resource matches."
   `list_resources` is per-`TypeName`/per-Region, so reads alone cannot detect an **extra** resource of an
   out-of-scope or non-listable type, or one in an unscanned Region. Closure is **primarily by T7** — a closed
-  SCP create-allow-list of Cloud-Control-**listable** types + Regions makes an out-of-scope resource
-  unreachable by construction — complemented by exhaustive, paginated, Region/global-service-aware,
-  fail-closed enumeration.
+  SCP create-allow-list (allow only the **IAM create actions** for a closed set of Cloud-Control-**listable**
+  types + Regions; SCPs gate IAM actions, **not** CFN type names, so this must cover direct service / Terraform
+  / CDK calls) makes an out-of-scope resource unreachable by construction — complemented by exhaustive,
+  paginated, per-type Region/global-service-aware, fail-closed enumeration (with recursive parent enumeration
+  for context-listable types).
 - **Corpus scope.** The Phase-1 Terraform corpus is scoped to Cloud-Control-readable types; this scoping must
   **not** shape the Phase-2 proof / OOD corpus (§6 / R2) — there, uncovered families (e.g. Route53 records,
   inline `IAM::Policy`) get service-specific fallback adapters, not exclusion.
@@ -202,9 +204,9 @@ T10→E10, T11→E13, T13→E11** — plus the env-server (E5), trainer (E12), a
 > isolate the agent's *spend*. Account A can run cost-bombs / quota exhaustion / region-spanning
 > resources, silent until the bill. **No real-AWS episode runs until T7 (SCP + budget + region
 > caps) exists; until then, all A/C work runs on LocalStack only.** T7 also owns the **closed-world
-> create-allow-list** (creatable types limited to a Cloud-Control-**listable** set + creatable Regions
-> limited) that makes the verifier's read-side closed-world check sound — resolved by spike E3-4 (#80), see
-> §1; tracked in #53.
+> create-allow-list** (an SCP allow-list of the **IAM create actions** for a Cloud-Control-**listable** type
+> set + Region conditions — SCPs gate IAM actions, not CFN type names) that makes the verifier's read-side
+> closed-world check sound — resolved by spike E3-4 (#80), see §1; tracked in #53.
 
 > **LocalStack now requires an auth token [2026-03-23 single-image change].** The free tokenless
 > community edition was retired; the licensed "LocalStack for AWS" image needs `LOCALSTACK_AUTH_TOKEN`
