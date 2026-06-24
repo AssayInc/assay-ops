@@ -33,13 +33,13 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
   + `sha256(canonical)==golden.sha256`. All run in `bun run verify` → in CI.
 
 **Design (smallest change; reuse the recipes — DRY):**
-- **Dedicated `parity` job** (founder approved switching from the initial py-job placement — the paid plan +
+- **Dedicated `codegen-parity` job** (founder approved switching from the initial py-job placement — the paid plan +
   admin access make the ruleset edit available, removing the only reason py-job was preferred). It spans BOTH
   generators (quicktype/bun + datamodel-codegen/`gen_vectors`/uv) and regenerates into the tree, so it's
-  neither the `ts` nor `py` verify lane; a failed `parity` check names the cause unambiguously and the verify
-  lanes stay pristine. Made a **third required status check** (`ts` + `py` + `parity`) on the `main` ruleset
+  neither the `ts` nor `py` verify lane; a failed `codegen-parity` check names the cause unambiguously and the verify
+  lanes stay pristine. Made a **third required status check** (`ts` + `py` + `codegen-parity`) on the `main` ruleset
   **after** the workflow lands on `main` — GitHub's create-the-check-before-requiring order (requiring it
-  while open PR #138 lacks a `parity` run would block #138). Grounded in the GitHub rulesets REST API
+  while open PR #138 lacks a `codegen-parity` run would block #138). Grounded in the GitHub rulesets REST API
   (`PUT /repos/{o}/{r}/rulesets/{id}`) + the status-check docs.
 - Install `just` via the pinned `extractions/setup-just@…#v4` (same as `localstack-smoke.yml`). Run
   `just codegen` + `just vectors`, then a **targeted** `git add -A -- <generated paths>` +
@@ -52,14 +52,14 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
 - [x] Precondition (env-sanity): `just codegen` + `just vectors` on the clean tree → **zero diff** (deterministic). ✅
 - [x] AC2: byte-parity tests green (py 8/8 incl. the cross-lane subprocess identity; ts 25/25) — verified, not rebuilt.
 - [x] AC1: regenerate-and-diff gate added to `ci.yml` + pinned `setup-just` (refactored to a dedicated
-      `parity` job after founder approval; added to the `main` ruleset's required checks post-merge).
+      `codegen-parity` job after founder approval; added to the `main` ruleset's required checks post-merge).
 - [x] Proved the gate has teeth (RED): a `probeField` schema edit drifted all 3 artifacts; the literal `run`
       script (extracted from the YAML) exited 1 with `::error::`; clean tree → 0. Reverted; tree clean.
 - [x] `bun run verify` green **17/17**; both lockfiles frozen-clean.
 - [x] PR **#139** `Closes #29`; PROGRAM.md + ISSUES.md updated in-branch.
 - [x] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) ran (see outcome below); codegen-glob fix +
-      Codex xhigh re-review → **ship**; dedicated-`parity`-job refactor applied (founder approved). AWAIT
-      explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`, then add `parity` to the
+      Codex xhigh re-review → **ship**; dedicated-`codegen-parity`-job refactor applied (founder approved). AWAIT
+      explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`, then add `codegen-parity` to the
       `main` ruleset's required checks.
 
 ### Review (`bun run verify` green 17/17; gate RED/GREEN proven)

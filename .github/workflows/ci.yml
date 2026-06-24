@@ -3,7 +3,7 @@ name: ci
 # The two-lane verify gate: the canonical `turbo run typecheck lint test` (= `bun run verify`), split
 # into a TS lane (bun/turbo) and a Python lane (uv) that are independently cache-keyed and do not gate
 # each other. The two filters partition all packages: the Python lane owns `./py/**` (the uv packages),
-# the TS lane owns the rest. A third `parity` job enforces the one-schema-codegen gate (DECISIONS.md §8;
+# the TS lane owns the rest. A third `codegen-parity` job enforces the one-schema-codegen gate (DECISIONS.md §8;
 # see its comment below). Static checks only — this workflow holds zero account-B credentials
 # (DECISIONS.md §1, §8).
 on:
@@ -65,10 +65,10 @@ jobs:
   # `just codegen` / `just vectors` fails here. The fix is ALWAYS to regenerate — never hand-edit a generated
   # file or the grader (contracts/vectors). It is a dedicated job (not folded into ts/py) because it spans
   # BOTH generators — quicktype (bun) + datamodel-codegen/gen_vectors (uv) — and it regenerates into the tree,
-  # which the verify lanes must not do; a failed `parity` check then names the cause unambiguously. Byte-parity
+  # which the verify lanes must not do; a failed `codegen-parity` check then names the cause unambiguously. Byte-parity
   # (rfc8785 ↔ canonicalize, sha256) is asserted by the contracts tests in the ts + py verify lanes. Tools are
   # pinned (bun.lock / uv.lock) so regeneration is deterministic; holds zero account-B credentials.
-  parity:
+  codegen-parity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

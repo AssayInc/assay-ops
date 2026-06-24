@@ -35,14 +35,14 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 ## Recently Landed
 
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
-  §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`parity` job** in the ci.yml
+  §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
   workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs
   `just codegen` + `just vectors` and fails on any drift (a targeted `git add -A` + `git diff
   --cached` over the three generated paths — catches edits AND added/removed modules; a clear `::error::`
   points back at the recipes). It's its **own job** (not folded into the `ts`/`py` verify lanes — it spans
-  both generators and regenerates into the tree; a failed `parity` check names the cause unambiguously), made
+  both generators and regenerates into the tree; a failed `codegen-parity` check names the cause unambiguously), made
   a **required status check** on the `main` ruleset once the workflow is on `main` — GitHub's
-  create-the-check-before-requiring order (requiring it while another open PR's branch lacks the `parity` run
+  create-the-check-before-requiring order (requiring it while another open PR's branch lacks the `codegen-parity` run
   would block that PR on a never-reported check; grounded in the GitHub rulesets REST API + status-check docs).
   **Proven to have teeth:** a one-property schema edit drifts all three artifacts (TS `generated.ts`, the
   Pydantic model, the JCS `jcs-golden.json`) → gate exits 1; clean tree → exits 0 (no false-fail).
@@ -56,7 +56,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   ajv test, reward-pin breadth) are tracked in **#140**. **CI-wiring + a codegen-recipe
   fix** — no `contracts/schemas|vectors` or generated-file edits → not a fixture-change PR; the agent that
   writes code never edits the grader. `just` action SHA-pinned + binary version-pinned (`just-version` 1.53.0,
-  in both ci.yml `parity` and localstack-smoke); codegen tools pinned
+  in both ci.yml `codegen-parity` and localstack-smoke); codegen tools pinned
   (bun.lock/uv.lock) → deterministic. `bun run verify` green 17/17. (PR #139.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
