@@ -1,0 +1,38 @@
+[project]
+name = "assayops-infra-local"
+version = "0.0.0"
+description = "LocalStack dev loop for the verifier's Cloud Control read path: a boto3 smoke (get_resource/list_resources) proving the read path on LocalStack. Re-homed from the original TS smoke (E17 Python-first core); the read-path seed that grounds #80. Runs via `just smoke` (needs LocalStack), never in the hermetic `bun run verify` gate."
+requires-python = ">=3.12"
+# No runtime deps: a test-only smoke run against LocalStack. boto3 (the verifier's read SDK) is the pinned
+# workspace dev `boto3` (root pyproject dev group) -- reused, not re-declared.
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. infra-local is one level under root (not py/packages/*).
+extend = "../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# The smoke asserts (S101) and reads boto3's open dict responses with loose typing (ANN), like the other
+# packages' tests. S/ANN stay active where there is real risk; this package is a LocalStack smoke only.
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Ban explicit `Any` in hand-written code -- the Python mirror of the TS lane's `any` ban; `--strict` does
+# NOT enable this. Use `object` (narrow before use, like TS `unknown`) or a library type at the boundary.
+disallow_any_explicit = true
+
+[[tool.mypy.overrides]]
+# boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The smoke exercises the
+# Cloud Control read call shapes against LocalStack; the boundary is botocore's own `BaseClient` (an imported
+# name, not a literal `Any`; `Any` at an untyped-third-party boundary is idiomatic per python-type-safety).
+# Mirrors the contracts package; #80/E2 can adopt boto3-stubs for real call-shape typing.
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

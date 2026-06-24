@@ -7,7 +7,6 @@
       "*.json",
       "*.ts",
       "ts/**",
-      "infra-local/**",
       "!**/node_modules",
       "!**/dist",
       "!**/.turbo",

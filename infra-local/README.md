@@ -1,13 +1,27 @@
 # infra-local — LocalStack dev loop
 
 In development the verifier reads against a local [LocalStack](https://localstack.cloud) stack instead of
-real AWS. This is the seed of the verifier's read path: the smoke test issues a Cloud Control `GetResource`
-against deployed state, exactly as the cross-account verifier does in production (DECISIONS.md section 1).
+real AWS. This is the seed of the verifier's read path: the smoke (`tests/test_localstack_read_smoke.py`)
+reads deployed state via **boto3** Cloud Control `get_resource` / `list_resources` — the **exact** read API
+the cross-account account-B verifier uses in production (`DECISIONS.md` §1). It is boto3/Python because the
+verifier read path is boto3/Python (E17 — re-homed from the original TS smoke); it grounds the verifier
+read-coverage spike (#80) and is **not** the verifier itself.
+
+## Scope
+
+- `get_resource` — per-resource state read (`Identifier` + `Properties`).
+- `list_resources` — enumerate all resources of a type (paginated).
+- `ResourceNotFoundException` — the clean negative-assertion path.
+
+CloudFormation server-side **drift detection** is also part of the verifier read path (`DECISIONS.md` §1),
+but LocalStack does **not** serve `DetectStackDrift` ("not currently supported by LocalStack", verified) —
+drift-read coverage is the #80/E2 job against real AWS. Cold-start transients (a service warming after the
+gateway reports healthy) are covered by botocore's own bounded retries, not a hand-rolled loop.
 
 ## Recipes (`just`)
 
 - `just up` — start LocalStack and wait for the gateway (http://localhost:4566) to report healthy
-- `just smoke` — seed an S3 bucket and read it back via Cloud Control `GetResource`
+- `just smoke` — seed an S3 bucket and read it back via Cloud Control `get_resource` / `list_resources` (boto3)
 - `just down` — stop LocalStack and remove its volumes
 - `just logs` — follow LocalStack logs
 
@@ -25,6 +39,7 @@ than moto / Floci / MiniStack, which do not serve the Cloud Control read path) i
 
 ## CI
 
-`.github/workflows/localstack-smoke.yml` runs the same `just up` / `just smoke` against LocalStack using a
-`LOCALSTACK_AUTH_TOKEN` repo secret. The smoke is not part of `bun run verify` (the hermetic gate stays
-Docker-free); it runs as its own job.
+`.github/workflows/localstack-smoke.yml` runs `just up` / `just smoke` against LocalStack using a
+`LOCALSTACK_AUTH_TOKEN` repo secret. The smoke is **not** part of `bun run verify` (the hermetic gate stays
+Docker-free) — the package exposes a `smoke` script, not `test`, so `turbo run test` skips it while `ruff`
++ `mypy --strict` still lint and typecheck it. It runs as its own job.

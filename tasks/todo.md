@@ -6,6 +6,164 @@ when done.
 
 ---
 
+## E17-F1 (#116) — boto3/Cloud-Control skill + LocalStack boto3 read smoke + finish the language flip — IN PROGRESS (branch `e17-f1-boto3-skill-smoke`)
+
+**Goal (AC, reconciled with the de-scoped reality):** #116's logger task LANDED (carved to #132 / PR #133 —
+KEEP `@assayops/logger` for the TS consumer surface; `py/packages/logger` is the Python mirror). **THREE
+parts remain**, and #116 is the foundation that grounds **#80** (the boto3 read-coverage spike):
+1. **Vendor the prefer-official boto3 skill** for the verifier read surface.
+2. **A LocalStack boto3 read smoke** — the Python/boto3 counterpart to the TS `infra-local` smoke, proving the
+   **EXACT verifier read API** (Cloud Control `get_resource`/`list_resources`), not "S3 works".
+3. **Finish the CLAUDE.md / skill-layer language flip** beyond the top-line + AWS row.
+
+**Validation (issue vs DECISIONS + brain + official sources — the AI-written issue is stale; don't trust it blindly):**
+- `DECISIONS.md` §1/§8 + brain (`[[references/aws-cloud-control-api]]`, `[[concepts/iac-verification-primitives]]`):
+  the verifier reads **deployed state read-only from account B** via Cloud Control `GetResource`/`ListResources`
+  (uniform, provisioning-agnostic; `RoleArn` read-only isolation; `ResourceNotFoundException` = clean negative
+  assertion) + CFN `DescribeStackResources` / server-side drift. The smoke is the read-path seed (vector #15,
+  the moat's read side). No floor conflict — additive infra + docs.
+- **Brain open question = my smoke's job:** "does LocalStack emulate the Cloud Control read APIs faithfully
+  enough to grade against?" → prove it **empirically** (`local-aws-emulator-must-prove-read-api`), never assume.
+
+**Decisions (grounded; smallest change):**
+- **Skill = `aws-sdk-python-usage`** (first-party AWS, `aws/agent-toolkit-for-aws` — the SAME source as the
+  repo's `aws-cdk`/`aws-cloudformation`/`aws-iam`/`aws-sdk-js-v3-usage`). Prefer-official: skills.sh had only
+  low-adoption off-target community boto3/cloud-control skills; checked the maintaining project's GitHub
+  directly (`verify-skill-absence-beyond-the-registry`) → the official boto3 skill exists. It's the Python peer
+  of the already-demoted `aws-sdk-js-v3-usage` and grounds the read-path SDK mechanics: clients, typed
+  `client.exceptions.ResourceNotFoundException` (the negative-assertion path), **paginators** (`list_resources`),
+  **waiters** (async drift polling), `botocore.config.Config` **adaptive retries** (throttle handling). The
+  Cloud Control / CFN-drift API *specifics* are already grounded in `DECISIONS.md` §1 + the brain refs + the
+  homegrown `deterministic-verification`/`write-isolated-verifier` skills + the vendored `aws-cloudformation`.
+  Markdown-only (SKILL.md + 7 references) → no bundled-script hygiene surface.
+- **Smoke home = a new `py/packages/read-smoke` package** (`assayops-read-smoke`, a uv member). NOT infra-local
+  (a bun-only member — a Python file there escapes the repo's ruff + mypy-strict + no-`Any` lane; a
+  trust-boundary-adjacent file belongs in the typed lane). NOT contracts/env-server (env-server is A-side-pure,
+  no boto3; contracts is the schema spine — the ledger SPIKE lives there only because it tests RewardRecord; a
+  Cloud Control read is neither). It is the honest home of the verifier read smoke and where #80 extends.
+  **Hermetic-gate exclusion = the infra-local trick:** `package.json` exposes a `smoke` script (NOT `test`), so
+  `turbo run test` (the `bun run verify` gate) skips execution while `typecheck`/`lint` still ruff+mypy it; the
+  smoke runs only via `just smoke-py` in `localstack-smoke.yml` (LocalStack guaranteed up), exactly like the TS smoke.
+- **boto3 dep:** reuse the already-pinned workspace dev `boto3>=1.40` (root pyproject) — no new dep. mypy
+  `ignore_missing_imports` for `boto3.*`/`botocore.*` (no py.typed; mirrors contracts).
+- **TS smoke retire-vs-keep:** KEEP `infra-local/smoke.test.ts` as a dev convenience (the issue sanctions it;
+  it's `smoke` not `test`, zero gate cost) + ADD the boto3 smoke as the authentic verifier-read proof — mirrors
+  the logger keep-both. (Full retirement is a clean follow-up if preferred; not required by "Closes when".)
+- **CFN drift in the smoke:** scope to Cloud Control `get_resource` + `list_resources` (+ the
+  `ResourceNotFoundException` negative path) — the task's emphasis and the half LocalStack reliably serves.
+  Drift-detection fidelity on LocalStack is the brain's open question (R3) → leave drift reads to #80/E2 against
+  real AWS, noted. (Verify LocalStack's actual support empirically before finalizing assertions.)
+
+**Steps (TDD — prove against REAL local LocalStack; Docker + the `.env` token are present):**
+- [ ] Vendor `aws-sdk-python-usage` via `npx skills add` (DEFAULT targeting, never `-a '*'`); verify lock
+      `skillPath` matches the sibling `skills/core-skills/...` pattern; `git status --porcelain` → only
+      `.agents/`/`.claude/`/`.hermes/`/`skills-lock.json`; `git diff` the full vendored dir (sync-hygiene).
+- [ ] Sync-hygiene review of the recently-added python-* + aws-* skills: no overshoot/stray dirs, lock
+      consistent, symlinks resolve.
+- [ ] Scaffold `py/packages/read-smoke` (pyproject: ruff `extend` + mypy strict + boto3 override + pytest;
+      package.json: lint/format/typecheck/**smoke** — no `test`); `uv lock` + `bun install`; verify
+      `uv sync --locked` + `bun install --frozen-lockfile`.
+- [ ] Empirically probe LocalStack (`just up`): confirm `get_resource` + `list_resources` for `AWS::S3::Bucket`;
+      capture the `ResourceNotFoundException` shape; probe drift support (expect partial; note).
+- [ ] RED→GREEN the smoke (`tests/test_localstack_read_smoke.py`): seed an S3 bucket via boto3 →
+      `cloudcontrol.get_resource` (assert Identifier + parsed `Properties.BucketName`) + a `list_resources`
+      paginator (seeded bucket enumerated) + `get_resource` on a missing id → `ResourceNotFoundException`.
+      Mirror the TS `withRetry` (always rethrow; never a false pass). Run via `just smoke-py` against real
+      LocalStack — watch pass, then negative-control (wrong bucket → fail).
+- [ ] `just smoke-py` recipe + wire `localstack-smoke.yml` (uv setup + `uv sync` + the py-path/`uv.lock`
+      triggers + a `just smoke-py` step).
+- [ ] CLAUDE.md flip: AWS preflight row names `aws-sdk-python-usage` (drop "skill to vendor — follow-up");
+      Toolchain ordering Python-first + any residual TS-core implication.
+- [ ] `bun run verify` green (paste evidence); both lockfiles frozen-checked.
+- [ ] PROGRAM.md (Recently Landed) + ISSUES.md (close #116's parts; **#80 unblocked + grounded**).
+- [x] Focused PR **#134** `Closes #116`; `/review` (Claude + Codex `gpt-5.5` xhigh; re-review fixes);
+      await explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`.
+
+### Review (`bun run verify` green 19/19; `just smoke-py` green 3/3 vs real LocalStack)
+
+- **Done + proven (all three parts).** (1) Vendored the **prefer-official** boto3 skill `aws-sdk-python-usage`
+  (first-party AWS `aws/agent-toolkit-for-aws` — the Python peer of the demoted `aws-sdk-js-v3-usage`;
+  skills.sh had only off-target community skills, so checked the maintainer's GitHub directly per
+  `verify-skill-absence-beyond-the-registry`). Byte-identical to upstream (markdown-only → no script surface),
+  no `-a '*'` overshoot, lock `skillPath` matches the siblings. (2) New `py/packages/read-smoke`: a boto3
+  LocalStack smoke proving Cloud Control `get_resource` + `list_resources` + the `ResourceNotFoundException`
+  negative path, **negative-controlled** (a broken assertion fails on the real read value — never a false
+  pass). Out of the hermetic gate (a `smoke` script, not `test`); ruff + mypy --strict still cover it.
+  (3) CLAUDE.md Toolchain reordered Python-first + the AWS row names the skill.
+- **Empirical LocalStack-fidelity finding (`local-aws-emulator-must-prove-read-api`):** LocalStack serves
+  Cloud Control `get_resource`/`list_resources` but **not `DetectStackDrift`** ("not currently supported by
+  LocalStack", verified) — drift-read coverage is the #80/E2 job against real AWS. This scoping is the lesson
+  in action: prove what LocalStack actually supports, not assume.
+- **Grounding.** Read `DECISIONS.md` §1/§8 + the brain (`references/aws-cloud-control-api`,
+  `concepts/iac-verification-primitives`) for the verifier read path; loaded the vendored
+  `aws-sdk-python-usage` skill (+ its `s3.md` reference) before writing boto3 — the read-path idioms
+  (clients, typed exceptions, paginators, `BaseClient` boundary typing) come from the skill, not cached
+  knowledge. No floor conflict (additive infra + docs).
+- **Decisions (smallest change):** skill is **vendored** (not homegrown — the ladder's first rung was
+  satisfied); smoke home is a **new uv package** (infra-local is bun-only — a Python file there escapes the
+  ruff/mypy lane); **TS smoke kept** as a dev convenience (issue-sanctioned; mirrors the logger keep-both);
+  boto3 **reuses** the pinned workspace dev dep (no new dependency). **#80 is now grounded + unblocked.**
+
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — both recommend merge, no blocking findings
+
+Both models reviewed the diff independently and **recommend merge**; each empirically re-verified the
+load-bearing claims (`turbo run test` filters, pytest collection, mypy/ruff, frozen-lockfile checks):
+- **Hermetic-gate exclusion holds (both):** `turbo run test --filter=@assayops/py-read-smoke` → `0 total`
+  (no `test` task — only `smoke`), so `bun run verify` never runs the LocalStack smoke (the Docker-free gate
+  stays Docker-free), while `typecheck`/`lint` still cover the package.
+- **No false-pass (both):** the negative test's assertion-bearing `get_resource(_MISSING)` is deliberately
+  OUTSIDE `_with_retry`, so only a modeled `ResourceNotFoundException` passes (a cold-start transient would
+  propagate and fail); the positive tests assert real read values. pytest collects exactly 3 tests (not
+  0-collected). CI sound: the token is scoped to `just up` only; `uv sync --locked` runs before the smoke.
+- **No secret leak; lockfiles frozen-clean; trust boundary intact** (read-only Cloud Control; the only write
+  is the test's own bucket seed, not a verifier write path).
+- **Lone INFO caveat (both):** the boto3/botocore boundary is untyped under `ignore_missing_imports`, so
+  `BaseClient` documents the call shape but mypy does not validate Cloud Control signatures — a known,
+  **precedent-consistent** (the contracts ledger spike) and **explicitly deferred** limitation (boto3-stubs
+  is the #80/E2 follow-up). Per [[no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any]] this is
+  a third-party untyped-library boundary, not our data → not reopened for a non-blocking nit. **No code
+  change from the review.** Codex ran at **xhigh** (banner-confirmed; the
+  [[codex-reviews-run-at-xhigh-not-the-skill-default-high]] override).
+
+### Consolidation + skills validation (founder feedback)
+
+Founder picked **consolidate into infra-local** and asked (a) why Python not TS, (b) did I validate against
+the Python craft skills. Both addressed:
+- **Why Python:** the verifier read path is boto3/Python (E17) — a TS smoke tests an SDK the verifier no
+  longer uses. Re-homed `infra-local`'s smoke TS→boto3/Python (env-server pattern: a py package + bun
+  wrapper), retired `smoke.test.ts` + `@aws-sdk` deps, dropped the separate `read-smoke` package. One
+  LocalStack home, run via `just smoke`. LocalStack (the container/compose) is unchanged — only the smoke's SDK.
+- **Skills validation (the gap I'd skipped):** `python-type-safety` → the `Any`-at-untyped-boto3-boundary is
+  idiomatic (best practice #9), so the reviewers' INFO caveat is skill-sanctioned. `python-resilience` +
+  `python-error-handling` → my `_with_retry` caught **broad `Exception`** (anti-pattern) and hand-rolled what
+  boto3 provides → **dropped it for botocore's own bounded retries** ([[use-the-librarys-official-mechanism-not-a-hand-roll]]).
+  Verified empirically: boto3 retries cover LocalStack cold-start (clean across cold `just up` cycles; a 4xx
+  `ResourceNotFound` is not retried, so the negative test fails fast). `python-testing-patterns` → **pytest
+  fixtures** for the client + seeded bucket. N/A (reasons): pydantic-v2 (no models), async-python-patterns
+  (boto3 is sync), design-patterns/perf/observability (procedural I/O smoke).
+- `bun run verify` green **17/17**; smoke green 3/3 vs real LocalStack, negative-controlled. Re-reviewed the
+  changed code with Codex `gpt-5.5` xhigh — see below.
+
+### `/review` (consolidation) — Claude + Codex `gpt-5.5` xhigh, converged to merge
+
+The cross-model split **caught a real bug** (the value of running both): **Codex xhigh found a CI-breaking
+interaction** — `infra-local` became a uv package outside `py/**`, so `ci.yml`'s TS lane
+(`--filter='!./py/**'`, no uv setup) selected it while the Python lane excluded it → the `ts` job would fail
+on infra-local's uv-based lint/typecheck (local `bun run verify` masked it — the lockfile-lesson failure
+mode). **Fixed:** routed infra-local to the Python lane (`--filter '!./infra-local'` in ts, `'./infra-local'`
+in py); verified the partition via `turbo --dry` (8 packages, no drop/overlap, union = `bun run verify`).
+Claude found a stale `biome.json` `infra-local/**` glob (inert, dropped). The read-after-create MEDIUM
+(Codex) was a **non-issue for LocalStack** (synchronous `CreateBucket`, verified by Claude + the probe;
+real-AWS consistency is #80/E2) — documented, not re-wrapped.
+
+**Re-reviewed the fix with Codex xhigh** ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]):
+partition PASS, scope clean (ci.yml was the only runtime sibling — turbo.json / tsconfigs / biome-config all
+fine). One P2 (trigger the smoke on `.python-version`, the interpreter pin not covered by uv.lock) + a stale
+PROGRAM doc — both fixed. **Final Codex xhigh pass: zero findings, "merge".** Codex ran at **xhigh** every
+pass (banner-confirmed).
+
+---
+
 ## E17-F4 (#132) — Python structlog logger for the proof-critical core — IN PROGRESS (branch `feat/132-py-structlog-logger`)
 
 **Goal (AC):** a new `py/packages/logger` (`assayops_logger`) — the Python mirror of the TS `@assayops/logger`

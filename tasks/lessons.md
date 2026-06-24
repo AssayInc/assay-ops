@@ -15,6 +15,49 @@ Entry format:
 
 ---
 
+## 2026-06-24 — change-claude-md-with-extreme-caution
+- **Mistake:** Two *opposite* errors on the `CLAUDE.md` skill-preflight rule (#116). (1) **Over-added** — a
+  clarity clause PLUS the 4 craft-skill names the preflight **table already lists** (duplication), atop a
+  pre-existing meta-aside (*"a repeated correction — see lessons.md"*). CLAUDE.md loads **every session for
+  every agent (Claude Code AND Codex)**, so that compounds into bloat; the founder flagged it. (2) Then
+  **over-corrected** — reverted the *whole* clause, including the load-bearing bit: the rule's prose read
+  library-only, which is what misdirected me into checking just the boto3 API skill and not the craft skills.
+  The founder wanted that clarity KEPT.
+- **Rule:** CLAUDE.md changes need **extreme caution** (every-session, every-agent load) — default to leaving
+  it. Cut bloat: **duplication of the preflight table** and **meta-narration** (a correction's backstory
+  belongs in `tasks/lessons.md`, not the constitution). BUT a **surgical fix to prose that misdirects an agent
+  IS warranted** — distinguish "duplicating what's already there / narrating" (cut) from "fixing a misleading
+  instruction" (keep, tightly). Prefer **length-neutral** edits (drop a low-value bit when adding a needed
+  one); the *preventing rule* itself still lives in lessons.md.
+- **Context:** #116 / PR #134 — final state: re-added the clause naming only the craft *dimensions* (the
+  table resolves them to skills) + dropped the meta-aside. Sharpens [[claude-md-is-lean-no-issue-numbers]]
+  with a change-bar; pairs with [[claude-md-serves-all-agents-no-dedupe]].
+
+## 2026-06-23 — validate-against-all-relevant-vendored-skills-not-just-the-api-skill
+- **Mistake:** Building the LocalStack boto3 smoke (E17-F1 / #116) I grounded the boto3 mechanics against
+  `aws-sdk-python-usage` (the API skill) but **skipped the Python craft skills the repo vendors**
+  (`python-resilience`, `python-error-handling`, `python-testing-patterns`, `python-type-safety`). The founder
+  caught it ("did you validate the implementation against our python skills?"). Validating after the fact
+  surfaced real fixes: my `_with_retry` caught **broad `Exception`** (a resilience/error-handling anti-pattern)
+  and **hand-rolled what boto3 already provides** (`Config(retries=...)`), so I dropped it for the library's
+  bounded retries; `python-testing-patterns` → pytest fixtures; `python-type-safety` confirmed the
+  `Any`-at-untyped-boto3-boundary is idiomatic (best practice #9).
+- **Rule:** The CLAUDE.md skill-preflight rule covers **all the relevant vendored skills for the surface, not
+  just the API/library skill.** Before writing Python in a domain the repo has craft skills for, validate the
+  design against the applicable ones FIRST — retry/transient logic → `python-resilience` (+ the verifier's
+  `deterministic-verification` transient/genuine rule); exceptions → `python-error-handling`; test structure →
+  `python-testing-patterns`; the `Any` boundary → `python-type-safety` — and state which apply vs are N/A
+  (with reasons). A **hand-rolled retry/validation/redaction is the recurring tell** to reach for the library's
+  mechanism instead ([[use-the-librarys-official-mechanism-not-a-hand-roll]]). Pairs with
+  [[ground-in-official-docs-first]].
+- **Context:** E17-F1 (#116) / PR #134; the boto3 LocalStack smoke. The founder also steered the structure:
+  **"re-home built TS for the Python core"** (the issue title) + the logger precedent (keep TS only for a
+  genuine consumer surface) meant the smoke should be **consolidated TS→Python in `infra-local`**, not shipped
+  as a parallel `read-smoke` package with the TS smoke kept. When built TS has **no consumer surface, re-home
+  it (don't duplicate)** — read the issue title's intent and apply the precedent, don't default to the
+  additive smallest-change. (Consolidating then exposed a CI-lane bug Codex xhigh caught: a uv package outside
+  `py/**` was routed to the no-uv TS lane — see PR #134.)
+
 ## 2026-06-23 — no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any
 - **Mistake:** Building the structlog logger (E17-F4 / #132), a `/review` subagent flagged that
   `redact_secrets` used structlog's `WrappedLogger`/`EventDict` (which are `Any`-backed aliases), and I
