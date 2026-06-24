@@ -32,6 +32,16 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **infra-local docs + nested agent-config (#135).** `infra-local/README.md` now documents the *why* — the
+  smoke validates **LocalStack's fidelity for the verifier's Cloud Control read path** (NOT boto3; the
+  moto/Floci "S3 works ≠ GetResource" precedent + `DECISIONS.md` R3), a **regression canary** on the pinned
+  image (already caught `DetectStackDrift` unsupported). Added a **concise, path-scoped nested
+  `infra-local/CLAUDE.md` + `AGENTS.md` symlink** (loads only when an agent works in infra-local — grounded
+  in the official Claude Code + Codex nested-loading docs; the first nested constitution in the repo) carrying
+  the one non-inferable landmine: never add a `test` script (it would run the LocalStack smoke in the hermetic
+  `bun run verify` gate and break CI). Cross-model `/review` converged to merge (fixed a moto overclaim).
+  `bun run verify` green 17/17. (PR #136.)
+
 - **E17-F1 (#116): boto3/Cloud-Control skill + LocalStack boto3 read smoke + the CLAUDE.md language flip.**
   Closes #116's three remaining parts (its logger task already landed as #132/#133). **(1) Vendored the
   prefer-official boto3 skill** `aws-sdk-python-usage` — first-party AWS (`aws/agent-toolkit-for-aws`, the
