@@ -35,13 +35,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 ## Recently Landed
 
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
-  §8 "one-schema codegen" non-negotiable is now CI-enforced: a `Codegen parity gate` step in the ci.yml
-  **`py` job** (the lane with both toolchains — quicktype needs bun, datamodel-codegen + `gen_vectors` need
-  uv) runs `just codegen` + `just vectors` and fails on any drift (a targeted `git add -A` + `git diff
+  §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`parity` job** in the ci.yml
+  workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs
+  `just codegen` + `just vectors` and fails on any drift (a targeted `git add -A` + `git diff
   --cached` over the three generated paths — catches edits AND added/removed modules; a clear `::error::`
-  points back at the recipes). Placed in the `py` job (an **active required** check on the `main` ruleset) so
-  a stale-artifact PR is **blocked immediately**, with **no branch-protection change** — a dedicated `parity`
-  job would be cleaner but non-blocking until the ruleset adds it (an outward, paid-plan-gated action).
+  points back at the recipes). It's its **own job** (not folded into the `ts`/`py` verify lanes — it spans
+  both generators and regenerates into the tree; a failed `parity` check names the cause unambiguously), made
+  a **required status check** on the `main` ruleset once the workflow is on `main` — GitHub's
+  create-the-check-before-requiring order (requiring it while another open PR's branch lacks the `parity` run
+  would block that PR on a never-reported check; grounded in the GitHub rulesets REST API + status-check docs).
   **Proven to have teeth:** a one-property schema edit drifts all three artifacts (TS `generated.ts`, the
   Pydantic model, the JCS `jcs-golden.json`) → gate exits 1; clean tree → exits 0 (no false-fail).
   **Byte-parity (AC2) was already covered** and runs in `bun run verify` — the py lane's

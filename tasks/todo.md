@@ -33,11 +33,14 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
   + `sha256(canonical)==golden.sha256`. All run in `bun run verify` → in CI.
 
 **Design (smallest change; reuse the recipes — DRY):**
-- Add the gate to the **`py` job** (the only lane provisioned with BOTH bun + uv — quicktype needs bun,
-  datamodel-codegen/gen_vectors need uv). It is a **required check today** → blocking immediately, with no
-  branch-protection ruleset change. (A dedicated `parity` job is cleaner semantically but non-blocking until the
-  `main` ruleset adds it — an outward, paid-plan-gated repo-admin action. Chose blocking-now over a non-blocking
-  §8 gate; flag the trade-off at merge.)
+- **Dedicated `parity` job** (founder approved switching from the initial py-job placement — the paid plan +
+  admin access make the ruleset edit available, removing the only reason py-job was preferred). It spans BOTH
+  generators (quicktype/bun + datamodel-codegen/`gen_vectors`/uv) and regenerates into the tree, so it's
+  neither the `ts` nor `py` verify lane; a failed `parity` check names the cause unambiguously and the verify
+  lanes stay pristine. Made a **third required status check** (`ts` + `py` + `parity`) on the `main` ruleset
+  **after** the workflow lands on `main` — GitHub's create-the-check-before-requiring order (requiring it
+  while open PR #138 lacks a `parity` run would block #138). Grounded in the GitHub rulesets REST API
+  (`PUT /repos/{o}/{r}/rulesets/{id}`) + the status-check docs.
 - Install `just` via the pinned `extractions/setup-just@…#v4` (same as `localstack-smoke.yml`). Run
   `just codegen` + `just vectors`, then a **targeted** `git add -A -- <generated paths>` +
   `git diff --cached --exit-code` (catches edits AND added/removed modules from schema add/remove; targeting the
@@ -48,14 +51,16 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
 **Steps (TDD — for a CI gate the "test" is: prove it catches drift):**
 - [x] Precondition (env-sanity): `just codegen` + `just vectors` on the clean tree → **zero diff** (deterministic). ✅
 - [x] AC2: byte-parity tests green (py 8/8 incl. the cross-lane subprocess identity; ts 25/25) — verified, not rebuilt.
-- [x] AC1: regenerate-and-diff gate added to `ci.yml` (py job) + pinned `setup-just`.
+- [x] AC1: regenerate-and-diff gate added to `ci.yml` + pinned `setup-just` (refactored to a dedicated
+      `parity` job after founder approval; added to the `main` ruleset's required checks post-merge).
 - [x] Proved the gate has teeth (RED): a `probeField` schema edit drifted all 3 artifacts; the literal `run`
       script (extracted from the YAML) exited 1 with `::error::`; clean tree → 0. Reverted; tree clean.
 - [x] `bun run verify` green **17/17**; both lockfiles frozen-clean.
 - [x] PR **#139** `Closes #29`; PROGRAM.md + ISSUES.md updated in-branch.
-- [x] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) ran (see outcome below); one fix applied
-      (codegen glob), Codex xhigh re-review of the fix pending; then AWAIT explicit merge approval
-      (flag the branch-protection question); on "merge" → `gh pr merge --squash --delete-branch`.
+- [x] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) ran (see outcome below); codegen-glob fix +
+      Codex xhigh re-review → **ship**; dedicated-`parity`-job refactor applied (founder approved). AWAIT
+      explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`, then add `parity` to the
+      `main` ruleset's required checks.
 
 ### Review (`bun run verify` green 17/17; gate RED/GREEN proven)
 
@@ -93,7 +98,9 @@ real Linux CI). Findings were **pre-existing limitations the gate surfaced**, no
   deliberately-authored fixture (fixture-change only).
 - **Severity call:** Codex's "Request changes" (HIGH on the new-schema gap) was a pre-existing recipe
   limitation beyond #29's AC; founder chose to fix the codegen glob in-PR + track the rest in #140. Codex
-  xhigh re-review of the fix pending before merge.
+  xhigh **re-reviewed the fix → ship** (hash-verified `generated.ts` byte-identical; no other gate-affecting
+  hardcoded list). Separately, founder approved promoting the gate to a **dedicated `parity` job** + a third
+  required status check (see Design).
 
 ---
 

@@ -96,13 +96,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   every PR. **Branch protection on `main` is applied** — a repository ruleset requires the `ts` + `py`
   checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
   gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
-  ruleset can't be edited/re-created. The **codegen-parity gate (#29, PR #139)** is **landed**: a
-  `Codegen parity gate` step in the ci.yml **`py` job** regenerates from `contracts/schemas`
-  (`just codegen`) + `contracts/vectors` (`just vectors`) and fails on any diff vs the committed artifacts;
+  ruleset can't be edited/re-created. The **codegen-parity gate (#29, PR #139)** is **landed**: a dedicated
+  **`parity` job** in `ci.yml` regenerates from `contracts/schemas` (`just codegen`) + `contracts/vectors`
+  (`just vectors`) and fails on any diff vs the committed artifacts;
   byte-parity (AC2 — the golden-vector sha256, both lanes) was already asserted in `bun run verify` (#28), so
-  #29 verified it rather than rebuilding. **Placed in the `py` job** (an active **required** check) so it
-  blocks immediately with no ruleset change — a dedicated `parity` job is cleaner but non-blocking until the
-  ruleset lists it (the paid-plan-gated action above); **revisit if a dedicated check is preferred.** The
+  #29 verified it rather than rebuilding. It is a **dedicated job** (spans both generators; regenerates into
+  the tree, which the verify lanes must not do) added to the `main` ruleset as a **third required status
+  check** (`ts` + `py` + `parity`) once the workflow is on `main` — GitHub's create-the-check-before-requiring
+  order, since requiring it while open PR #138's branch lacks a `parity` run would block #138 on a
+  never-reported check (#138 picks it up on its next main-sync). The
   #29 cross-model `/review` also **hardened `just codegen`** (quicktype now reads the whole
   `contracts/schemas/` dir via an `LC_ALL=C` glob — byte-identical to the prior explicit list — so a newly
   added schema reaches **both** generators and the gate can see its TS drift; it also fixes an opaque
