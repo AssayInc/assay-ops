@@ -144,6 +144,24 @@ the Python craft skills. Both addressed:
 - `bun run verify` green **17/17**; smoke green 3/3 vs real LocalStack, negative-controlled. Re-reviewed the
   changed code with Codex `gpt-5.5` xhigh — see below.
 
+### `/review` (consolidation) — Claude + Codex `gpt-5.5` xhigh, converged to merge
+
+The cross-model split **caught a real bug** (the value of running both): **Codex xhigh found a CI-breaking
+interaction** — `infra-local` became a uv package outside `py/**`, so `ci.yml`'s TS lane
+(`--filter='!./py/**'`, no uv setup) selected it while the Python lane excluded it → the `ts` job would fail
+on infra-local's uv-based lint/typecheck (local `bun run verify` masked it — the lockfile-lesson failure
+mode). **Fixed:** routed infra-local to the Python lane (`--filter '!./infra-local'` in ts, `'./infra-local'`
+in py); verified the partition via `turbo --dry` (8 packages, no drop/overlap, union = `bun run verify`).
+Claude found a stale `biome.json` `infra-local/**` glob (inert, dropped). The read-after-create MEDIUM
+(Codex) was a **non-issue for LocalStack** (synchronous `CreateBucket`, verified by Claude + the probe;
+real-AWS consistency is #80/E2) — documented, not re-wrapped.
+
+**Re-reviewed the fix with Codex xhigh** ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]):
+partition PASS, scope clean (ci.yml was the only runtime sibling — turbo.json / tsconfigs / biome-config all
+fine). One P2 (trigger the smoke on `.python-version`, the interpreter pin not covered by uv.lock) + a stale
+PROGRAM doc — both fixed. **Final Codex xhigh pass: zero findings, "merge".** Codex ran at **xhigh** every
+pass (banner-confirmed).
+
 ---
 
 ## E17-F4 (#132) — Python structlog logger for the proof-critical core — IN PROGRESS (branch `feat/132-py-structlog-logger`)
