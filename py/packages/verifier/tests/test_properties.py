@@ -26,10 +26,10 @@ def test_set_valued_property_is_rejected() -> None:
         _resource_with({"alpha", "bravo"})
 
 
-def test_non_finite_float_property_is_rejected() -> None:
-    for bad in (float("nan"), float("inf"), float("-inf")):
-        with pytest.raises(ValidationError):
-            _resource_with(bad)
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_float_property_is_rejected(bad: float) -> None:
+    with pytest.raises(ValidationError):
+        _resource_with(bad)
 
 
 def test_oversized_int_property_is_rejected() -> None:
