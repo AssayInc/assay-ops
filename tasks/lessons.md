@@ -56,7 +56,10 @@ Entry format:
   as a parallel `read-smoke` package with the TS smoke kept. When built TS has **no consumer surface, re-home
   it (don't duplicate)** — read the issue title's intent and apply the precedent, don't default to the
   additive smallest-change. (Consolidating then exposed a CI-lane bug Codex xhigh caught: a uv package outside
-  `py/**` was routed to the no-uv TS lane — see PR #134.)
+  `py/**` was routed to the no-uv TS lane — see PR #134. **Forward rule:** a uv package belongs **under
+  `py/packages/`** so the `./py/**` glob routes it to the py lane automatically; at the repo root it needs
+  special-case `--filter` flags that `bun run verify` masks by running both lanes together. Resolved
+  structurally in PR #136 by relocating `infra-local` → `py/packages/infra-local`.)
 
 ## 2026-06-23 — no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any
 - **Mistake:** Building the structlog logger (E17-F4 / #132), a `/review` subagent flagged that
