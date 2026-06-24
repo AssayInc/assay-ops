@@ -55,3 +55,12 @@ def test_tampering_to_a_cycle_fails_closed_at_digest() -> None:
     golden.resources[0].properties["cyclic"] = cyclic
     with pytest.raises(GoldenError):
         golden_digest(golden)
+
+
+def test_tampering_with_a_model_property_fails_closed_at_digest() -> None:
+    # A BaseModel leaf: a model_dump-then-validate check would coerce it to a dict and miss it. The
+    # live re-check before canonicalizing catches the non-JSON leaf.
+    golden = _golden()
+    golden.resources[0].properties["model"] = GoldenResource(address="x", type="AWS::S3::Bucket")
+    with pytest.raises(GoldenError):
+        golden_digest(golden)

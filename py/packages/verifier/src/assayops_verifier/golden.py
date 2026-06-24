@@ -107,19 +107,19 @@ def golden_digest(target: GoldenTarget) -> str:
     not a re-roll. Byte-identical regeneration ⇒ identical address, so a grade is reproducible from
     (task, seed).
 
-    Re-validates first: Pydantic ``frozen`` is shallow, so the account-B-internal golden's open
-    ``properties`` dicts stay mutable after construction. Re-validation re-runs the field validators
-    so the address always pins a *canonical, valid* golden — a mutation to an **invalid** value (a
-    set, a non-finite float) fails closed here (``GoldenError``). It is **not** tamper-evidence: a
-    mutation to a different *valid* value re-hashes to a new valid address — fine because the golden
-    is account-B-internal and never agent-reachable.
+    Re-checks the LIVE golden first: Pydantic ``frozen`` is shallow, so a resource's open
+    ``properties`` dict can be mutated after construction — to a set, a surrogate string, a nested
+    ``BaseModel`` that ``model_dump`` would silently coerce, a cycle. A tampered golden fails closed
+    here (``GoldenError``) rather than a coerced or misleading address. Not tamper-evidence:
+    a mutation to a different *valid* value re-hashes to a new valid address — fine, the golden is
+    account-B-internal and never agent-reachable.
     """
     try:
-        canonical = GoldenTarget.model_validate(target.model_dump())
-        return canonical_digest(canonical).hex()
+        target.assert_canonical()
+        return canonical_digest(target).hex()
     except GoldenError:
         raise
     except Exception as exc:
-        # model_dump (cyclic → RecursionError), re-validation (mutated → invalid), or rfc8785 (a
-        # residual non-canonicalizable value) — any failure fails closed as the single GoldenError.
+        # A residual non-canonicalizable value (cyclic → RecursionError, surrogate → rfc8785) fails
+        # closed as the single GoldenError type.
         raise GoldenError(f"golden is not content-addressable: {exc}") from exc

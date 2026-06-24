@@ -124,3 +124,15 @@ class GoldenTarget(BaseModel):
             # nested instances by default — without this, generate() could return an invalid golden.
             _assert_deterministic_json(resource.properties)
         return tuple(sorted(resources, key=lambda resource: resource.address))
+
+    def assert_canonical(self) -> None:
+        """Re-check the LIVE golden before content-addressing or grading.
+
+        ``frozen`` is shallow, so a resource's open ``properties`` dict can be mutated after
+        construction. Re-checking the live values (not a ``model_dump`` round-trip, which would
+        silently coerce a ``BaseModel``/``IntEnum`` leaf to its JSON form) keeps the content address
+        pinned to a valid golden. Raises ``ValueError`` on any non-deterministic / non-JSON value;
+        the caller wraps it as ``GoldenError``.
+        """
+        for resource in self.resources:
+            _assert_deterministic_json(resource.properties)
