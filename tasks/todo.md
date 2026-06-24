@@ -53,8 +53,9 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
       script (extracted from the YAML) exited 1 with `::error::`; clean tree → 0. Reverted; tree clean.
 - [x] `bun run verify` green **17/17**; both lockfiles frozen-clean.
 - [x] PR **#139** `Closes #29`; PROGRAM.md + ISSUES.md updated in-branch.
-- [ ] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) to convergence; AWAIT explicit merge approval
-      (flag the branch-protection required-check question); on "merge" → `gh pr merge --squash --delete-branch`.
+- [x] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) ran (see outcome below); one fix applied
+      (codegen glob), Codex xhigh re-review of the fix pending; then AWAIT explicit merge approval
+      (flag the branch-protection question); on "merge" → `gh pr merge --squash --delete-branch`.
 
 ### Review (`bun run verify` green 17/17; gate RED/GREEN proven)
 
@@ -74,6 +75,25 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
 - **Trust rules.** CI-wiring only — no `contracts/**` / generated-file / `tools/red-team` edits → **not** a
   fixture-change PR; the RED probe was reverted (never committed). When the gate fails, the fix is regenerate,
   never hand-edit the grader.
+
+### `/review` (Claude adversarial + Codex gpt-5.5 xhigh) — gate logic SOUND; one fix applied, residuals → #140
+
+Both models verified the **gate's own logic is sound** (`if ! git diff --cached --quiet` fails on drift;
+targeted `git add -A` catches modified/added/removed; zero account-B creds; no shell bug; proven green in
+real Linux CI). Findings were **pre-existing limitations the gate surfaced**, not gate defects:
+- **Applied (founder chose fix-in-PR):** both flagged `just codegen` hardcoded quicktype's 4-file list while
+  datamodel-codegen reads the whole dir — so a NEW schema's TS type went ungenerated (invisible to the gate)
+  and a removed schema crashed the recipe. Fixed: quicktype reads the whole `contracts/schemas/` dir
+  (`LC_ALL=C` glob), **proven byte-identical** for the current 4 (zero regen diff) AND **proven to catch a
+  new schema** (its TS type now drifts) + no removed-schema crash.
+- **Tracked → #140:** TS ajv schema-test hardcodes the 4 names; reward-pin perl over-broad; `just` binary
+  unpinned. None blocks the gate.
+- **Out of scope (noted):** the general "the required `py` job runs PR-controlled workflow/recipe code"
+  CI-integrity point ties to the deferred require-code-owner-review item; `gen_vectors.py`'s record set is a
+  deliberately-authored fixture (fixture-change only).
+- **Severity call:** Codex's "Request changes" (HIGH on the new-schema gap) was a pre-existing recipe
+  limitation beyond #29's AC; founder chose to fix the codegen glob in-PR + track the rest in #140. Codex
+  xhigh re-review of the fix pending before merge.
 
 ---
 

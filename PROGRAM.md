@@ -17,16 +17,17 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   gates E5) LANDED — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, `b91da87`); **#115 (ledger
   rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80** (boto3 read coverage) + **account
   infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
-  The contracts spine (**E1 #2**) is **complete**, **reframed Python-signer↔TS-consumer**: **#28** (JCS +
-  golden vectors) and **#29** (the CI regenerate-and-diff parity gate) both **landed** — all E1 sub-issues
-  closed (the #2 epic closes on the rollup).
+  The contracts spine (**E1 #2**) is **complete** (planned deliverables #26–#29 all landed),
+  **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) and **#29** (the CI
+  regenerate-and-diff parity gate) landed; one review-surfaced codegen-hardening follow-up (**#140**) is
+  tracked under the epic.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage — now **grounded + unblocked by #116**: the vendored
   `aws-sdk-python-usage` skill + the `infra-local` boto3 LocalStack smoke prove the Cloud Control
-  read path). With **E1 (#2) complete** (#29 landed), the remaining gates for E2–E7 are the **#114** +
+  read path). With **E1's spine (#26–#29) complete**, the remaining gates for E2–E7 are the **#114** +
   **#115** spikes (both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the
   #115 GO). **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the
   permanent owner).
@@ -45,10 +46,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Pydantic model, the JCS `jcs-golden.json`) → gate exits 1; clean tree → exits 0 (no false-fail).
   **Byte-parity (AC2) was already covered** and runs in `bun run verify` — the py lane's
   `test_python_and_ts_canonicalize_are_byte_identical` (direct TS-subprocess identity) + the ts lane's
-  `sha256(canonical)==golden` — so it was verified, not rebuilt. **CI-wiring only** (no `contracts/**` or
-  generated-file edits → not a fixture-change PR; the agent that writes code never edits the grader). `just`
-  pinned via `extractions/setup-just`; codegen tools pinned (bun.lock/uv.lock) → deterministic. `bun run
-  verify` green 17/17. (PR #139.)
+  `sha256(canonical)==golden` — so it was verified, not rebuilt. The cross-model `/review` (Claude
+  adversarial + Codex gpt-5.5 xhigh) also **hardened `just codegen`**: quicktype now reads the **whole**
+  `contracts/schemas/` dir (`LC_ALL=C` glob, byte-identical to the prior explicit list) so a newly added
+  schema reaches **both** generators — a hardcoded list had let a new schema's TS type go ungenerated and
+  thus invisible to the gate; it also fixes an opaque removed-schema crash. Residual hardcoded-list nits (TS
+  ajv test, reward-pin breadth, `just` version pin) are tracked in **#140**. **CI-wiring + a codegen-recipe
+  fix** — no `contracts/schemas|vectors` or generated-file edits → not a fixture-change PR; the agent that
+  writes code never edits the grader. `just` pinned via `extractions/setup-just`; codegen tools pinned
+  (bun.lock/uv.lock) → deterministic. `bun run verify` green 17/17. (PR #139.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv
