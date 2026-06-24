@@ -13,15 +13,17 @@ default:
 codegen:
     #!/usr/bin/env bash
     set -euo pipefail
-    # TypeScript: plain interfaces, no runtime converters. Schemas passed in a fixed order for
-    # deterministic output. quicktype has no `unknown` option, so the deliberately-open diff-IR /
-    # trajectory fields emit `any` — the generated file is carved out of Biome lint (tsc still typechecks).
-    bunx quicktype --src-lang schema --lang typescript --just-types \
-      --out ts/packages/contracts/src/generated.ts \
-      contracts/schemas/diff-ir.schema.json \
-      contracts/schemas/reward-record.schema.json \
-      contracts/schemas/task-spec.schema.json \
-      contracts/schemas/trajectory.schema.json
+    # TypeScript: plain interfaces, no runtime converters. quicktype reads the WHOLE schema dir — the same
+    # set datamodel-codegen consumes below — so a newly added schema reaches BOTH generators. (A hardcoded
+    # file list let a new schema's TS type silently go ungenerated, which the #29 parity gate then couldn't
+    # see as drift.) LC_ALL=C fixes the glob's sort order, hence quicktype's output order, across machines;
+    # it sorts the current schemas identically to the prior explicit alphabetical list, so output stays
+    # byte-identical. quicktype has no `unknown` option, so the deliberately-open diff-IR / trajectory fields
+    # emit `any` — the generated file is carved out of Biome lint (tsc still typechecks).
+    ( export LC_ALL=C
+      bunx quicktype --src-lang schema --lang typescript --just-types \
+        --out ts/packages/contracts/src/generated.ts \
+        contracts/schemas/*.schema.json )
     # quicktype widens the binary `reward` (schema enum [0,1]) to `number` — it cannot emit a numeric
     # literal union (verified). Pin the DECISIONS.md §8 invariant into the public TS type with one
     # targeted, anchored rewrite (a single unique field, not a blanket pass), and assert it landed so a

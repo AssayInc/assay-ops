@@ -41,6 +41,8 @@ jobs:
           version: "0.11.8"
           enable-cache: true
       - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+        with:
+          just-version: "1.53.0" # pin the binary, not just the action SHA (repo "pin everything" rule)
       - run: bun install --frozen-lockfile
       - run: uv sync --locked
       # Token scoped to the one step that needs it (starting LocalStack), not the install/setup steps.

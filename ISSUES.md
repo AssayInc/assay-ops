@@ -135,17 +135,28 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   Staying on LocalStack (vs moto/Floci/MiniStack, which empirically don't serve Cloud Control `GetResource`)
   + the substrate qualifier are in #20 + DECISIONS.md; the broader secret-management decision is spike #96.
 
-- **CI + branch protection landed; the parity gate is the open tail of E0-2 (#19).** The two-lane
+- **CI + branch protection landed; the codegen-parity gate landed (#29 → E1 #2 complete).** The two-lane
   `ci.yml` (turbo + uv, independent cache-keyed lanes, zero account-B creds) runs `bun run verify` on
   every PR. **Branch protection on `main` is applied** — a repository ruleset requires the `ts` + `py`
   checks + a PR and blocks force-push/deletion. **Plan dependency:** rulesets / branch protection are
   gated behind a paid GitHub plan (Pro/Team) on private repos — keep the repo on that plan or the
-  ruleset can't be edited/re-created. The **codegen-parity gate (#29)** is **now unblocked** (#27 codegen +
-  #28 golden vectors both landed) — its own issue: regenerate from `contracts/schemas` (`just codegen`) +
-  `contracts/vectors` (`just vectors`), assert no diff vs the committed artifacts, check the golden-vector
-  sha256 in both lanes. The **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS
-  rule + the `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
-  **Canonicalization cross-language follow-ups (E3/#26 + E4/#29), surfaced by the #28 `/review` (Claude +
+  ruleset can't be edited/re-created. The **codegen-parity gate (#29, PR #139)** is **landed**: a dedicated
+  **`codegen-parity` job** in `ci.yml` regenerates from `contracts/schemas` (`just codegen`) + `contracts/vectors`
+  (`just vectors`) and fails on any diff vs the committed artifacts;
+  byte-parity (AC2 — the golden-vector sha256, both lanes) was already asserted in `bun run verify` (#28), so
+  #29 verified it rather than rebuilding. It is a **dedicated job** (spans both generators; regenerates into
+  the tree, which the verify lanes must not do) added to the `main` ruleset as a **third required status
+  check** (`ts` + `py` + `codegen-parity`) once the workflow is on `main` — GitHub's create-the-check-before-requiring
+  order, since requiring it while open PR #138's branch lacks a `codegen-parity` run would block #138 on a
+  never-reported check (#138 picks it up on its next main-sync). The
+  #29 cross-model `/review` also **hardened `just codegen`** (quicktype now reads the whole
+  `contracts/schemas/` dir via an `LC_ALL=C` glob — byte-identical to the prior explicit list — so a newly
+  added schema reaches **both** generators and the gate can see its TS drift; it also fixes an opaque
+  removed-schema crash). Residual codegen hardcoded-list nits (the TS ajv schema-test, the over-broad
+  reward-pin) are tracked in **#140**; the `just` binary is now version-pinned (1.53.0) in both workflows. The
+  **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS rule + the
+  `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
+  **Canonicalization cross-language follow-ups (E3/#26 + E4), surfaced by the #28 `/review` (Claude +
   Codex xhigh).** The Python signer canonicalizes the **materialized** `model_dump` form; a TS consumer
   canonicalizes the **raw** object. They agree on the same materialized JSON (the corpus locks this), and
   the signed **`RewardRecord` is fully safe** (all 7 fields required — no optional/large-number exposure).
@@ -162,7 +173,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     form. #28 keeps the corpus to **valid records** (the schema-invalid `propertyDiffs:null` vector was
     reverted) and **locks the schema-valid materialized parity, both sides** (`diff-ir/optional-property-sides`).
   - **Out-of-domain values.** Numbers must be IEEE-754-representable + strings valid Unicode; the signer
-    (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4/#29:** the verify side must reject
+    (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4:** the verify side must reject
     out-of-domain values, or verify over the stored payload bytes (never re-canonicalize a sparse object).
     #28 locks the fail-closed (`test_canonicalize_fails_closed_on_a_non_representable_number`).
 - **Secret scanning + CODEOWNERS deferrals (E0-4 / #21, PR #108).** Secret scanning + push protection are

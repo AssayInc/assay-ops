@@ -20,21 +20,46 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   FAIL-CLOSED; detecting *extra* resources needs a **closed-world** predicate via **T7** SCP create-allow-lists —
   reads alone can't close vector #15); **account infra T7 (P1-BLOCKING — now also owns the closed-world
   allow-list)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
-  The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
-  **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
+  The contracts spine (**E1 #2**) is **complete** (planned deliverables #26–#29 all landed),
+  **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) and **#29** (the CI
+  regenerate-and-diff parity gate) landed; one review-surfaced codegen-hardening follow-up (**#140**) is
+  tracked under the epic.
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **#29** (the contract-spine CI regenerate-and-diff parity gate, now unblocked —
-  #27/#28 landed) + **account infra T7 (P1-BLOCKING)** — the remaining gates for E2–E7 (**#114** + **#115**
-  spikes both landed GO; **#80** boto3 read-coverage spike landed **GO (with conditions)** (decision recorded;
-  Terraform read = Cloud Control only, unreadable = FAIL-CLOSED, extra-resource detection needs a closed-world
-  T7 allow-list); **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
-  RL/eval owner; Phase 3 hard-gated on the permanent owner).
+- **Next ready work:** **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
+  create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
+  With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
+  cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO).
+  **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
+  §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
+  workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs
+  `just codegen` + `just vectors` and fails on any drift (a targeted `git add -A` + `git diff
+  --cached` over the three generated paths — catches edits AND added/removed modules; a clear `::error::`
+  points back at the recipes). It's its **own job** (not folded into the `ts`/`py` verify lanes — it spans
+  both generators and regenerates into the tree; a failed `codegen-parity` check names the cause unambiguously), made
+  a **required status check** on the `main` ruleset once the workflow is on `main` — GitHub's
+  create-the-check-before-requiring order (requiring it while another open PR's branch lacks the `codegen-parity` run
+  would block that PR on a never-reported check; grounded in the GitHub rulesets REST API + status-check docs).
+  **Proven to have teeth:** a one-property schema edit drifts all three artifacts (TS `generated.ts`, the
+  Pydantic model, the JCS `jcs-golden.json`) → gate exits 1; clean tree → exits 0 (no false-fail).
+  **Byte-parity (AC2) was already covered** and runs in `bun run verify` — the py lane's
+  `test_python_and_ts_canonicalize_are_byte_identical` (direct TS-subprocess identity) + the ts lane's
+  `sha256(canonical)==golden` — so it was verified, not rebuilt. The cross-model `/review` (Claude
+  adversarial + Codex gpt-5.5 xhigh) also **hardened `just codegen`**: quicktype now reads the **whole**
+  `contracts/schemas/` dir (`LC_ALL=C` glob, byte-identical to the prior explicit list) so a newly added
+  schema reaches **both** generators — a hardcoded list had let a new schema's TS type go ungenerated and
+  thus invisible to the gate; it also fixes an opaque removed-schema crash. Residual hardcoded-list nits (TS
+  ajv test, reward-pin breadth) are tracked in **#140**. **CI-wiring + a codegen-recipe
+  fix** — no `contracts/schemas|vectors` or generated-file edits → not a fixture-change PR; the agent that
+  writes code never edits the grader. `just` action SHA-pinned + binary version-pinned (`just-version` 1.53.0,
+  in both ci.yml `codegen-parity` and localstack-smoke); codegen tools pinned
+  (bun.lock/uv.lock) → deterministic. `bun run verify` green 17/17. (PR #139.)
 - **E3-4 (#80): boto3 deployed-state read-coverage spike — GO with conditions (recorded decision; no floor
   change).** The E17 (#113) verifier-read spike is resolved. **Terraform read path = boto3 Cloud Control
   `GetResource`/`ListResources` only** — provisioning-agnostic (reads Terraform-created resources without

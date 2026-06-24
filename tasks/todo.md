@@ -6,6 +6,104 @@ when done.
 
 ---
 
+## E1-4 (#29) — CI parity gate (regenerate-and-diff + byte-parity) — IN PROGRESS (branch `feat/29-ci-parity-gate`)
+
+**Goal (AC).** The last E1 task — CI enforcement of the DECISIONS.md §8 "one-schema codegen" non-negotiable.
+1. **Regenerate-and-diff gate** (the missing piece — NOT yet in `ci.yml`): a deliberate schema edit FAILS CI
+   until BOTH generated sides regenerate. Built on the existing deterministic recipes `just codegen`
+   (quicktype→`generated.ts` + datamodel-codegen→Pydantic `models/`) + `just vectors` (rfc8785→`jcs-golden.json`),
+   then a `git diff` of the committed artifacts.
+2. **Byte-parity sha256** — Python-signer (`rfc8785`) ↔ TS-consumer (`canonicalize`): VERIFY it already runs in
+   `bun run verify` (don't rebuild).
+
+**This is a CI-wiring PR, NOT a fixture-change PR** — it must not touch `contracts/schemas`, `contracts/vectors`,
+or the generated files. If the gate fails, the fix is **regenerate** (`just codegen`/`just vectors`), never
+hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits what scores it).
+
+**Validation (issue vs DECISIONS §8/I3 + brain — the AI-written issue is an input, not the spec):**
+- DECISIONS.md §8: "One contract schema → codegen both languages … generated artifacts are committed; the CI
+  byte-parity (JCS) gate must stay green." + §1 (the trust boundary; CI holds zero account-B creds). The gate
+  enforces exactly §8. No contradiction.
+- Brain (`[[projects/assay/eng-architecture]]` 5A; `[[concepts/write-isolated-verifier]]`): one-schema codegen
+  closes the "TS↔Python reward-schema drift" hole (a correctness/trust hole, same class as the moat ones); JCS
+  pins byte-parity so the Python-signed digest verifies on the TS consumer (the portable proof). E17 reframe
+  (Python-signs / TS-verifies) matches the issue + PROGRAM.md. The brain has no gate *mechanics* beyond §8.
+- AC2 already covered (verified): py `test_python_and_ts_canonicalize_are_byte_identical` (direct
+  `bun run jcs-canonicalize.ts` subprocess identity) + golden+sha256 reproduction; ts `canonicalize(record)==golden.canonical`
+  + `sha256(canonical)==golden.sha256`. All run in `bun run verify` → in CI.
+
+**Design (smallest change; reuse the recipes — DRY):**
+- **Dedicated `codegen-parity` job** (founder approved switching from the initial py-job placement — the paid plan +
+  admin access make the ruleset edit available, removing the only reason py-job was preferred). It spans BOTH
+  generators (quicktype/bun + datamodel-codegen/`gen_vectors`/uv) and regenerates into the tree, so it's
+  neither the `ts` nor `py` verify lane; a failed `codegen-parity` check names the cause unambiguously and the verify
+  lanes stay pristine. Made a **third required status check** (`ts` + `py` + `codegen-parity`) on the `main` ruleset
+  **after** the workflow lands on `main` — GitHub's create-the-check-before-requiring order (requiring it
+  while open PR #138 lacks a `codegen-parity` run would block #138). Grounded in the GitHub rulesets REST API
+  (`PUT /repos/{o}/{r}/rulesets/{id}`) + the status-check docs.
+- Install `just` via the pinned `extractions/setup-just@…#v4` (same as `localstack-smoke.yml`). Run
+  `just codegen` + `just vectors`, then a **targeted** `git add -A -- <generated paths>` +
+  `git diff --cached --exit-code` (catches edits AND added/removed modules from schema add/remove; targeting the
+  generated paths avoids false-fails from env artifacts) with a clear `::error::` pointing at the recipes.
+- Determinism: quicktype pinned (`bun.lock`), datamodel-code-generator + rfc8785 pinned (`uv.lock`); recipes run
+  offline after `bun install --frozen-lockfile` + `uv sync --locked`. A false-fail = a non-determinism bug to FIX.
+
+**Steps (TDD — for a CI gate the "test" is: prove it catches drift):**
+- [x] Precondition (env-sanity): `just codegen` + `just vectors` on the clean tree → **zero diff** (deterministic). ✅
+- [x] AC2: byte-parity tests green (py 8/8 incl. the cross-lane subprocess identity; ts 25/25) — verified, not rebuilt.
+- [x] AC1: regenerate-and-diff gate added to `ci.yml` + pinned `setup-just` (refactored to a dedicated
+      `codegen-parity` job after founder approval; added to the `main` ruleset's required checks post-merge).
+- [x] Proved the gate has teeth (RED): a `probeField` schema edit drifted all 3 artifacts; the literal `run`
+      script (extracted from the YAML) exited 1 with `::error::`; clean tree → 0. Reverted; tree clean.
+- [x] `bun run verify` green **17/17**; both lockfiles frozen-clean.
+- [x] PR **#139** `Closes #29`; PROGRAM.md + ISSUES.md updated in-branch.
+- [x] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) ran (see outcome below); codegen-glob fix +
+      Codex xhigh re-review → **ship**; dedicated-`codegen-parity`-job refactor applied (founder approved). AWAIT
+      explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`, then add `codegen-parity` to the
+      `main` ruleset's required checks.
+
+### Review (`bun run verify` green 17/17; gate RED/GREEN proven)
+
+- **Done + proven (both ACs).** AC1: the `Codegen parity gate` step in the ci.yml `py` job (`just codegen` +
+  `just vectors` + a targeted `git diff --cached`) fails on stale generated artifacts — proven to have teeth
+  by executing the literal `run` script against a drifted schema (exit 1 + `::error::`) and a clean tree (exit
+  0, no false-fail). AC2: byte-parity (rfc8785 ↔ canonicalize, sha256) already runs in `bun run verify` (py
+  cross-lane subprocess identity + ts sha256), so it was verified, not rebuilt.
+- **Grounding (issue vs floor + brain).** No contradiction: the gate enforces DECISIONS.md §8 ("generated
+  artifacts are committed; the CI byte-parity gate must stay green") + §1 (zero account-B creds). Brain (5A /
+  write-isolated-verifier) gives the *why* (closes TS↔Python drift; JCS pins the cross-runtime signature) but
+  no gate mechanics beyond §8.
+- **Design.** Gate in the `py` job (the only lane with both toolchains) → **blocking now** (py is an active
+  required check), no ruleset change. Dedicated `parity` job = cleaner but non-blocking until the ruleset
+  lists it (paid-plan-gated) → flagged for the founder. Determinism via pinned tools (bun.lock/uv.lock) +
+  `just` pinned; a false-fail = a non-determinism bug to fix.
+- **Trust rules.** CI-wiring only — no `contracts/**` / generated-file / `tools/red-team` edits → **not** a
+  fixture-change PR; the RED probe was reverted (never committed). When the gate fails, the fix is regenerate,
+  never hand-edit the grader.
+
+### `/review` (Claude adversarial + Codex gpt-5.5 xhigh) — gate logic SOUND; one fix applied, residuals → #140
+
+Both models verified the **gate's own logic is sound** (`if ! git diff --cached --quiet` fails on drift;
+targeted `git add -A` catches modified/added/removed; zero account-B creds; no shell bug; proven green in
+real Linux CI). Findings were **pre-existing limitations the gate surfaced**, not gate defects:
+- **Applied (founder chose fix-in-PR):** both flagged `just codegen` hardcoded quicktype's 4-file list while
+  datamodel-codegen reads the whole dir — so a NEW schema's TS type went ungenerated (invisible to the gate)
+  and a removed schema crashed the recipe. Fixed: quicktype reads the whole `contracts/schemas/` dir
+  (`LC_ALL=C` glob), **proven byte-identical** for the current 4 (zero regen diff) AND **proven to catch a
+  new schema** (its TS type now drifts) + no removed-schema crash.
+- **Tracked → #140:** TS ajv schema-test hardcodes the 4 names; reward-pin perl over-broad; `just` binary
+  unpinned. None blocks the gate.
+- **Out of scope (noted):** the general "the required `py` job runs PR-controlled workflow/recipe code"
+  CI-integrity point ties to the deferred require-code-owner-review item; `gen_vectors.py`'s record set is a
+  deliberately-authored fixture (fixture-change only).
+- **Severity call:** Codex's "Request changes" (HIGH on the new-schema gap) was a pre-existing recipe
+  limitation beyond #29's AC; founder chose to fix the codegen glob in-PR + track the rest in #140. Codex
+  xhigh **re-reviewed the fix → ship** (hash-verified `generated.ts` byte-identical; no other gate-affecting
+  hardcoded list). Separately, founder approved promoting the gate to a **dedicated `codegen-parity` job** + a third
+  required status check (see Design).
+
+---
+
 ## E3-4 (#80) — boto3 deployed-state read coverage by resource type (SPIKE) — IN PROGRESS (branch `spike/80-boto3-read-coverage`)
 
 **Goal (AC — a SPIKE: deliverable is a RECORDED DECISION (issue comment); NOT the verifier — #3/#4 build that):**
