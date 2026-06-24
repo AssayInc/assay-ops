@@ -21,6 +21,8 @@ security property (hand-rolling one is a defect magnet).
 
 from collections.abc import MutableMapping
 
+from structlog.typing import EventDict, WrappedLogger
+
 # The exact key set the TS @assayops/logger redacts (ts/packages/logger/src/index.ts SECRET_KEYS).
 # Kept in lockstep with the TS lane by tests/test_ts_parity.py.
 SECRET_KEYS: tuple[str, ...] = (
@@ -80,13 +82,10 @@ def _redact_in_place(value: object, deny: frozenset[str], seen: set[int]) -> Non
             _redact_in_place(item, deny, seen)
 
 
-def redact_secrets(
-    logger: object, method_name: str, event_dict: MutableMapping[str, object]
-) -> MutableMapping[str, object]:
-    """The default censor (a structlog processor): masks every ``REDACT_KEYS`` value to
-    ``[redacted]``, case-insensitively and recursively (dicts + list/tuple). ``logger`` /
-    ``method_name`` are unused by a key-based censor. Typed ``object`` / ``MutableMapping[str,
-    object]`` rather than structlog's ``Any``-backed ``WrappedLogger`` / ``EventDict``, to honor
-    the no-``Any`` policy."""
+def redact_secrets(logger: WrappedLogger, method_name: str, event_dict: EventDict) -> EventDict:
+    """The default censor: masks every ``REDACT_KEYS`` value to ``[redacted]``, case-insensitively
+    and recursively (dicts + list/tuple). Typed with structlog's documented processor signature
+    (``WrappedLogger`` / ``EventDict`` from ``structlog.typing``); ``logger`` / ``method_name`` are
+    unused by a key-based censor. The internal recursion narrows ``object`` via ``isinstance``."""
     _redact_in_place(event_dict, _DENY_CASEFOLDED, set())
     return event_dict

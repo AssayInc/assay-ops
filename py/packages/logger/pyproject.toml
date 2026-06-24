@@ -29,9 +29,11 @@ mypy_path = "src"
 
 [[tool.mypy.overrides]]
 # Ban explicit `Any` in the hand-written core — the Python mirror of the TS lane's `any` ban. `--strict`
-# does NOT enable this. Use `object` (must be narrowed, like TS `unknown`) at boundaries. structlog's chain
-# types (Processor/FilteringBoundLogger) are `Any`-backed upstream and used only in config.py's plumbing;
-# our own processor (redact_secrets) is `object`-typed. Tests keep `Any` for json.loads etc.
+# does NOT enable this. Use `object` (must be narrowed, like TS `unknown`) + `isinstance` for our own data;
+# at the structlog framework-adapter boundary use its documented processor types (Processor / WrappedLogger
+# / EventDict / FilteringBoundLogger, from `structlog.typing`), whose internal `Any` is structlog's
+# intentional API design (a processor's logger + event-dict are open by nature). `disallow_any_explicit`
+# flags only literal in-module `Any`, not these aliases. Tests (top-level modules) keep `Any` for json.loads.
 module = ["assayops_logger.*"]
 disallow_any_explicit = true
 

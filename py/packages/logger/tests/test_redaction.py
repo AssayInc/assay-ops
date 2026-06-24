@@ -4,7 +4,7 @@ structlog ships no built-in redaction). The censor is a structlog processor: a
 (processors.html) — NOT a recursive clone (the PR #110 mistake). It mirrors the TS ``SECRET_KEYS``
 and redacts recursively (closing pino's single-level-path / arrays gap with a safe superset)."""
 
-from structlog.types import EventDict
+from structlog.typing import EventDict
 
 from assayops_logger import REDACT_KEYS, REDACTED, SECRET_KEYS, redact_secrets
 

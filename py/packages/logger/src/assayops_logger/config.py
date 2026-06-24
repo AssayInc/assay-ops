@@ -28,7 +28,7 @@ import sys
 from typing import TextIO
 
 import structlog
-from structlog.types import FilteringBoundLogger, Processor
+from structlog.typing import FilteringBoundLogger, Processor
 
 from assayops_logger.redaction import redact_secrets
 
