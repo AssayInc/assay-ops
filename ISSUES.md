@@ -71,7 +71,10 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   to #132 and landed**: **KEEP** `@assayops/logger` (scoped to the TS consumer/web surface) and the new
   `py/packages/logger` (`assayops_logger`) is the structlog mirror for the proof-critical core (JSON→stdout,
   deny-by-key redaction, the boto3/uvicorn stdlib bridge, `trajectory_id` contextvars; the two lanes share
-  the `SECRET_KEYS` contract, parity-tested). **#116 retains** the **boto3 counterpart** to the `infra-local`
+  the `SECRET_KEYS` contract, parity-tested). The Python censor matches **case-insensitively** (to catch
+  botocore's capitalized `Authorization`/`X-Amz-Security-Token`); the TS consumer-surface lane stays
+  case-sensitive — a low-priority future TS fixture-change only if it ever logs AWS-signed requests.
+  **#116 retains** the **boto3 counterpart** to the `infra-local`
   LocalStack smoke + the boto3/Cloud-Control skill; (2) **brain/wiki sync** — the raw plans
   (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) + wiki pages still
   describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** and finish the
