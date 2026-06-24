@@ -1,11 +1,32 @@
 # infra-local — LocalStack dev loop
 
 In development the verifier reads against a local [LocalStack](https://localstack.cloud) stack instead of
-real AWS. This is the seed of the verifier's read path: the smoke (`tests/test_localstack_read_smoke.py`)
-reads deployed state via **boto3** Cloud Control `get_resource` / `list_resources` — the **exact** read API
-the cross-account account-B verifier uses in production (`DECISIONS.md` §1). It is boto3/Python because the
-verifier read path is boto3/Python (E17 — re-homed from the original TS smoke); it grounds the verifier
-read-coverage spike (#80) and is **not** the verifier itself.
+real AWS. The smoke (`tests/test_localstack_read_smoke.py`) seeds a known S3 bucket, then reads it back via
+**boto3** Cloud Control `get_resource` / `list_resources` — the **exact** read API the cross-account
+account-B verifier uses in production (`DECISIONS.md` §1). It is boto3/Python because the verifier read path
+is boto3/Python (E17 — re-homed from the original TS smoke); it grounds the verifier read-coverage spike
+(#80) and is **not** the verifier itself.
+
+## Why this exists (it is NOT a boto3 test)
+
+boto3 is reliable — testing AWS's SDK would be pointless. The uncertain thing worth guarding is
+**LocalStack's fidelity for the verifier's *exact* read path**: does our dev/CI substrate genuinely serve
+Cloud Control `get_resource`/`list_resources` (and surface a missing resource correctly), or only
+"AWS-ish things"? That is a real risk:
+
+- **LocalStack read-API fidelity is an open question** in the research, and `DECISIONS.md` **R3** names
+  "LocalStack fidelity too low to be lab-credible" as a kill-risk.
+- **"S3 works" ≠ "the read path works."** moto / Floci / MiniStack all pass a generic S3 smoke yet **fail**
+  Cloud Control `GetResource` — an emulator that looks fine generically does not imply it serves the
+  verifier's read path. That is why this smoke reads via Cloud Control *specifically*, not just by creating
+  a bucket.
+- **It is a regression canary on the pinned image.** When `docker-compose.yml` bumps the LocalStack digest,
+  the smoke catches a dropped or broken Cloud Control read **before** it silently breaks verifier dev
+  (#80/E2). It has already paid off — it is how we learned LocalStack does not serve `DetectStackDrift`.
+
+Secondary value: it is the **read-path contract for #80** (the exact boto3 call shapes the real verifier
+reuses, in working code) and a **fast dev loop** — `just up && just smoke` confirms a dev's LocalStack
+serves the read path before building on it.
 
 ## Scope
 
