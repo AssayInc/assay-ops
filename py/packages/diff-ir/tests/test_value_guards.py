@@ -111,6 +111,19 @@ def test_grade_revalidation_rejects_a_serializable_object_value_mutation() -> No
         grade(deployed(tampered), golden(res("r", cfg="seed")))
 
 
+def test_grade_report_is_an_independent_snapshot_of_the_inputs() -> None:
+    # The report must not alias the inputs: mutating an input's nested value after grade() must not
+    # change the already-returned diff report (report-byte determinism for the reportDigest).
+    deployed_state = deployed(res("r", cfg={"a": 1}))
+    golden_state = golden(res("r", cfg={"a": 2}))
+    outcome = grade(deployed_state, golden_state)
+    before = outcome.diff.model_dump(mode="json", exclude_none=True)
+    cfg = deployed_state.resources[0].properties["cfg"]
+    assert isinstance(cfg, dict)
+    cfg["a"] = 999  # mutate the input's nested value after grading
+    assert outcome.diff.model_dump(mode="json", exclude_none=True) == before
+
+
 # --- coverage regression guards (P2) ---
 
 

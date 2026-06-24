@@ -10,6 +10,7 @@ quirks live in the adapters.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 
 from assayops_contracts import (
@@ -71,15 +72,19 @@ def _require_trusted_inputs(deployed: NormalizedState, golden: NormalizedState) 
 
 
 def _revalidated(state: NormalizedState) -> NormalizedState:
-    """Re-validate the RAW object graph so a post-construction mutation can't bypass the guards.
+    """Re-validate a deep-copied snapshot of the RAW object graph (decoupled from the input).
 
     Rebuilds from the raw ``properties`` -- NOT ``model_dump()``, which would serialize a non-JSON
     value (a BaseModel/dataclass injected by a mutation) into plain JSON before the validator runs.
+    The deep copy decouples the diff report from the inputs, so a later mutation can't drift the
+    already-graded report bytes (the reportDigest source).
     """
     return NormalizedState(
         provenance=state.provenance,
         resources=tuple(
-            NormalizedResource(address=r.address, type=r.type, properties=r.properties)
+            NormalizedResource(
+                address=r.address, type=r.type, properties=copy.deepcopy(r.properties)
+            )
             for r in state.resources
         ),
     )
