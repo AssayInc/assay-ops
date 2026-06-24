@@ -28,13 +28,36 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
+- **Next ready work:** **E2 verifier core started** — the golden-target generator (**#75**,
+  `py/packages/verifier`) landed (account-B-pure; needs no cloud substrate). Next E2: the deployed-state
+  read path / skeleton (**#30**) + reward core (**#32**), with E3's diff-IR + Terraform adapter (**#34**/**#35**).
+  Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
   cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO).
   **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
+
+- **E2-5 (#75): golden-target generator — the account-B verifier's reproducible ephemeral target (2A).**
+  The first **E2 verifier-core** code: new **`py/packages/verifier`** (`assayops_verifier`).
+  `generate(task, seed)` deterministically regenerates the expected **normalized resource set**
+  (`GoldenResource` = address/type/properties — diff-IR-compatible, so the E3/#34 adapter diffs deployed
+  state against it) — **pure over (task, seed)**, never the agent's synth/plan/state (T1/§1/§8); a
+  **declarative regeneration, not running reference IaC**. The per-task golden builders are the engine's
+  **corpus seam** (`GoldenRegistry`); real builders live in the **private corpus (#76)** (the engine, NOT
+  corpus authoring), and in-repo tests use **synthetic** builders only (held-out residency). **Determinism
+  (AC1, feeds #46):** hash-based ephemeral tokens (no clock/RNG) + canonical address-sort + JCS key-sort →
+  byte-identical across K runs (negative-controlled). **Content address (AC4):** `golden_digest` =
+  lowercase-hex SHA-256 over RFC 8785 JCS canonical bytes, **reusing the locked `assayops_contracts.jcs`
+  recipe** (DRY) — reproducible from (task, seed) + the record's `trajectory_id`→`task_id`→seed +
+  `graderVersion`; **no contract-schema change** (the reward record has no golden-digest field; a dedicated
+  one would be a flagged #28 `fixture-change`, not silently added). **Fail-closed** (unknown task / duplicate
+  addresses raise — vector #15). **Hardened** Pydantic models (frozen/extra-forbid/strict; the pydantic.mypy
+  `disallow_any_explicit` gotcha fixed via the plugin + init_typed/init_forbid_extra). First cross-package
+  Python dep — consumes `assayops_contracts` by source path (the repo's virtual-member convention); contracts
+  untouched. `bun run verify` green **20/20** (11 verifier tests); both lockfiles frozen-checked. **Gates
+  #31** (golden→reward integration). (PR #146.)
 
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
   §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
