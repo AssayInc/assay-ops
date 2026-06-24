@@ -1,0 +1,11 @@
+{
+  "name": "@assayops/py-read-smoke",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",
+    "format": "uv run --frozen ruff format .",
+    "typecheck": "uv run --frozen mypy tests",
+    "smoke": "uv run --frozen pytest -q"
+  }
+}

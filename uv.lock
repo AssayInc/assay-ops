@@ -21,6 +21,7 @@ members = [
     "assayops-contracts",
     "assayops-env-server",
     "assayops-logger",
+    "assayops-read-smoke",
 ]
 
 [manifest.dependency-groups]
@@ -124,6 +125,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "structlog", specifier = ">=25" }]
+
+[[package]]
+name = "assayops-read-smoke"
+version = "0.0.0"
+source = { virtual = "py/packages/read-smoke" }
 
 [[package]]
 name = "ast-serialize"

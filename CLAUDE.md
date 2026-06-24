@@ -99,21 +99,21 @@ break, not a style nit — **stop and flag**. Operating rules:
 - **Test-first.** Goldens are locked (see Critical rules). **Gold trajectories + held-out eval are private,
   never committed** (contamination + moat).
 
-## Toolchain (Bun + UV, one Turbo graph)
+## Toolchain (UV + Bun, one Turbo graph)
 
-**Bun + Turborepo** own `ts/**`; **UV** owns `py/**`; Turbo drives both. Don't reach for
-Nx/Bazel/npm/yarn/pnpm/pip/poetry. **Pin everything.** Adding a package:
+**UV** owns `py/**` (the proof-critical core); **Bun + Turborepo** own `ts/**` (the consumer/web surface);
+Turbo drives both. Don't reach for Nx/Bazel/npm/yarn/pnpm/pip/poetry. **Pin everything.** Adding a package:
 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) → *How to navigate*.
 
-- **TS:** `bun <file|test|install|run>`, not Node/npm/jest; `unknown` at boundaries, **never `any`**;
-  **factory functions over classes**; assertions only at an I/O boundary behind a runtime check; structured
-  logging via **`@assayops/logger`** (pino) — **never `console.log`**.
-- **Python:** `uv run` for `mypy` / `ruff` / `pytest`, via each package's thin `package.json` wrapper.
-  `object` + a runtime narrow (Pydantic / `isinstance`) at boundaries, **never `Any`** — `object` is
-  Python's `unknown`; bare `Any` is contagious like TS `any`. Open JSON payloads (env observations, deployed
-  state) get a Pydantic model or `dict[str, object]`, not `dict[str, Any]`. Enforced by mypy
-  `disallow_any_explicit` + ruff `ANN401` (relaxed for codegen output + tests). Structured logging via
+- **Python (the proof-critical core):** `uv run` for `mypy` / `ruff` / `pytest`, via each package's thin
+  `package.json` wrapper. `object` + a runtime narrow (Pydantic / `isinstance`) at boundaries, **never `Any`**
+  — `object` is Python's `unknown`; bare `Any` is contagious like TS `any`. Open JSON payloads (env
+  observations, deployed state) get a Pydantic model or `dict[str, object]`, not `dict[str, Any]`. Enforced by
+  mypy `disallow_any_explicit` + ruff `ANN401` (relaxed for codegen output + tests). Structured logging via
   **structlog** (the pino analog) — **never bare `print`**.
+- **TS (the consumer/web surface):** `bun <file|test|install|run>`, not Node/npm/jest; `unknown` at
+  boundaries, **never `any`**; **factory functions over classes**; assertions only at an I/O boundary behind a
+  runtime check; structured logging via **`@assayops/logger`** (pino) — **never `console.log`**.
 
 ## Superpowers Workflow
 
@@ -188,7 +188,7 @@ their vendored skills; the rule applies beyond it.
 
 | Domain | Skill(s) | Surface |
 |--------|----------|---------|
-| AWS | **boto3 / Cloud Control** *(Python; skill to vendor — follow-up)* · `aws-cloudformation` · `aws-cdk` · `aws-iam` | verifier reads deployed state read-only via **boto3** Cloud Control `get_resource`/`list_resources` + CFN drift; ledger KMS/S3 (boto3); CDK adapter + drift tasks. `aws-sdk-js-v3-usage` is **demoted to the TS consumer/web surface** (`assay-web` / dashboards), not the verifier read path. |
+| AWS | **`aws-sdk-python-usage`** (boto3) · `aws-cloudformation` · `aws-cdk` · `aws-iam` | verifier reads deployed state read-only via **boto3** Cloud Control `get_resource`/`list_resources` + CFN drift; ledger KMS/S3 (boto3); CDK adapter + drift tasks. `aws-sdk-js-v3-usage` is **demoted to the TS consumer/web surface** (`assay-web` / dashboards), not the verifier read path. |
 | Terraform | `terraform-style-guide` · `terraform-test` | the Terraform → diff-IR adapter |
 | OpenEnv | `openenv-cli` · `generate-openenv-env` | the OpenEnv-compatible env-server |
 | TRL / HF Hub | `trl-training` · `hf-cli` | the SFT + LoRA trainer |

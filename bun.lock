@@ -38,6 +38,10 @@
       "name": "@assayops/py-logger",
       "version": "0.0.0",
     },
+    "py/packages/read-smoke": {
+      "name": "@assayops/py-read-smoke",
+      "version": "0.0.0",
+    },
     "ts/packages/biome-config": {
       "name": "@assayops/biome-config",
       "version": "0.0.0",
@@ -88,6 +92,8 @@
     "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
 
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
+
+    "@assayops/py-read-smoke": ["@assayops/py-read-smoke@workspace:py/packages/read-smoke"],
 
     "@assayops/typescript-config": ["@assayops/typescript-config@workspace:ts/packages/typescript-config"],
 

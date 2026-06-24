@@ -37,6 +37,12 @@
       "skillPath": "skills/core-skills/aws-sdk-js-v3-usage/SKILL.md",
       "computedHash": "b2c5175e7e8951cb6b2d65ddda09187906feb222cdd97a3757a82f7fa142a873"
     },
+    "aws-sdk-python-usage": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-sdk-python-usage/SKILL.md",
+      "computedHash": "cdd24e3232b66ff9c25859cd4c540d65fab74e0ddf7d5fd1b39576692463038f"
+    },
     "babysitting-evals": {
       "source": "meridianlabs-ai/inspect-skills",
       "sourceType": "github",
