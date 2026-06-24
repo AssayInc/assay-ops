@@ -50,6 +50,7 @@ jobs:
         with:
           version: "0.11.8"
           enable-cache: true
+      - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
       - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .turbo
@@ -58,3 +59,25 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: uv sync --locked
       - run: bunx turbo run typecheck lint test --filter='./py/**'
+      # DECISIONS.md §8 one-schema-codegen gate (E1-4): regenerating from contracts/schemas/ must reproduce
+      # the committed artifacts byte-for-byte, so a schema edit that skips `just codegen` / `just vectors`
+      # fails CI here. The fix is ALWAYS to regenerate — never hand-edit a generated file or the grader
+      # (contracts/vectors). Runs in the py job because this is the lane with both toolchains (quicktype needs
+      # bun; datamodel-codegen + gen_vectors need uv). Byte-parity (rfc8785 ↔ canonicalize, sha256) is asserted
+      # by the verify step above. Tools are pinned (bun.lock / uv.lock) so regeneration is deterministic.
+      - name: Codegen parity gate (regenerate from contracts/schemas and diff)
+        run: |
+          set -euo pipefail
+          just codegen
+          just vectors
+          paths=(
+            ts/packages/contracts/src/generated.ts
+            py/packages/contracts/src/assayops_contracts/models
+            contracts/vectors/jcs-golden.json
+          )
+          git add -A -- "${paths[@]}"
+          if ! git diff --cached --quiet -- "${paths[@]}"; then
+            echo "::error::Generated contract artifacts are stale — run \`just codegen\` && \`just vectors\` and commit the result. Never hand-edit generated files or contracts/vectors (DECISIONS.md §8)."
+            git --no-pager diff --cached -- "${paths[@]}"
+            exit 1
+          fi

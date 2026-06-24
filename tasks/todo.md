@@ -6,6 +6,56 @@ when done.
 
 ---
 
+## E1-4 (#29) — CI parity gate (regenerate-and-diff + byte-parity) — IN PROGRESS (branch `feat/29-ci-parity-gate`)
+
+**Goal (AC).** The last E1 task — CI enforcement of the DECISIONS.md §8 "one-schema codegen" non-negotiable.
+1. **Regenerate-and-diff gate** (the missing piece — NOT yet in `ci.yml`): a deliberate schema edit FAILS CI
+   until BOTH generated sides regenerate. Built on the existing deterministic recipes `just codegen`
+   (quicktype→`generated.ts` + datamodel-codegen→Pydantic `models/`) + `just vectors` (rfc8785→`jcs-golden.json`),
+   then a `git diff` of the committed artifacts.
+2. **Byte-parity sha256** — Python-signer (`rfc8785`) ↔ TS-consumer (`canonicalize`): VERIFY it already runs in
+   `bun run verify` (don't rebuild).
+
+**This is a CI-wiring PR, NOT a fixture-change PR** — it must not touch `contracts/schemas`, `contracts/vectors`,
+or the generated files. If the gate fails, the fix is **regenerate** (`just codegen`/`just vectors`), never
+hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits what scores it).
+
+**Validation (issue vs DECISIONS §8/I3 + brain — the AI-written issue is an input, not the spec):**
+- DECISIONS.md §8: "One contract schema → codegen both languages … generated artifacts are committed; the CI
+  byte-parity (JCS) gate must stay green." + §1 (the trust boundary; CI holds zero account-B creds). The gate
+  enforces exactly §8. No contradiction.
+- Brain (`[[projects/assay/eng-architecture]]` 5A; `[[concepts/write-isolated-verifier]]`): one-schema codegen
+  closes the "TS↔Python reward-schema drift" hole (a correctness/trust hole, same class as the moat ones); JCS
+  pins byte-parity so the Python-signed digest verifies on the TS consumer (the portable proof). E17 reframe
+  (Python-signs / TS-verifies) matches the issue + PROGRAM.md. The brain has no gate *mechanics* beyond §8.
+- AC2 already covered (verified): py `test_python_and_ts_canonicalize_are_byte_identical` (direct
+  `bun run jcs-canonicalize.ts` subprocess identity) + golden+sha256 reproduction; ts `canonicalize(record)==golden.canonical`
+  + `sha256(canonical)==golden.sha256`. All run in `bun run verify` → in CI.
+
+**Design (smallest change; reuse the recipes — DRY):**
+- Add the gate to the **`py` job** (the only lane provisioned with BOTH bun + uv — quicktype needs bun,
+  datamodel-codegen/gen_vectors need uv). It is a **required check today** → blocking immediately, with no
+  branch-protection ruleset change. (A dedicated `parity` job is cleaner semantically but non-blocking until the
+  `main` ruleset adds it — an outward, paid-plan-gated repo-admin action. Chose blocking-now over a non-blocking
+  §8 gate; flag the trade-off at merge.)
+- Install `just` via the pinned `extractions/setup-just@…#v4` (same as `localstack-smoke.yml`). Run
+  `just codegen` + `just vectors`, then a **targeted** `git add -A -- <generated paths>` +
+  `git diff --cached --exit-code` (catches edits AND added/removed modules from schema add/remove; targeting the
+  generated paths avoids false-fails from env artifacts) with a clear `::error::` pointing at the recipes.
+- Determinism: quicktype pinned (`bun.lock`), datamodel-code-generator + rfc8785 pinned (`uv.lock`); recipes run
+  offline after `bun install --frozen-lockfile` + `uv sync --locked`. A false-fail = a non-determinism bug to FIX.
+
+**Steps (TDD — for a CI gate the "test" is: prove it catches drift):**
+- [x] Precondition (env-sanity): `just codegen` + `just vectors` on the clean tree → **zero diff** (deterministic). ✅
+- [ ] AC2: run the byte-parity tests, confirm green (verify-don't-rebuild).
+- [ ] AC1: add the regenerate-and-diff gate to `ci.yml` (py job).
+- [ ] Prove the gate has teeth (RED): edit a schema → gate detects drift (exit 1) → revert; GREEN on clean tree.
+- [ ] `bun run verify` green + `bun install --frozen-lockfile` (no lockfile drift).
+- [ ] PR `Closes #29`; update PROGRAM.md + ISSUES.md; `/review` (Claude + Codex gpt-5.5 xhigh) to convergence;
+      AWAIT explicit merge approval (flag the branch-protection required-check question).
+
+---
+
 ## E17-F1 (#116) — boto3/Cloud-Control skill + LocalStack boto3 read smoke + finish the language flip — IN PROGRESS (branch `e17-f1-boto3-skill-smoke`)
 
 **Goal (AC, reconciled with the de-scoped reality):** #116's logger task LANDED (carved to #132 / PR #133 —
