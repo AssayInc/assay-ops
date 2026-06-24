@@ -16,19 +16,22 @@ Entry format:
 ---
 
 ## 2026-06-24 — change-claude-md-with-extreme-caution
-- **Mistake:** To capture a correction (the #116 skills-validation gap) I added a clause + 4 skill names to
-  the `CLAUDE.md` skill-preflight rule — but the preflight **table already listed those skills** and a fresh
-  `tasks/lessons.md` entry already held the rule, so it was redundant. The founder flagged it: CLAUDE.md is
-  loaded **every session by every agent (Claude Code AND Codex)**, so each addition is permanent context cost
-  that compounds into bloat over months. Reverted it.
-- **Rule:** Default to **NOT editing CLAUDE.md.** A correction's preventing rule goes in `tasks/lessons.md`
-  (its designated home), not the constitution. Touch CLAUDE.md ONLY for a load-bearing fact an agent genuinely
-  can't infer from the repo/lessons; prefer **sharpening/replacing an existing line over adding one**; never
-  duplicate what the preflight table or a lesson already says. When unsure, leave it. (The #116 *language
-  flip* — Toolchain ordering + the AWS row — was legitimate, scoped by the issue; the extra preflight clause
-  was not.)
-- **Context:** #116 / PR #134. Sharpens [[claude-md-is-lean-no-issue-numbers]] (content rules) with a
-  *change-bar*; pairs with [[claude-md-serves-all-agents-no-dedupe]] (Codex loads it too).
+- **Mistake:** Two *opposite* errors on the `CLAUDE.md` skill-preflight rule (#116). (1) **Over-added** — a
+  clarity clause PLUS the 4 craft-skill names the preflight **table already lists** (duplication), atop a
+  pre-existing meta-aside (*"a repeated correction — see lessons.md"*). CLAUDE.md loads **every session for
+  every agent (Claude Code AND Codex)**, so that compounds into bloat; the founder flagged it. (2) Then
+  **over-corrected** — reverted the *whole* clause, including the load-bearing bit: the rule's prose read
+  library-only, which is what misdirected me into checking just the boto3 API skill and not the craft skills.
+  The founder wanted that clarity KEPT.
+- **Rule:** CLAUDE.md changes need **extreme caution** (every-session, every-agent load) — default to leaving
+  it. Cut bloat: **duplication of the preflight table** and **meta-narration** (a correction's backstory
+  belongs in `tasks/lessons.md`, not the constitution). BUT a **surgical fix to prose that misdirects an agent
+  IS warranted** — distinguish "duplicating what's already there / narrating" (cut) from "fixing a misleading
+  instruction" (keep, tightly). Prefer **length-neutral** edits (drop a low-value bit when adding a needed
+  one); the *preventing rule* itself still lives in lessons.md.
+- **Context:** #116 / PR #134 — final state: re-added the clause naming only the craft *dimensions* (the
+  table resolves them to skills) + dropped the meta-aside. Sharpens [[claude-md-is-lean-no-issue-numbers]]
+  with a change-bar; pairs with [[claude-md-serves-all-agents-no-dedupe]].
 
 ## 2026-06-23 — validate-against-all-relevant-vendored-skills-not-just-the-api-skill
 - **Mistake:** Building the LocalStack boto3 smoke (E17-F1 / #116) I grounded the boto3 mechanics against

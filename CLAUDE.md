@@ -183,8 +183,9 @@ Before writing code against **any external library, API, or framework** — incl
 you know (a validator like `ajv`, a logger like `pino`, an SDK) — load its **skill (or the official docs)
 FIRST** and follow them. Verify **config, idioms, and test tooling** against the primary source, **never
 cached knowledge**. Hand-rolling what a library already provides (redaction, validation) is a defect magnet.
-*(A repeated correction — see `tasks/lessons.md`.)* The table below maps the project's fast-moving domains to
-their vendored skills; the rule applies beyond it.
+The table below maps the project's fast-moving domains to their vendored skills; the rule applies beyond it —
+and beyond the library you call: validate the code's **craft** (retries, error-handling, tests, the `Any`
+boundary) against the matching skill too, not just the API/library skill.
 
 | Domain | Skill(s) | Surface |
 |--------|----------|---------|
