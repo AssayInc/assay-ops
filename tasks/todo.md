@@ -104,6 +104,27 @@ parts remain**, and #116 is the foundation that grounds **#80** (the boto3 read-
   ruff/mypy lane); **TS smoke kept** as a dev convenience (issue-sanctioned; mirrors the logger keep-both);
   boto3 **reuses** the pinned workspace dev dep (no new dependency). **#80 is now grounded + unblocked.**
 
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — both recommend merge, no blocking findings
+
+Both models reviewed the diff independently and **recommend merge**; each empirically re-verified the
+load-bearing claims (`turbo run test` filters, pytest collection, mypy/ruff, frozen-lockfile checks):
+- **Hermetic-gate exclusion holds (both):** `turbo run test --filter=@assayops/py-read-smoke` → `0 total`
+  (no `test` task — only `smoke`), so `bun run verify` never runs the LocalStack smoke (the Docker-free gate
+  stays Docker-free), while `typecheck`/`lint` still cover the package.
+- **No false-pass (both):** the negative test's assertion-bearing `get_resource(_MISSING)` is deliberately
+  OUTSIDE `_with_retry`, so only a modeled `ResourceNotFoundException` passes (a cold-start transient would
+  propagate and fail); the positive tests assert real read values. pytest collects exactly 3 tests (not
+  0-collected). CI sound: the token is scoped to `just up` only; `uv sync --locked` runs before the smoke.
+- **No secret leak; lockfiles frozen-clean; trust boundary intact** (read-only Cloud Control; the only write
+  is the test's own bucket seed, not a verifier write path).
+- **Lone INFO caveat (both):** the boto3/botocore boundary is untyped under `ignore_missing_imports`, so
+  `BaseClient` documents the call shape but mypy does not validate Cloud Control signatures — a known,
+  **precedent-consistent** (the contracts ledger spike) and **explicitly deferred** limitation (boto3-stubs
+  is the #80/E2 follow-up). Per [[no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any]] this is
+  a third-party untyped-library boundary, not our data → not reopened for a non-blocking nit. **No code
+  change from the review.** Codex ran at **xhigh** (banner-confirmed; the
+  [[codex-reviews-run-at-xhigh-not-the-skill-default-high]] override).
+
 ---
 
 ## E17-F4 (#132) — Python structlog logger for the proof-critical core — IN PROGRESS (branch `feat/132-py-structlog-logger`)
