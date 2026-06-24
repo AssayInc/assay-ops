@@ -6,6 +6,50 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
+  Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
+  §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):
+  - **Read path split by tool:** **Terraform → Cloud Control `GetResource`/`ListResources` only**
+    (provisioning-agnostic; no provider plugins — the T1 constraint). **CFN drift / `DescribeStackResources`
+    are CloudFormation-stack-scoped → the CDK adapter's (T3) path** (and drift alone is itself incomplete:
+    `NOT_CHECKED`, uncomparable properties), N/A for Terraform (it creates no stack). Clarifies the AI-issue's
+    bundling (flag, not code-around).
+  - **Coverage (AC1):** authoritative = AWS "Resource types that support Cloud Control API" (~**1300** public
+    types). Three distinct properties: **readable** (a `read` handler), **enumerable** (a `list` handler —
+    differs per type), **property-covered** (`GetResource` omits write-only props). Common Terraform corpus
+    well covered; gaps = **`IAM::Policy`** + **`Route53::RecordSet`/`RecordSetGroup`** (fallbacks:
+    `ManagedPolicy` / `iam:List*Policies`; `route53:ListResourceRecordSets`); inline
+    `RolePolicy`/`UserPolicy`/`GroupPolicy` are **Read-but-not-List** (readable, not enumerable). Exact matrix
+    + IAM set regenerated via `cloudformation list-types --provisioning-type FULLY_MUTABLE|IMMUTABLE` +
+    `describe-type` (`Schema.handlers` + `writeOnlyProperties`) — real-AWS, T7-gated; LocalStack
+    non-authoritative.
+  - **Unsupported/unreadable policy (AC2) = FAIL-CLOSED + CLOSED-WORLD** (never silently reward — §5 vector
+    #15). Expected-resource unreadability: type/property uncovered → quarantine at authoring; transient (incl.
+    read-after-create) → `7A` classifier; genuine → `reward=0`. **Extra/over-provisioned resources are the
+    moat-critical half:** `list_resources` is per-`TypeName`/per-Region, so reads alone can't see an extra
+    resource of an out-of-scope/non-listable type or in an unscanned Region → reward must be **deployed set ≡
+    golden set**, enforced primarily by **T7 SCP create-allow-lists** (a closed set of CC-listable types +
+    Regions makes an out-of-scope resource unreachable by construction) + **exhaustive, paginated,
+    Region/global-service-aware, fail-closed** union-enumeration as defense-in-depth (a truncated/errored
+    enumeration must never read as "no extra resources").
+  - **Read-only IAM (AC3):** control-plane = **`cloudformation:GetResource` + `cloudformation:ListResources`**
+    (Cloud Control's IAM service prefix is `cloudformation`, verified) with **`Resource:"*"`** (no ARN
+    scoping); underneath, the union of in-scope types' **`handlers.read.permissions` ∪
+    `handlers.list.permissions`** (least-privilege via `describe-type`; `ReadOnlyAccess` = Phase-1 bootstrap
+    only). `kms:Decrypt`/`GetSecretValue` intentionally absent (reads config/metadata, not plaintext).
+    Account-B verifier assumes (`sts:AssumeRole`) a read-only role in account A (SCP-protected from the agent;
+    no A→B path; read-only). CDK/T3 adds `cloudformation:*StackDrift*` + `DescribeStackResource*`.
+  - **Go/no-go (AC4) = GO (with conditions):** scope the Phase-1 **Terraform engine-validation** corpus to
+    CC-readable types — conditional on (1) the closed-world predicate (T7 allow-lists + enumeration), (2) the
+    per-asserted-property coverage gate, (3) the corrected IAM set. **Representativeness caveat (R2/§6):** the
+    CC-readable screen must NOT silently shape the Phase-2 proof/OOD corpus (uncovered families get fallback
+    adapters there, not exclusion).
+  - **Recorded as tracked work (not just comments):** the findings are **landed in `DECISIONS.md` §1** as a
+    resolved-`[spike]` note (founder-ratified, PR #138); the implementation conditions are **#141** (E2 —
+    verifier-side read-coverage enforcement: FAIL-CLOSED + closed-world + per-property gate + coverage tooling +
+    corrected read IAM, under epic #3) and the **closed-world create-allow-list is appended to #53** (E9-1,
+    the T7 SCP issue). Informs **T2** (#35 Terraform adapter) + the read role (#52 / #33).
+
 - **Python type-safety parity + its three hardening tails (#126, #128, #127) — all landed.** The Python
   lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
   the TS `any` ban — `object` + a runtime narrow (Pydantic) is the `unknown` equivalent — with `S`/`LOG`/`G`/

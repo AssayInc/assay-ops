@@ -6,6 +6,119 @@ when done.
 
 ---
 
+## E3-4 (#80) — boto3 deployed-state read coverage by resource type (SPIKE) — IN PROGRESS (branch `spike/80-boto3-read-coverage`)
+
+**Goal (AC — a SPIKE: deliverable is a RECORDED DECISION (issue comment); NOT the verifier — #3/#4 build that):**
+1. Coverage matrix: resource type -> Cloud Control readable? (yes / no / fallback path).
+2. Unsupported-resource policy (quarantine / skip / FAIL-CLOSED) -- never silently reward.
+3. The read-only IAM permission set the verifier needs, enumerated.
+4. Go/no-go on scoping the Terraform A-spike corpus to read-covered resource types.
+
+**Validation (issue vs DECISIONS + brain + official docs -- the AI-written issue is an input, not the spec):**
+- `DECISIONS.md` §1 read path (account-B, read-only, Cloud Control `GetResource`/`ListResources` + CFN drift,
+  never runs agent synth/plan) + §5 **vector #15** (read-side state-read spoofing) + §8 (never silently reward;
+  `reward∈{0,1}` from a normalized diff) + **7A** (transient/genuine classifier + quarantine) + **T1/T2**
+  (verifier core; Terraform adapter = the A-spike engine).
+- assay-brain `[[concepts/iac-verification-primitives]]` + `[[references/aws-cloud-control-api]]`: three read
+  paths; Cloud Control is **provisioning-agnostic** (reads Terraform-created resources); CFN
+  `DescribeStackResources` + drift are **stack-scoped** (CDK). Explicit OPEN QUESTIONS in the brain =
+  "Cloud Control vs CFN as primary read path", "drift coverage gaps (`NOT_CHECKED`)", "LocalStack fidelity"
+  -- **#80 resolves these.**
+- **Issue-bundling correction (flag, not code-around):** the issue bundles "Cloud Control + CFN drift ...
+  Terraform-created resources." Primary docs: **CFN drift requires a CloudFormation stack**
+  (`using-cfn-stack-drift.html`) -- Terraform creates none. So **Terraform read path = Cloud Control ONLY**;
+  CFN drift is the **CDK** adapter's (T3) richer path. No floor conflict (§1 names both paths across both
+  adapters); the spike clarifies which applies to Terraform.
+
+**Grounding (primary AWS docs, fetched live via `/browse` this session -- not cached; [[ground-in-official-docs-first]]):**
+- Coverage = the authoritative "Resource types that support Cloud Control API" table (per-type CRUD-L;
+  "last updated Dec 23 2025"; **1300** public types). Readable = the **Read** column (`get_resource`);
+  enumerable = **List** column (`list_resources`) -- can differ per type. Of ~40 prospective-corpus types
+  checked, only **`AWS::IAM::Policy` (inline)** + **`AWS::Route53::RecordSet`** lack support; association /
+  attachment / inline-policy types (`SubnetRouteTableAssociation`, `VPCGatewayAttachment`,
+  `SecurityGroupIngress/Egress`, `RolePolicy`, `UserPolicy`, `EventSourceMapping`, `BucketPolicy`) are all
+  COVERED (verified, not assumed).
+- Determination/regeneration recipe (`resource-types.html`): `cloudformation list-types --provisioning-type
+  FULLY_MUTABLE|IMMUTABLE` -> the CC-supported set; `describe-type` -> Schema `handlers` (read/list presence)
+  + each handler's `permissions`.
+- IAM model (`resource-operations.html`): Cloud Control "must make calls to the underlying AWS services" ->
+  needs those creds (user-creds OR an assumed service role); "the permissions required for each resource
+  handler are defined in the `handlers` section" -> read-only set = `cloudcontrol:GetResource`/`ListResources`
+  + per-type `handlers.read.permissions`.
+- CFN drift (`using-cfn-stack-drift.html`): stack-scoped; unsupported types -> `NOT_CHECKED`.
+
+**Decision (the four AC -- full text in the #80 issue comment; proposed floor addition flagged for ratification):**
+1. **Matrix:** readability = the Read column of the authoritative table; common Terraform corpus ~fully
+   covered; gaps = inline `IAM::Policy` + `Route53::RecordSet` -> fallback = service-specific boto3
+   Describe/Get (or avoid via `ManagedPolicy`/`RolePolicy`). Exact per-corpus matrix regenerated via the
+   `list-types`/`describe-type` recipe at corpus-authoring time (real AWS; T7-gated).
+2. **Unsupported policy = FAIL-CLOSED** (never skip-and-pass): (a) type unsupported (static) -> scope
+   corpus / quarantine the task family at authoring time; (b) instance transiently unreadable -> 7A
+   transient/genuine classifier + K-run, never pass on a transient; (c) instance genuinely unreadable
+   (type-supported) -> `reward=0` / quarantine the episode. An unreadable resource is a vector-#15 blind
+   spot; the verifier cannot certify in-sync for what it cannot read.
+3. **IAM (read-only):** account-B verifier assumes a read-only role in account A (the deployed-state
+   account); no A->B path, and SCPs (T7) deny the agent touching the role. Policy =
+   `cloudcontrol:GetResource` + `cloudcontrol:ListResources` + the union of in-scope types'
+   `handlers.read.permissions` (least-privilege, enumerated via `describe-type`; AWS-managed
+   `ReadOnlyAccess` as a broad fallback) + `sts:AssumeRole` (B->A). CDK path adds
+   `cloudformation:DetectStackDrift`/`DescribeStackDriftDetectionStatus`/`DescribeStackResourceDrifts`/
+   `DescribeStackResources`.
+4. **Go/no-go = GO** -- scope the Phase-1 Terraform A-spike corpus to Cloud-Control-readable types.
+   Rationale: 1300 covered types + common corpus ~fully covered -> barely constraining; uniform read path
+   (no per-type fallback adapters in Phase 1 = smallest change, DRY); FAIL-CLOSED + the regeneration recipe
+   gate exact coverage at authoring time; keeps T2 simple + the moat (vector #15) intact.
+
+**Proposed DECISIONS.md addition (for founder ratification -- NOT silently editing the frozen floor):**
+a `[spike]`->resolved note: "Terraform read path = Cloud Control `GetResource`/`ListResources` only
+(provisioning-agnostic); CFN drift / `DescribeStackResources` are the CDK adapter's stack-scoped path.
+Unsupported/unreadable resource = FAIL-CLOSED (never silently reward; vector #15). Phase-1 corpus scoped to
+CC-readable types."
+
+**Steps:**
+- [x] Plan + ground (issue + §1/§5/§8/7A/T1/T2 + brain + the 3 AWS skills + primary AWS docs via `/browse`).
+- [x] PR **#138** `Closes #80`: PROGRAM.md (Recently Landed) + ISSUES.md (durable findings + proposed floor
+      addition) + this todo. **No code** (real-AWS probe is T7-gated; LocalStack is non-authoritative for
+      coverage per the gotcha + [[local-aws-emulator-must-prove-read-api]]; evidence = the live AWS docs). **No
+      DECISIONS.md edit** (proposed, not silent).
+- [x] `bun run verify` green **17/17 FULL TURBO** (docs-only, gate still run).
+- [x] `/review` (Claude adversarial + Codex `gpt-5.5` **xhigh**) on the decision reasoning — both converged on a
+      real gap; verified each load-bearing claim against primary docs; revised the decision (GO → **GO with
+      conditions**). Re-review the FIXED decision with Codex xhigh before finalizing.
+- [ ] Post the recorded-decision comment on #80 (the final, post-review decision); await explicit merge
+      approval; on "merge" -> `gh pr merge --squash --delete-branch`.
+
+### Review (`bun run verify` green 17/17; cross-model `/review` hardened the decision GO → GO-with-conditions)
+
+- **Done + grounded.** All 4 AC recorded as a decision; deliverable = the #80 issue comment (a SPIKE, not the
+  verifier). Diff is docs-only (PROGRAM.md / ISSUES.md / tasks/todo.md); no code (real-AWS reads are T7-gated;
+  LocalStack is non-authoritative for coverage). Every load-bearing AWS fact grounded against **primary docs
+  fetched live** (`/browse`, then `WebFetch` after `/browse`'s daemon died), not cached knowledge.
+- **Issue-bundling correction (flag, not code-around):** Terraform read path = Cloud Control only; CFN drift =
+  the CDK (T3) path. Confirmed by both reviewers + the brain.
+- **Cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) earned its keep — both independently
+  found the same load-bearing gap.** Each finding re-verified against primary sources before acting
+  ([[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]]):
+  - **Closed-world hole (P1, both):** `list_resources` is per-`TypeName`/per-Region, so reads can't detect an
+    *extra* resource of an out-of-scope/non-listable type → vector #15 stayed partially open. Added AC2-II
+    (reward = deployed set ≡ golden set) + named the **T7 SCP create-allow-list** dependency.
+  - **IAM prefix error (blocker, Codex; VERIFIED):** AWS service-authorization ref — Cloud Control's IAM
+    prefix is **`cloudformation`** (not `cloudcontrol`), `Resource:"*"`. Fixed AC3; added `list`-handler perms.
+  - **Matrix corrections (VERIFIED locally):** inline `RolePolicy`/`UserPolicy`/`GroupPolicy` = Read-but-no-List;
+    `Route53::RecordSetGroup` also absent; added the per-asserted-property gate (write-only omission).
+  - Refined AC2(b) (read-after-create → 7A), AC4 (GO-with-conditions + R2/§6 representativeness caveat),
+    demoted `ReadOnlyAccess` to bootstrap; `kms:Decrypt` correctly absent.
+- **Codex xhigh re-review (pass 2) of the revised decision: "prior fixes correct, no new substantive error"**
+  ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]). One residual applied verbatim:
+  the closed-world enumeration must be **exhaustive / paginated / Region+global-service-aware / fail-closed**
+  (a truncated/errored list must never read as "no extra resources"). Converged.
+- **Verdict: GO with conditions** (closed-world via T7; per-property gate; corrected IAM) — feasibility holds;
+  conditions are inputs to #3/#4/T2/T7, not spike blockers. Surfaced a **new T7 requirement** (SCP create-
+  allow-list aligned to CC-listable types + Regions). Trust boundary (§8) intact (no agent-code exec; no A→B;
+  read-only). Next: post the recorded-decision comment on #80, then await explicit merge approval.
+
+---
+
 ## E17-F1 (#116) — boto3/Cloud-Control skill + LocalStack boto3 read smoke + finish the language flip — IN PROGRESS (branch `e17-f1-boto3-skill-smoke`)
 
 **Goal (AC, reconciled with the de-scoped reality):** #116's logger task LANDED (carved to #132 / PR #133 —

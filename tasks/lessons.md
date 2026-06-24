@@ -15,6 +15,36 @@ Entry format:
 
 ---
 
+## 2026-06-24 — codex-review-prompts-must-tell-it-to-use-gh
+- **Mistake:** A Codex `gpt-5.5` xhigh review prompt asked it to `gh issue view #141/#53`, but the run returned
+  `error connecting to api.github.com` and its GitHub connector hit 404/permission — so it reviewed the
+  `DECISIONS.md` diff but **could not see the two issue bodies**, leaving part of the review unverified. I framed
+  the fetch generically instead of steering it to the authenticated tool.
+- **Rule (founder directive):** When Codex reviews anything that lives on GitHub (issue/PR bodies, comments,
+  the diff), **explicitly tell it to use the `gh` CLI** — `gh` is authenticated with full repo permissions here
+  (e.g. `gh issue view <n> --repo AssayInc/assay-ops --json body -q .body`, `gh pr diff <n>`,
+  `gh pr view <n> --json body -q .body`). Don't rely on Codex's GitHub connector/MCP (404s) or a raw API call
+  (sandbox network). If `gh` still can't reach the network in a given run, fall back to pasting the content
+  **inline** in the prompt. Pairs with [[gh-cli-first-for-pr-workflow]] +
+  [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
+- **Context:** #80 / PR #138 final pre-merge re-review.
+
+## 2026-06-24 — todo-md-is-ephemeral-durable-records-go-elsewhere
+- **Mistake:** Resolving the #80 spike, I recorded durable outputs (a surfaced T7 requirement, the proposed
+  `DECISIONS.md` note) in `tasks/todo.md` (+ ISSUES.md) and treated that as sufficient tracking. The founder
+  flagged it: `tasks/todo.md` is **overwritten/regenerated every session**, so anything living only there is
+  lost; and a durable decision/requirement left only in an issue **comment** gets missed too.
+- **Rule:** `tasks/todo.md` is an **ephemeral per-session scratchpad** — never the system of record. Route
+  durable outputs to their durable home every time: a **GitHub issue** (created, grounded with how-to-fix, and
+  wired to the board + parent epic per [[new-issues-must-join-the-board-and-parent-epic]]) for actionable
+  follow-up work; **`DECISIONS.md`** for a settled rule/finding (flag first, land it on founder ratification —
+  don't leave a floor-refining result as a proposal buried in a comment); **`ISSUES.md`/`PROGRAM.md`** for
+  cross-cutting context + handoff. A spike's conditions and any newly-surfaced requirement (e.g. a new T7
+  responsibility) become **tracked issues**, not just comments or an ISSUES.md bullet.
+- **Context:** #80 / PR #138 — founder feedback. Created #141 (verifier-side read-coverage enforcement) +
+  updated #53 (T7 closed-world create-allow-list) + landed the resolved-`[spike]` note in `DECISIONS.md` §1.
+  Pairs with [[create-and-link-the-tracking-issue-before-opening-a-PR]] + [[update-program-state-before-landing]].
+
 ## 2026-06-24 — change-claude-md-with-extreme-caution
 - **Mistake:** Two *opposite* errors on the `CLAUDE.md` skill-preflight rule (#116). (1) **Over-added** — a
   clarity clause PLUS the 4 craft-skill names the preflight **table already lists** (duplication), atop a
