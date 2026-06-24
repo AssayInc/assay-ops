@@ -16,10 +16,10 @@ Cloud Control `get_resource`/`list_resources` (and surface a missing resource co
 
 - **LocalStack read-API fidelity is an open question** in the research, and `DECISIONS.md` **R3** names
   "LocalStack fidelity too low to be lab-credible" as a kill-risk.
-- **"S3 works" ≠ "the read path works."** moto / Floci / MiniStack all pass a generic S3 smoke yet **fail**
-  Cloud Control `GetResource` — an emulator that looks fine generically does not imply it serves the
-  verifier's read path. That is why this smoke reads via Cloud Control *specifically*, not just by creating
-  a bucket.
+- **"S3 works" ≠ "the read path works."** Floci and MiniStack pass a generic S3 smoke yet **fail** Cloud
+  Control `GetResource`; moto and the others simply don't serve the Cloud Control read path. An emulator that
+  looks fine generically does not imply it serves the verifier's read path — which is why this smoke reads
+  via Cloud Control *specifically*, not just by creating a bucket.
 - **It is a regression canary on the pinned image.** When `docker-compose.yml` bumps the LocalStack digest,
   the smoke catches a dropped or broken Cloud Control read **before** it silently breaks verifier dev
   (#80/E2). It has already paid off — it is how we learned LocalStack does not serve `DetectStackDrift`.
@@ -55,8 +55,8 @@ at the repo root (never commit the value):
     LOCALSTACK_AUTH_TOKEN=<your token>
 
 Get a token from your LocalStack workspace (app.localstack.cloud, Auth Tokens; a CI auth token for CI).
-Commercial, private use needs a paid plan, not the non-commercial Hobby/OSS tiers. Why LocalStack (rather
-than moto / Floci / MiniStack, which do not serve the Cloud Control read path) is recorded in DECISIONS.md.
+Commercial, private use needs a paid plan, not the non-commercial Hobby/OSS tiers. Why LocalStack rather
+than a free emulator (see *Why this exists* above) is recorded in DECISIONS.md.
 
 ## CI
 
