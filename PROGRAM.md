@@ -54,7 +54,12 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `ci.yml` + `localstack-smoke.yml`) — so neither was re-done. Proven RED→GREEN with a throwaway 5th schema
   (reaches both generators + the ajv test + the parity test with no list edit), then removed → regeneration
   byte-identical (codegen-parity gate stays green). **Not a `fixture-change` PR** (no `contracts/schemas|vectors`,
-  generated-file, or `tools/red-team` edits; `gen_vectors.py` untouched). `bun run verify` green 17/17. (PR #144.)
+  generated-file, or `tools/red-team` edits; `gen_vectors.py` untouched). **Cross-model `/review`** (Claude
+  adversarial + Codex `gpt-5.5` xhigh, 3 passes to convergence) hardened the §8 reward-pin to fail **closed**
+  on any quicktype-format drift — isolate the RewardRecord interface block by `export interface`-header count +
+  top-level-brace termination, `${var:-0}` count default, block-scoped pin-landed backstop — and switched the
+  re-export parity test to **object-identity** (catches a cross-module class-name collision); all changes keep
+  regeneration byte-identical. `bun run verify` green 17/17. (PR #144.)
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
   §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
   workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs
