@@ -31,29 +31,33 @@ class Provenance(StrEnum):
     AGENT_STATE = "agent_state"
 
 
-def _validate_json_value(value: object) -> None:
-    """Fail closed unless ``value`` is an exact-type finite JSON value with string keys (recursive).
+def _validate_and_copy_json(value: object) -> object:
+    """Validate exact-type finite JSON (string keys) and return an INDEPENDENT copy, in one pass.
 
-    Rejects what would forge a reward or break the signed digest: non-string dict keys (``{1: ...}``
-    and ``{True: ...}`` collide under Python equality -- a false reward 1), non-finite numbers
-    (NaN/Infinity break determinism + RFC 8785 JCS), and any non-JSON type -- including a scalar
-    *subclass* with an overloaded ``__eq__`` (it passes ``isinstance``, forging a reward). The type
-    gate is therefore **exact** (``type(...) is``), never ``isinstance``.
+    NO ``copy.deepcopy`` / ``model_dump`` on untrusted values -- both invoke user dunders
+    (``__deepcopy__`` / serializers) that could launder a non-JSON object into JSON before the type
+    gate runs. This checks the EXACT built-in type first, then copies node-by-node from verified
+    built-ins only, so an injected object (a scalar subclass with an overloaded ``__eq__``, a
+    BaseModel/dataclass, a ``__deepcopy__`` launderer) is rejected at its node and never copied
+    through. Closes the value-type-collapse (``True``/``1``, ``1``/``1.0``), non-string-key
+    (``{1: ...}``/``{True: ...}`` collide), NaN, and laundering false-reward-1 paths.
     """
-    if type(value) not in (type(None), bool, int, float, str, dict, list):
-        raise ValueError(f"property values must be JSON types, got {type(value).__name__}")
-    # value is now an EXACT JSON type (no subclasses); isinstance below only narrows for recursion.
-    if isinstance(value, float):
+    if value is None or type(value) is bool or type(value) is int or type(value) is str:
+        return value  # immutable JSON scalars are their own copy (identity `is`, never `==`)
+    if type(value) is float:
         if not math.isfinite(value):
             raise ValueError("property values must be finite numbers (no NaN/Infinity)")
-    elif isinstance(value, dict):
+        return value
+    if type(value) is dict:
+        snapshot: dict[str, object] = {}
         for key, nested in value.items():
             if type(key) is not str:
                 raise ValueError(f"object keys must be strings, got {type(key).__name__}")
-            _validate_json_value(nested)
-    elif isinstance(value, list):
-        for nested in value:
-            _validate_json_value(nested)
+            snapshot[key] = _validate_and_copy_json(nested)
+        return snapshot
+    if type(value) is list:
+        return [_validate_and_copy_json(nested) for nested in value]
+    raise ValueError(f"property values must be JSON types, got {type(value).__name__}")
 
 
 class NormalizedResource(BaseModel):
@@ -75,11 +79,13 @@ class NormalizedResource(BaseModel):
 
     @field_validator("properties")
     @classmethod
-    def _properties_must_be_representable(cls, properties: dict[str, object]) -> dict[str, object]:
-        # Fail closed on values that would forge a reward or break the signed digest (see the review
-        # hardening in NORMALIZATION.md): reserved `$`-keys (the $type marker), an ambiguous present
-        # ambiguous `None` (absent = omit the key; exclude_none can't tell None from absent), and
-        # non-finite numbers (NaN/Infinity break determinism and RFC 8785 JCS).
+    def _properties_are_a_validated_snapshot(
+        cls, properties: dict[str, object]
+    ) -> dict[str, object]:
+        # Validate + snapshot in one pass (NORMALIZATION.md): reject reserved `$`-keys (the $type
+        # marker) and a present `None` (absent = omit the key; exclude_none can't tell None from
+        # absent); `_validate_and_copy_json` enforces the exact JSON domain and returns a copy.
+        snapshot: dict[str, object] = {}
         for key, value in properties.items():
             if key.startswith("$"):
                 raise ValueError(f"property key {key!r} is reserved: keys must not start with '$'")
@@ -87,8 +93,8 @@ class NormalizedResource(BaseModel):
                 raise ValueError(
                     f"property {key!r} is None: omit an absent property, never store None"
                 )
-            _validate_json_value(value)
-        return properties
+            snapshot[key] = _validate_and_copy_json(value)
+        return snapshot
 
 
 class NormalizedState(BaseModel):

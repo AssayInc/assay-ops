@@ -111,6 +111,19 @@ def test_grade_revalidation_rejects_a_serializable_object_value_mutation() -> No
         grade(deployed(tampered), golden(res("r", cfg="seed")))
 
 
+def test_grade_rejects_a_deepcopy_laundering_object_mutation() -> None:
+    # An object whose __deepcopy__ returns JSON must not launder past validation: the snapshot is
+    # built from exact built-in types, never copy.deepcopy/model_dump on raw values (user dunders).
+    class _Launder:
+        def __deepcopy__(self, memo: object) -> str:
+            return "ok"
+
+    tampered = res("r", cfg="seed")
+    tampered.properties["cfg"] = _Launder()
+    with pytest.raises(ValueError):
+        grade(deployed(tampered), golden(res("r", cfg="ok")))
+
+
 def test_grade_report_is_an_independent_snapshot_of_the_inputs() -> None:
     # The report must not alias the inputs: mutating an input's nested value after grade() must not
     # change the already-returned diff report (report-byte determinism for the reportDigest).
