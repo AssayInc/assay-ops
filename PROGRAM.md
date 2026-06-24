@@ -56,8 +56,13 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   addresses raise — vector #15). **Hardened** Pydantic models (frozen/extra-forbid/strict; the pydantic.mypy
   `disallow_any_explicit` gotcha fixed via the plugin + init_typed/init_forbid_extra). First cross-package
   Python dep — consumes `assayops_contracts` by source path (the repo's virtual-member convention); contracts
-  untouched. `bun run verify` green **20/20** (11 verifier tests); both lockfiles frozen-checked. **Gates
-  #31** (golden→reward integration). (PR #146.)
+  untouched. **Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh, 3 passes to convergence) hardened the
+  open-`properties` channel** (reject set/non-finite-float/oversized-int/non-JSON → the AC1 determinism hole)
+  **+ content-address integrity** (canonical-by-construction model, immutable `resources` tuple, `golden_digest`
+  re-validates so post-generation tampering fails closed — all account-B-internal, the moat intact).
+  `bun run verify` green **20/20** (21 verifier tests; the load-bearing guards negative-controlled); both
+  lockfiles frozen-checked. Runtime-import hardening (consume contracts as an installed pkg) deferred to #147.
+  **Gates #31** (golden→reward integration). (PR #146.)
 
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
   §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
