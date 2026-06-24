@@ -11,8 +11,8 @@ package = false
 
 [tool.ruff]
 # Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
-# via `extend` so the select stays single-sourced. infra-local is one level under root (not py/packages/*).
-extend = "../pyproject.toml"
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
 
 [tool.ruff.lint.per-file-ignores]
 # The smoke asserts (S101) and reads boto3's open dict responses with loose typing (ANN), like the other

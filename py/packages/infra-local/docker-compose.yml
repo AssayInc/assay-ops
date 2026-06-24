@@ -1,7 +1,7 @@
 # LocalStack dev loop for the verifier's Cloud Control read path.
 # Licensed "LocalStack for AWS": the free tokenless community edition was retired in the
 # 2026-03-23 single-image change, so this requires LOCALSTACK_AUTH_TOKEN (a secret, never committed;
-# see infra-local/README.md). Image pinned by digest for reproducibility.
+# see README.md). Image pinned by digest for reproducibility.
 services:
   localstack:
     container_name: assayops-localstack

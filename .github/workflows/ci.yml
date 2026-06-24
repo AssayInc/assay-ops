@@ -2,9 +2,9 @@ name: ci
 
 # The two-lane verify gate: the canonical `turbo run typecheck lint test` (= `bun run verify`), split
 # into a TS lane (bun/turbo) and a Python lane (uv) that are independently cache-keyed and do not gate
-# each other. The two filters partition all packages: the Python lane owns `./py/**` + `./infra-local`
-# (the uv packages — infra-local lives at the repo root but its lint/typecheck run via uv), the TS lane
-# owns the rest. Static checks only — this workflow holds zero account-B credentials (DECISIONS.md §1, §8).
+# each other. The two filters partition all packages: the Python lane owns `./py/**` (the uv packages),
+# the TS lane owns the rest. Static checks only — this workflow holds zero account-B credentials
+# (DECISIONS.md §1, §8).
 on:
   pull_request:
   push:
@@ -34,7 +34,7 @@ jobs:
           key: turbo-ts-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-ts-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - run: bunx turbo run typecheck lint test --filter='!./py/**' --filter='!./infra-local'
+      - run: bunx turbo run typecheck lint test --filter='!./py/**'
 
   py:
     runs-on: ubuntu-latest
@@ -57,4 +57,4 @@ jobs:
           restore-keys: turbo-py-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: uv sync --locked
-      - run: bunx turbo run typecheck lint test --filter='./py/**' --filter='./infra-local'
+      - run: bunx turbo run typecheck lint test --filter='./py/**'

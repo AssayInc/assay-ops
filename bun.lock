@@ -12,16 +12,16 @@
         "typescript": "^6.0.3",
       },
     },
-    "infra-local": {
-      "name": "@assayops/infra-local",
-      "version": "0.0.0",
-    },
     "py/packages/contracts": {
       "name": "@assayops/py-contracts",
       "version": "0.0.0",
     },
     "py/packages/env-server": {
       "name": "@assayops/py-env-server",
+      "version": "0.0.0",
+    },
+    "py/packages/infra-local": {
+      "name": "@assayops/infra-local",
       "version": "0.0.0",
     },
     "py/packages/logger": {
@@ -69,7 +69,7 @@
 
     "@assayops/contracts": ["@assayops/contracts@workspace:ts/packages/contracts"],
 
-    "@assayops/infra-local": ["@assayops/infra-local@workspace:infra-local"],
+    "@assayops/infra-local": ["@assayops/infra-local@workspace:py/packages/infra-local"],
 
     "@assayops/logger": ["@assayops/logger@workspace:ts/packages/logger"],
 

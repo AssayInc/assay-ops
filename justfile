@@ -1,7 +1,7 @@
 # AssayOps task runner: the contract-schema codegen lane (`just codegen`) + the LocalStack dev loop
 # for the verifier's Cloud Control read path.
 
-compose := "docker compose -f infra-local/docker-compose.yml"
+compose := "docker compose -f py/packages/infra-local/docker-compose.yml"
 
 # List available recipes
 default:
@@ -63,7 +63,7 @@ up:
       val="${val%\'}"; val="${val#\'}"
       export LOCALSTACK_AUTH_TOKEN="$val"
     fi
-    : "${LOCALSTACK_AUTH_TOKEN:?Set LOCALSTACK_AUTH_TOKEN in your environment or .env (see infra-local/README.md) - licensed LocalStack for AWS requires it}"
+    : "${LOCALSTACK_AUTH_TOKEN:?Set LOCALSTACK_AUTH_TOKEN in your environment or .env (see py/packages/infra-local/README.md) - licensed LocalStack for AWS requires it}"
     {{compose}} up -d
     echo "Waiting for the LocalStack gateway at http://localhost:4566 ..."
     for _ in $(seq 1 60); do
@@ -86,4 +86,4 @@ logs:
 
 # Run the boto3 Cloud Control read-path smoke (Python — the verifier's read SDK) against a running LocalStack
 smoke:
-    cd infra-local && bun run smoke
+    cd py/packages/infra-local && bun run smoke

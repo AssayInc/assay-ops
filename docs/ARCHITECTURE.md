@@ -71,11 +71,11 @@ assay-ops/
 │     ├─ orchestrator/ ........ ◻ E7 direct orchestration; Harbor slot for Phase-2 [T12]
 │     ├─ assayctl/ ............ ◻ E7 dev CLI (run episode, grade, replay, red-team)
 │     ├─ trainer/ ............. ◻ E12 SFT pipeline (TRL v1.0 + LoRA) [I6]
-│     └─ evals/ ............... ◻ E13 Inspect AI harness (deploy-verifier as Scorer) [T11]
+│     ├─ evals/ ............... ◻ E13 Inspect AI harness (deploy-verifier as Scorer) [T11]
+│     └─ infra-local/ ......... ✅ E0-3 LocalStack dev loop + boto3 Cloud Control read smoke (`just smoke`) [#116]
 │
 ├─ tasks/ ..................... ◻ E11 CDK drift&debug task SPECS [T13]; gold corpus + held-out eval
 │                                  live in a PRIVATE data store, never committed [I11]
-├─ infra-local/ .............. ◻ E0-3 LocalStack docker-compose (`just up`)
 ├─ tools/red-team/ ........... ◻ E10 the 15-vector attack suite — fixture-change only (#56) [T10]
 └─ .github/workflows/ci.yml .. ◻ E0-2 two independent cache-keyed lanes (turbo / uv)
 ```

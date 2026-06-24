@@ -118,7 +118,7 @@ requires-dist = [{ name = "openenv", extras = ["core"], specifier = "==0.3.1" }]
 [[package]]
 name = "assayops-infra-local"
 version = "0.0.0"
-source = { virtual = "infra-local" }
+source = { virtual = "py/packages/infra-local" }
 
 [[package]]
 name = "assayops-logger"
