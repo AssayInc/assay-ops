@@ -15,8 +15,11 @@ TRAJECTORY_ID_KEY = "trajectory_id"
 
 
 def bind_trajectory_id(trajectory_id: str) -> None:
-    """Bind ``trajectory_id`` into the context-local context so it appears on every subsequent log
-    line of the current execution context (thread or asyncio task)."""
+    """Bind ``trajectory_id`` into the context-local context so it appears on subsequent log lines
+    of the current thread or asyncio task. An asyncio task inherits the binding present at its
+    creation; a newly spawned ``threading.Thread`` / ``ThreadPoolExecutor`` worker starts with a
+    FRESH context and does NOT inherit it — re-bind inside each worker thread (e.g. the verifier's
+    concurrent boto3 reads) or the join key silently drops from its lines."""
     structlog.contextvars.bind_contextvars(**{TRAJECTORY_ID_KEY: trajectory_id})
 
 

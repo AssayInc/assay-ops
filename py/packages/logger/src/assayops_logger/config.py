@@ -14,11 +14,12 @@ Design (grounded in the official structlog docs, 26.1.0):
   process configures its own (never pass a logger across processes).
 - **Dev/prod renderer gate** (logging-best-practices.html): ``sys.stderr.isatty()`` →
   ``ConsoleRenderer`` (dev) else structured tracebacks + ``JSONRenderer`` to unbuffered stdout.
-- **Trust-boundary hardening** (DECISIONS.md §8): botocore/boto3 are clamped to never below INFO
-  (their wire-level DEBUG leaks AWS creds / Secrets Manager SecretString that no pattern catches —
-  boto3 #2292), and the production exception renderer pins ``show_locals=False`` so a KMS-signing
-  crash can't dump key material from a traceback's frame locals (``ExceptionDictTransformer``'s
-  ``show_locals`` defaults to True).
+- **Trust-boundary hardening** (DECISIONS.md §8): botocore/boto3 wire-level DEBUG leaks AWS creds /
+  Secrets Manager SecretString that no pattern catches (boto3 #2292), so the noisy AWS loggers are
+  clamped to never below INFO AND a handler filter floors them (surviving a later ``setLevel``;
+  ``set_stream_logger``'s sibling handler still bypasses it — the primary rule stays don't enable
+  boto3/botocore DEBUG). Both the JSON and dev exception renderers pin no frame locals, so a
+  KMS-signing crash can't dump key material from a traceback (``show_locals`` defaults to True).
 """
 
 import logging
@@ -48,6 +49,19 @@ _LEVEL_BY_NAME: dict[str, int] = {
 # boto3/botocore wire-level DEBUG logs contain secrets no redaction pattern can comprehensively
 # catch; never let these emit below INFO (DECISIONS.md §8). urllib3/s3transfer are the same family.
 _NOISY_AWS_LOGGERS: tuple[str, ...] = ("botocore", "boto3", "urllib3", "s3transfer")
+
+
+class _NoisyAwsFloorFilter(logging.Filter):
+    """Drop noisy-AWS records below INFO AT our handler — so a later ``getLogger("botocore")
+    .setLevel(DEBUG)`` can't push wire-level secrets through this pipeline (the one-shot setLevel
+    clamp alone is bypassable). A sibling handler added by ``boto3.set_stream_logger`` bypasses this
+    entirely; the primary rule stays: don't enable boto3/botocore DEBUG (DECISIONS.md §8)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        for name in _NOISY_AWS_LOGGERS:
+            if record.name == name or record.name.startswith(f"{name}."):
+                return record.levelno >= logging.INFO
+        return True
 
 
 def resolve_log_level(value: str | None) -> int:
@@ -95,8 +109,10 @@ def _shared_pre_chain(*, foreign: bool) -> list[Processor]:
 
 def _renderer_tail(*, pretty: bool) -> list[Processor]:
     if pretty:
-        # ConsoleRenderer formats exceptions itself (plain traceback, no frame locals without Rich).
-        return [structlog.dev.ConsoleRenderer()]
+        # ConsoleRenderer renders exceptions itself; pin a plain (no-locals) traceback so the
+        # dev/pretty path can't dump KMS key material from frame locals either — Rich's default
+        # formatter shows locals and Rich is an installed transitive dep. Secure-by-default.
+        return [structlog.dev.ConsoleRenderer(exception_formatter=structlog.dev.plain_traceback)]
     return [
         # Structured, JSON-serializable tracebacks WITHOUT frame locals (KMS-signing hardening; the
         # transformer's show_locals defaults to True, so it is pinned False here).
@@ -147,6 +163,7 @@ def configure_logging(
     )
     handler = logging.StreamHandler(out)
     handler.setFormatter(formatter)
+    handler.addFilter(_NoisyAwsFloorFilter())
     root = logging.getLogger()
     for existing in list(root.handlers):
         root.removeHandler(existing)

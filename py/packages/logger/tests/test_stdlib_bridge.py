@@ -72,3 +72,14 @@ def test_clamp_follows_a_higher_configured_level() -> None:
     logging.getLogger("botocore").info("routine")
     logging.getLogger("botocore").warning("throttled")
     assert [line["event"] for line in parse_log_lines(buf)] == ["throttled"]
+
+
+def test_post_config_setlevel_debug_cannot_push_botocore_secrets() -> None:
+    # The one-shot setLevel clamp is bypassable by a later setLevel(DEBUG); the handler floor-filter
+    # drops botocore-family records below INFO regardless, so wire-level DEBUG can't reach stdout.
+    buf = _configured(level="debug")
+    logging.getLogger("botocore").setLevel(logging.DEBUG)  # try to re-enable wire dumps
+    logging.getLogger("botocore").debug("wire dump with AKIA secret")
+    logging.getLogger("botocore.endpoint").debug("child wire dump")  # child propagates too
+    logging.getLogger("botocore").info("kept")
+    assert [line["event"] for line in parse_log_lines(buf)] == ["kept"]

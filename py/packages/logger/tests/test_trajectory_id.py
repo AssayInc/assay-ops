@@ -5,6 +5,7 @@ it inside spawned coroutines, or the join key silently drops from some lines).""
 
 import asyncio
 import io
+import threading
 
 from helpers import parse_log_lines
 
@@ -96,3 +97,27 @@ def test_spawned_coroutines_inherit_parent_binding() -> None:
         "a": "traj-parent",
         "b": "traj-parent",
     }
+
+
+def test_thread_does_not_inherit_parent_binding_but_can_bind_its_own() -> None:
+    # The verifier grades deployed state via concurrent boto3 reads (ThreadPoolExecutor). Unlike an
+    # asyncio task, a new THREAD starts with a fresh context and does NOT inherit the binding,
+    # so each worker thread must re-bind trajectory_id or the join key silently drops.
+    buf = _configured()
+    clear_context()
+    bind_trajectory_id("traj-main")
+
+    def worker() -> None:
+        get_logger("env").info("no-inherit")  # fresh context: no trajectory_id
+        bind_trajectory_id("traj-worker")  # bind inside the thread → present from here
+        get_logger("env").info("own")
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    get_logger("env").info("main")  # the main thread's binding is intact + isolated
+
+    by_event = {line["event"]: line for line in parse_log_lines(buf)}
+    assert "trajectory_id" not in by_event["no-inherit"]
+    assert by_event["own"]["trajectory_id"] == "traj-worker"
+    assert by_event["main"]["trajectory_id"] == "traj-main"

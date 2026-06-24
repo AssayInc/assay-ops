@@ -41,10 +41,10 @@ def test_secret_keys_mirror_the_ts_set() -> None:
 
 
 def test_redact_keys_superset_adds_only_the_header_keys() -> None:
-    # REDACT_KEYS = SECRET_KEYS plus the header keys that are not already secret keys.
+    # REDACT_KEYS = SECRET_KEYS plus the AWS/auth header keys that are not already secret keys.
     assert set(SECRET_KEYS) <= REDACT_KEYS
-    assert {"x-api-key", "set-cookie"} <= REDACT_KEYS
-    assert REDACT_KEYS == set(SECRET_KEYS) | {"x-api-key", "set-cookie"}
+    assert {"x-api-key", "set-cookie", "x-amz-security-token"} <= REDACT_KEYS
+    assert REDACT_KEYS == set(SECRET_KEYS) | {"x-api-key", "set-cookie", "x-amz-security-token"}
 
 
 def test_every_secret_key_redacted_at_top_level() -> None:
@@ -133,3 +133,47 @@ def test_non_dict_non_secret_values_preserved() -> None:
     assert out["exc_info"] is err
     assert out["n"] == 1
     assert out["flag"] is True
+
+
+def test_x_amz_security_token_is_a_denied_header_key() -> None:
+    # The STS session-token header botocore sets (X-Amz-Security-Token) is credential material.
+    assert "x-amz-security-token" in REDACT_KEYS
+
+
+def test_redaction_is_case_insensitive() -> None:
+    # botocore's SigV4Auth emits capitalized header names (Authorization, X-Amz-Security-Token);
+    # HTTP header names are case-insensitive, so the censor matches case-insensitively.
+    out = _redact(
+        {
+            "headers": {
+                "Authorization": "AWS4-HMAC-SHA256 Credential=AKIA...",
+                "X-Amz-Security-Token": "FwoGZXIvYXdz-session-token",
+                "Cookie": "session=abc",
+                "X-Api-Key": "key-123",
+                "Content-Type": "application/json",
+            }
+        }
+    )
+    assert out["headers"] == {
+        "Authorization": REDACTED,
+        "X-Amz-Security-Token": REDACTED,
+        "Cookie": REDACTED,
+        "X-Api-Key": REDACTED,
+        "Content-Type": "application/json",
+    }
+
+
+def test_secret_inside_tuple_redacted() -> None:
+    # A dict-with-secret nested in a tuple (realistic for AWS-shaped / normalized IR payloads):
+    # JSONRenderer serializes the tuple as an array, so it must be traversed.
+    out = _redact({"creds": ({"secretAccessKey": "AKIA..."}, {"token": "t"})})
+    assert out["creds"] == ({"secretAccessKey": REDACTED}, {"token": REDACTED})
+
+
+def test_self_referential_event_dict_does_not_crash() -> None:
+    # A cyclic object graph in a bound value must not crash the censor (RecursionError) inside a
+    # logging call — that would be an availability defect for the verifier.
+    cyclic: dict[str, object] = {"password": "p"}
+    cyclic["self"] = cyclic
+    out = _redact(cyclic)
+    assert out["password"] == REDACTED

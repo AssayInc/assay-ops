@@ -119,3 +119,41 @@ def test_exception_traceback_omits_frame_locals() -> None:
     # No frame carries a `locals` mapping when show_locals=False.
     for frame in line["exception"][0]["frames"]:  # type: ignore[index]
         assert "locals" not in frame or frame["locals"] is None
+
+
+def test_capitalized_aws_headers_never_reach_stdout() -> None:
+    # botocore signs requests with capitalized Authorization + X-Amz-Security-Token (the STS session
+    # token) — the verifier's primary AWS read path. Case-insensitive redaction must catch them.
+    buf = _configured()
+    get_logger("verifier").info(
+        "signed-request",
+        headers={"Authorization": _BEARER, "X-Amz-Security-Token": _AWS_SECRET},
+    )
+    out = buf.getvalue()
+    assert _BEARER not in out
+    assert _AWS_SECRET not in out
+
+
+def test_secret_inside_tuple_never_reaches_stdout() -> None:
+    buf = _configured()
+    get_logger("verifier").info("assume-role-chain", chain=({"secretAccessKey": _AWS_SECRET},))
+    assert _AWS_SECRET not in buf.getvalue()
+
+
+def test_pretty_path_also_omits_frame_locals() -> None:
+    # The dev/pretty ConsoleRenderer must NOT dump frame locals either (rich is installed, whose
+    # traceback formatter defaults to show_locals=True) — the KMS hardening is secure-by-default.
+    buf = io.StringIO()
+    configure_logging(level="info", pretty=True, stream=buf)
+    log = get_logger("ledger")
+
+    def _sign() -> None:
+        kms_private_key = _KMS_PRIVATE  # noqa: F841 — intentionally a frame local
+        raise RuntimeError("kms signing failed")
+
+    try:
+        _sign()
+    except RuntimeError:
+        log.exception("sign path crashed")
+
+    assert _KMS_PRIVATE not in buf.getvalue()
