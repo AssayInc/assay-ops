@@ -17,20 +17,38 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   gates E5) LANDED — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, `b91da87`); **#115 (ledger
   rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80** (boto3 read coverage) + **account
   infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
-  The contracts spine continues, **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors)
-  **landed**; **#29** (the CI regenerate-and-diff parity gate) is the remaining E1 tail.
+  The contracts spine (**E1 #2**) is **complete**, **reframed Python-signer↔TS-consumer**: **#28** (JCS +
+  golden vectors) and **#29** (the CI regenerate-and-diff parity gate) both **landed** — all E1 sub-issues
+  closed (the #2 epic closes on the rollup).
 - **Type checker:** `mypy --strict` is the bridge — now also **`disallow_any_explicit`** + ruff `ANN401` (the Python `Any` ban mirroring the TS `any` ban; `object` is the `unknown` equivalent); **`ty`** (Astral) is the committed target, adopted at
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage — now **grounded + unblocked by #116**: the vendored
   `aws-sdk-python-usage` skill + the `infra-local` boto3 LocalStack smoke prove the Cloud Control
-  read path) + **#29** (the contract-spine CI regenerate-and-diff parity gate, now unblocked — #27/#28
-  landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes both landed GO; **E5/#6** unblocked
-  by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
-  RL/eval owner; Phase 3 hard-gated on the permanent owner).
+  read path). With **E1 (#2) complete** (#29 landed), the remaining gates for E2–E7 are the **#114** +
+  **#115** spikes (both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the
+  #115 GO). **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the
+  permanent owner).
 
 ## Recently Landed
+
+- **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
+  §8 "one-schema codegen" non-negotiable is now CI-enforced: a `Codegen parity gate` step in the ci.yml
+  **`py` job** (the lane with both toolchains — quicktype needs bun, datamodel-codegen + `gen_vectors` need
+  uv) runs `just codegen` + `just vectors` and fails on any drift (a targeted `git add -A` + `git diff
+  --cached` over the three generated paths — catches edits AND added/removed modules; a clear `::error::`
+  points back at the recipes). Placed in the `py` job (an **active required** check on the `main` ruleset) so
+  a stale-artifact PR is **blocked immediately**, with **no branch-protection change** — a dedicated `parity`
+  job would be cleaner but non-blocking until the ruleset adds it (an outward, paid-plan-gated action).
+  **Proven to have teeth:** a one-property schema edit drifts all three artifacts (TS `generated.ts`, the
+  Pydantic model, the JCS `jcs-golden.json`) → gate exits 1; clean tree → exits 0 (no false-fail).
+  **Byte-parity (AC2) was already covered** and runs in `bun run verify` — the py lane's
+  `test_python_and_ts_canonicalize_are_byte_identical` (direct TS-subprocess identity) + the ts lane's
+  `sha256(canonical)==golden` — so it was verified, not rebuilt. **CI-wiring only** (no `contracts/**` or
+  generated-file edits → not a fixture-change PR; the agent that writes code never edits the grader). `just`
+  pinned via `extractions/setup-just`; codegen tools pinned (bun.lock/uv.lock) → deterministic. `bun run
+  verify` green 17/17. (PR #139.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv

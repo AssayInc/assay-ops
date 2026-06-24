@@ -47,12 +47,33 @@ hand-edit the grader (DECISIONS.md §8: the agent that writes code never edits w
 
 **Steps (TDD — for a CI gate the "test" is: prove it catches drift):**
 - [x] Precondition (env-sanity): `just codegen` + `just vectors` on the clean tree → **zero diff** (deterministic). ✅
-- [ ] AC2: run the byte-parity tests, confirm green (verify-don't-rebuild).
-- [ ] AC1: add the regenerate-and-diff gate to `ci.yml` (py job).
-- [ ] Prove the gate has teeth (RED): edit a schema → gate detects drift (exit 1) → revert; GREEN on clean tree.
-- [ ] `bun run verify` green + `bun install --frozen-lockfile` (no lockfile drift).
-- [ ] PR `Closes #29`; update PROGRAM.md + ISSUES.md; `/review` (Claude + Codex gpt-5.5 xhigh) to convergence;
-      AWAIT explicit merge approval (flag the branch-protection required-check question).
+- [x] AC2: byte-parity tests green (py 8/8 incl. the cross-lane subprocess identity; ts 25/25) — verified, not rebuilt.
+- [x] AC1: regenerate-and-diff gate added to `ci.yml` (py job) + pinned `setup-just`.
+- [x] Proved the gate has teeth (RED): a `probeField` schema edit drifted all 3 artifacts; the literal `run`
+      script (extracted from the YAML) exited 1 with `::error::`; clean tree → 0. Reverted; tree clean.
+- [x] `bun run verify` green **17/17**; both lockfiles frozen-clean.
+- [x] PR **#139** `Closes #29`; PROGRAM.md + ISSUES.md updated in-branch.
+- [ ] `/review` (Claude adversarial + Codex gpt-5.5 xhigh) to convergence; AWAIT explicit merge approval
+      (flag the branch-protection required-check question); on "merge" → `gh pr merge --squash --delete-branch`.
+
+### Review (`bun run verify` green 17/17; gate RED/GREEN proven)
+
+- **Done + proven (both ACs).** AC1: the `Codegen parity gate` step in the ci.yml `py` job (`just codegen` +
+  `just vectors` + a targeted `git diff --cached`) fails on stale generated artifacts — proven to have teeth
+  by executing the literal `run` script against a drifted schema (exit 1 + `::error::`) and a clean tree (exit
+  0, no false-fail). AC2: byte-parity (rfc8785 ↔ canonicalize, sha256) already runs in `bun run verify` (py
+  cross-lane subprocess identity + ts sha256), so it was verified, not rebuilt.
+- **Grounding (issue vs floor + brain).** No contradiction: the gate enforces DECISIONS.md §8 ("generated
+  artifacts are committed; the CI byte-parity gate must stay green") + §1 (zero account-B creds). Brain (5A /
+  write-isolated-verifier) gives the *why* (closes TS↔Python drift; JCS pins the cross-runtime signature) but
+  no gate mechanics beyond §8.
+- **Design.** Gate in the `py` job (the only lane with both toolchains) → **blocking now** (py is an active
+  required check), no ruleset change. Dedicated `parity` job = cleaner but non-blocking until the ruleset
+  lists it (paid-plan-gated) → flagged for the founder. Determinism via pinned tools (bun.lock/uv.lock) +
+  `just` pinned; a false-fail = a non-determinism bug to fix.
+- **Trust rules.** CI-wiring only — no `contracts/**` / generated-file / `tools/red-team` edits → **not** a
+  fixture-change PR; the RED probe was reverted (never committed). When the gate fails, the fix is regenerate,
+  never hand-edit the grader.
 
 ---
 
