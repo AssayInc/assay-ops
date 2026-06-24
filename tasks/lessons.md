@@ -15,6 +15,31 @@ Entry format:
 
 ---
 
+## 2026-06-23 — validate-against-all-relevant-vendored-skills-not-just-the-api-skill
+- **Mistake:** Building the LocalStack boto3 smoke (E17-F1 / #116) I grounded the boto3 mechanics against
+  `aws-sdk-python-usage` (the API skill) but **skipped the Python craft skills the repo vendors**
+  (`python-resilience`, `python-error-handling`, `python-testing-patterns`, `python-type-safety`). The founder
+  caught it ("did you validate the implementation against our python skills?"). Validating after the fact
+  surfaced real fixes: my `_with_retry` caught **broad `Exception`** (a resilience/error-handling anti-pattern)
+  and **hand-rolled what boto3 already provides** (`Config(retries=...)`), so I dropped it for the library's
+  bounded retries; `python-testing-patterns` → pytest fixtures; `python-type-safety` confirmed the
+  `Any`-at-untyped-boto3-boundary is idiomatic (best practice #9).
+- **Rule:** The CLAUDE.md skill-preflight rule covers **all the relevant vendored skills for the surface, not
+  just the API/library skill.** Before writing Python in a domain the repo has craft skills for, validate the
+  design against the applicable ones FIRST — retry/transient logic → `python-resilience` (+ the verifier's
+  `deterministic-verification` transient/genuine rule); exceptions → `python-error-handling`; test structure →
+  `python-testing-patterns`; the `Any` boundary → `python-type-safety` — and state which apply vs are N/A
+  (with reasons). A **hand-rolled retry/validation/redaction is the recurring tell** to reach for the library's
+  mechanism instead ([[use-the-librarys-official-mechanism-not-a-hand-roll]]). Pairs with
+  [[ground-in-official-docs-first]].
+- **Context:** E17-F1 (#116) / PR #134; the boto3 LocalStack smoke. The founder also steered the structure:
+  **"re-home built TS for the Python core"** (the issue title) + the logger precedent (keep TS only for a
+  genuine consumer surface) meant the smoke should be **consolidated TS→Python in `infra-local`**, not shipped
+  as a parallel `read-smoke` package with the TS smoke kept. When built TS has **no consumer surface, re-home
+  it (don't duplicate)** — read the issue title's intent and apply the precedent, don't default to the
+  additive smallest-change. (Consolidating then exposed a CI-lane bug Codex xhigh caught: a uv package outside
+  `py/**` was routed to the no-uv TS lane — see PR #134.)
+
 ## 2026-06-23 — no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any
 - **Mistake:** Building the structlog logger (E17-F4 / #132), a `/review` subagent flagged that
   `redact_secrets` used structlog's `WrappedLogger`/`EventDict` (which are `Any`-backed aliases), and I
