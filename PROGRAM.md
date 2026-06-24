@@ -15,8 +15,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   WORM-writes** it, joined by `trajectory_id`; the trainer trains on **that**, never the env's `step()`.
 - **E2–E7 (#3–#8) are re-scoped to Python and gated** on the feasibility spikes: **#114 (OpenEnv/TRL,
   gates E5) LANDED — GO on OpenEnv-native Python → E5/#6 unblocked** (PR #121, `b91da87`); **#115 (ledger
-  rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80** (boto3 read coverage) + **account
-  infra T7 (P1-BLOCKING)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
+  rfc8785/KMS/Object-Lock, gates E4) LANDED — GO** (PR #122); **#80 (boto3 read coverage, gates E2/E3) LANDED —
+  GO (with conditions)** (Terraform read path = Cloud Control `GetResource`/`ListResources` only; unreadable =
+  FAIL-CLOSED; detecting *extra* resources needs a **closed-world** predicate via **T7** SCP create-allow-lists —
+  reads alone can't close vector #15); **account infra T7 (P1-BLOCKING — now also owns the closed-world
+  allow-list)** + LocalStack remain — **no proof-critical code starts on stale TS assumptions**.
   The contracts spine (**E1 #2**) is **complete** (planned deliverables #26–#29 all landed),
   **reframed Python-signer↔TS-consumer**: **#28** (JCS + golden vectors) and **#29** (the CI
   regenerate-and-diff parity gate) landed; one review-surfaced codegen-hardening follow-up (**#140**) is
@@ -25,12 +28,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **#80** (boto3 read coverage — now **grounded + unblocked by #116**: the vendored
-  `aws-sdk-python-usage` skill + the `infra-local` boto3 LocalStack smoke prove the Cloud Control
-  read path). With **E1's spine (#26–#29) complete**, the remaining gates for E2–E7 are the **#114** +
-  **#115** spikes (both landed GO; **E5/#6** unblocked by the #114 GO; **E4/#5** inputs surfaced by the
-  #115 GO). **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the
-  permanent owner).
+- **Next ready work:** **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
+  create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
+  With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
+  cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO).
+  **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
@@ -58,6 +60,31 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   writes code never edits the grader. `just` action SHA-pinned + binary version-pinned (`just-version` 1.53.0,
   in both ci.yml `codegen-parity` and localstack-smoke); codegen tools pinned
   (bun.lock/uv.lock) → deterministic. `bun run verify` green 17/17. (PR #139.)
+- **E3-4 (#80): boto3 deployed-state read-coverage spike — GO with conditions (recorded decision; no floor
+  change).** The E17 (#113) verifier-read spike is resolved. **Terraform read path = boto3 Cloud Control
+  `GetResource`/`ListResources` only** — provisioning-agnostic (reads Terraform-created resources without
+  provider plugins, the T1 constraint); **CFN drift / `DescribeStackResources` are stack-scoped → the CDK
+  adapter's (T3) path** (and drift alone is incomplete: `NOT_CHECKED` / uncomparable props), N/A for Terraform.
+  **Coverage:** the authoritative AWS "Resource types that support Cloud Control API" table (~**1300** public
+  types) — distinguish **readable** (`read` handler) / **enumerable** (`list` handler, differs per type) /
+  **property-covered** (`GetResource` omits write-only props). Common Terraform corpus well covered; gaps =
+  `IAM::Policy` + `Route53::RecordSet`/`RecordSetGroup`; inline `RolePolicy`/`UserPolicy`/`GroupPolicy` are
+  Read-but-not-List. **Unsupported/unreadable = FAIL-CLOSED**; and **extra/over-provisioned resources** (the
+  moat-critical half — `list_resources` is per-`TypeName`/per-Region) require a **closed-world** predicate
+  (deployed set ≡ golden set), enforced primarily by **T7 SCP create-allow-lists** (a closed set of
+  CC-listable types + Regions makes an out-of-scope resource unreachable by construction) + exhaustive,
+  paginated, Region/global-service-aware, fail-closed union-enumeration — reads alone can't close vector #15. **Read-only IAM** = **`cloudformation:GetResource`/`ListResources`**
+  (Cloud Control's IAM prefix is `cloudformation`, verified) with `Resource:"*"`, + the union of in-scope
+  types' `handlers.read`∪`list` permissions (least-privilege via `describe-type`); account-B verifier assumes a
+  read-only role in account A (SCP-protected; no A→B path). **Go/no-go = GO with conditions** (closed-world via
+  T7; per-property gate; corrected IAM) — scope the Phase-1 **Terraform engine-validation** corpus to
+  CC-readable types, **without** letting that screen shape the Phase-2 proof corpus (R2/§6 representativeness —
+  uncovered families get fallback adapters). Surfaces a **new T7 requirement** (SCP create-allow-list aligned
+  to CC-listable types + Regions). Grounded against AWS primary docs (live) + `DECISIONS.md` §1/§5/§8 + brain;
+  **cross-model `/review` (Claude + Codex `gpt-5.5` xhigh) caught the closed-world hole + an IAM-prefix error**
+  (both fixed + re-reviewed). Decision recorded on #80; the resolved-`[spike]` note is **landed in
+  `DECISIONS.md` §1** (founder-ratified), and the follow-up work is **tracked as #141** (E2 verifier-side
+  read-coverage enforcement) + **#53** (the T7 closed-world create-allow-list) — not left in comments. (PR #138.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv
