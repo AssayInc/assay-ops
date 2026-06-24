@@ -31,11 +31,33 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 - **Next ready work:** **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
-  cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO).
+  cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO); and
+  the **E3 diff-ir core (#34) has now landed** — the shared reward core + normalized IR, so the Terraform
+  adapter (#35), golden-target generator (#75), and verifier core (E2/#3) build on it.
   **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E3-1 (#34): `diff-ir` package — the normalized IR + shared reward core (6A); the first E3 deliverable.**
+  New `py/packages/diff-ir`: the tool-agnostic normalized-state IR (`NormalizedResource`/`NormalizedState` —
+  the adapter↔core interface) + the **shared, write-isolated reward core** `grade(deployed, golden) ->
+  GradeOutcome(reward, diff)`. `grade` is the **only** public reward entry, so its consumption is exactly
+  {B-side deployed-state read, regenerated golden target} (AC2): it **fails closed** (`UntrustedInputError`)
+  on any other provenance — the code-level expression of **T1** (`AGENT_PLAN`/`AGENT_STATE` exist only to be
+  rejected), a complement to (not a replacement for) account-B isolation. It builds the codegen'd `DiffIR`
+  (golden=expected, deployed=actual; `reward∈{0,1}` = zero normalized diff) **tool-agnostically** and
+  **deterministically** (resources + property paths canonically ordered → order-independent + K-run identical;
+  a same-address type mismatch → a reserved `$type` propertyDiff). **DRY:** reuses the E1
+  `DiffIR`/`Resource`/`PropertyDiffs`/`Change`/`Reward` contract types; per-tool adapters (#35) + the golden
+  generator (#75) do the tool-specific normalization of one side. `NORMALIZATION.md` documents the adapter↔core
+  split + the determinism contract (AC3); the report serializes with `exclude_none` (the schema-valid sparse
+  form — closes the ISSUES.md `propertyDiffs:null` DiffIR residual). **Reconciliation flagged on the issue:**
+  the schema *description* reads "adapter produces this IR," but the **core** producing it from two normalized
+  states is what AC2 requires and keeps the determinism-critical diff in one place (the brain leaves the
+  diff-owner open). **Wiring:** the first intra-workspace import (diff-ir → contracts via `pythonpath`/`mypy_path`;
+  the `pydantic.mypy` plugin — first hand-written plain-`BaseModel` package under the `Any` ban —
+  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 23 tests, RED→GREEN
+  per behavior. `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
 - **E1-4 (#29): CI regenerate-and-diff parity gate — E1 (the contract spine) complete.** The DECISIONS.md
   §8 "one-schema codegen" non-negotiable is now CI-enforced: a dedicated **`codegen-parity` job** in the ci.yml
   workflow (it spans both generators — quicktype/bun + datamodel-codegen/`gen_vectors`/uv) runs

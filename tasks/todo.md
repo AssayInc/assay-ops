@@ -6,6 +6,53 @@ when done.
 
 ---
 
+## E3-1 (#34) — `diff-ir` package (normalized IR + shared reward core) — DONE, awaiting review (branch `e3-1-diff-ir-package`)
+
+**Goal (3 ACs):** the first `py/packages/diff-ir` — the tool-agnostic normalized IR + the shared reward core [6A].
+1. IR tool-agnostic (Terraform now, CDK later) + **round-trips** through the reward core.
+2. Reward core consumes **only** {deployed-state read, golden target}; feeding agent `plan`/state is **rejected**.
+3. Normalization rules (ordering/defaults/computed fields) **documented** so "no diff" is deterministic.
+
+**Validation (issue vs DECISIONS + brain + skills):** 6A/2A/T1 + `deterministic-verification` +
+`write-isolated-verifier` — per-tool adapters do tool-specific normalization of one side; the shared core owns
+the determinism-critical diff (won in one place) → `reward∈{0,1}`. DRY: **reuse** the codegen'd
+`DiffIR`/`Resource`/`PropertyDiffs`/`Change`/`Reward` from `assayops_contracts`. **Flagged reconciliation:** the
+schema *description* says "adapter produces this IR"; #34 AC2 says the **core** consumes {deployed, golden}. The
+brain leaves the diff-owner open ("design space; ground in DECISIONS"). Chose: the core produces the `DiffIR`
+from two `NormalizedState`s — satisfies AC2 literally, keeps the diff DRY/deterministic in one place, unifies
+with `RewardRecord.reportDigest`. Honors 6A. → noted on the issue.
+
+**Design:** `Provenance` (DEPLOYED_READ/GOLDEN_TARGET gradeable; AGENT_PLAN/AGENT_STATE named only to be
+rejected) · `NormalizedResource`/`NormalizedState` (frozen Pydantic; unique-address validator) ·
+`grade(deployed, golden) -> GradeOutcome(reward, diff)` — the **only** public reward entry, so consumption is
+exactly {deployed, golden}; T1 guard **fails closed** · tool-agnostic deterministic diff (sort by address +
+path; golden=expected/deployed=actual; type-mismatch → reserved `$type` propertyDiff) · `NORMALIZATION.md` (the
+adapter↔core split + the determinism contract). Report serializes with `exclude_none` (schema-valid sparse —
+closes the ISSUES.md `propertyDiffs:null` residual for the DiffIR).
+
+**Wiring:** first intra-workspace import — diff-ir `pyproject` extends `pythonpath`/`mypy_path` to
+`../contracts/src` (all members virtual; in-convention, no E1 repackage); the `pydantic.mypy` plugin (first
+hand-written plain-`BaseModel` package under the `Any` ban) + `follow_imports=silent` for the sibling spine.
+`uv.lock` + `bun.lock` both updated.
+
+**Steps:** [x] all — TDD (23 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
+green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR `Closes #34`; `/review`; issue comment.
+
+### Review (`bun run verify` green 20/20 forced)
+
+- **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
+  dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
+  order-independence + K-run determinism + `NORMALIZATION.md`. 23 tests, each RED-first.
+- **Trust boundary (in scope per `write-isolated-verifier`):** the core's only public entry consumes exactly
+  {deployed, golden} and fails closed (`UntrustedInputError`) on any other provenance — the code-level T1, a
+  complement to (not a replacement for) account-B isolation.
+- **Grounded:** DECISIONS 6A/2A/T1; `deterministic-verification` (normalization checklist, binary reward);
+  `write-isolated-verifier` (in-scope invariants); `pydantic-v2` (the plugin `Any`-gotcha + `exclude_none`);
+  `uv` (workspace wiring); `python-type-safety` (`object` not `Any`); `python-testing-patterns`. Brain recall
+  confirmed the diff-owner is open design space → chose the core, flagged on the issue.
+
+---
+
 ## E1-4 (#29) — CI parity gate (regenerate-and-diff + byte-parity) — IN PROGRESS (branch `feat/29-ci-parity-gate`)
 
 **Goal (AC).** The last E1 task — CI enforcement of the DECISIONS.md §8 "one-schema codegen" non-negotiable.

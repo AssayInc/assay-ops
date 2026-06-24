@@ -1,0 +1,58 @@
+[project]
+name = "assayops-diff-ir"
+version = "0.0.0"
+# DECISIONS.md 6A: the tool-agnostic normalized diff IR + the shared, write-isolated reward core. Adapters
+# (per-tool, separate packages) and the golden-target generator produce two normalized states; this core
+# diffs them (deployed=actual vs golden=expected) into the codegen'd DiffIR and grades reward ∈ {0,1} =
+# zero normalized diff. The determinism-critical diff lives here once (tool quirks stay in the adapters).
+description = "AssayOps normalized diff IR + shared reward core (DECISIONS.md 6A): grade read-back deployed state against the regenerated golden to reward in {0,1}."
+requires-python = ">=3.12"
+# pydantic for the normalized-state IR (the adapter -> core interface). The DiffIR / Reward contract types
+# come from assayops_contracts (the E1 spine), resolved as workspace source via pythonpath/mypy_path below —
+# every workspace member is `virtual` (package=false), so this is the in-convention way to import a sibling.
+dependencies = ["pydantic>=2.10"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) and use loose/`Any`-typed fixtures (ANN). S/ANN stay active in src (the typed,
+# trust-boundary core).
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# The pydantic.mypy plugin teaches mypy the synthesized model __init__ etc. Without it, the synthesized
+# `**data: Any` trips `disallow_any_explicit` on every hand-written model; `init_typed`+`init_forbid_extra`
+# (below) drop that synthesized Any (per the pydantic-v2 skill). First hand-written plain-BaseModel package
+# under the ban, so the first to need the plugin (env-server's models subclass untyped OpenEnv types).
+plugins = ["pydantic.mypy"]
+# src is this package; ../contracts/src makes the sibling contract spine (assayops_contracts) importable —
+# the first intra-workspace import. Mirrors how pytest resolves it (pythonpath below).
+mypy_path = "src:../contracts/src"
+# Ban explicit `Any` in hand-written code — the Python mirror of the TS lane's `any` ban; `--strict` does
+# NOT enable this. Use `object` (narrowed before use, like TS `unknown`) or a Pydantic model.
+disallow_any_explicit = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+# Consume the sibling contract spine as a vetted dependency: it is type-checked under its OWN strict mypy
+# run (the py lane), so follow it for types but don't re-report its internals here. Its codegen models open
+# JSON-Schema objects as `Any` (generated, relaxed there) — relax the same here so following them is clean.
+module = ["assayops_contracts.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../contracts/src"]
+testpaths = ["tests"]
