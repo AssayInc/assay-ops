@@ -11,6 +11,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "uv.lock"
+      - ".python-version"
   push:
     branches: [main]
     paths:
@@ -20,6 +21,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "uv.lock"
+      - ".python-version"
   workflow_dispatch:
 
 permissions:

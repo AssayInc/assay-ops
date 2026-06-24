@@ -203,8 +203,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 - **E0-2 (#19): two-lane CI + branch protection.** `.github/workflows/ci.yml` runs the canonical
   `verify` gate (`turbo run typecheck lint test`) on every PR as two parallel, independently
-  cache-keyed lanes that don't block each other — **`ts`** (bun/turbo, `--filter='!./py/**'`) and
-  **`py`** (uv + turbo, `--filter='./py/**'`); the two filters partition all packages, so the union is
+  cache-keyed lanes that don't block each other — **`ts`** (bun/turbo) and **`py`** (uv + turbo, which
+  also owns `infra-local`); the two filters partition all packages by toolchain, so the union is
   exactly `bun run verify`. `permissions: contents: read`, no secrets/OIDC — **zero account-B creds**
   (DECISIONS.md §1/§8). Branch protection on `main` is **applied** — a repository ruleset requires the
   `ts` + `py` checks + a PR and blocks force-push/deletion. The **codegen-parity gate (#29)** is deferred —
