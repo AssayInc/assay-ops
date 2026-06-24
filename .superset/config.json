@@ -1,0 +1,8 @@
+{
+  "setup": [
+    "bun install && uv sync",
+    "cp -n /Users/samsilva/Projects/Assay/assay-ops/.env .env 2>/dev/null || true"
+  ],
+  "teardown": [],
+  "run": []
+}
