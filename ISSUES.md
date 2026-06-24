@@ -152,8 +152,10 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   #29 cross-model `/review` also **hardened `just codegen`** (quicktype now reads the whole
   `contracts/schemas/` dir via an `LC_ALL=C` glob — byte-identical to the prior explicit list — so a newly
   added schema reaches **both** generators and the gate can see its TS drift; it also fixes an opaque
-  removed-schema crash). Residual codegen hardcoded-list nits (the TS ajv schema-test, the over-broad
-  reward-pin) are tracked in **#140**; the `just` binary is now version-pinned (1.53.0) in both workflows. The
+  removed-schema crash). The residual codegen hardcoded-list nits (the TS ajv schema-test, the over-broad
+  reward-pin) **landed in #140 (PR #144)** — `schemas.test.ts` disk-enumerates the schema dir, the reward-pin
+  is anchored to the `RewardRecord` interface (exactly-one fail-closed), and a re-export parity test covers the
+  hand-maintained `assayops_contracts.__all__`; the `just` binary is version-pinned (1.53.0) in both workflows. The
   **`fixture-change` guard** is **active for `contracts/vectors`** (its CODEOWNERS rule + the
   `fixture-change` label landed with #28); it extends to `tools/red-team` when #56 lands.
   **Canonicalization cross-language follow-ups (E3/#26 + E4), surfaced by the #28 `/review` (Claude +
