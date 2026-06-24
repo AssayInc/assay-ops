@@ -90,8 +90,13 @@ describe("contract schemas (E1-1)", () => {
 
   describe("schema discovery is disk-derived (codegen hardening, #140)", () => {
     test("covers every *.schema.json on disk, not a hardcoded subset", () => {
-      const onDisk = readdirSync(SCHEMA_DIR).filter((f) => f.endsWith(".schema.json"))
-      expect(ALL_SCHEMA_NAMES.length).toBe(onDisk.length)
+      // Compare the full sorted name set (not just the count) so a same-length but divergent list
+      // — e.g. a future regression back to a hardcoded list — fails, not just a count mismatch.
+      const onDisk = readdirSync(SCHEMA_DIR)
+        .filter((f) => f.endsWith(".schema.json"))
+        .map((f) => f.slice(0, -".schema.json".length))
+        .sort()
+      expect(ALL_SCHEMA_NAMES).toEqual(onDisk)
       expect(ALL_SCHEMA_NAMES.length).toBeGreaterThanOrEqual(FIXTURED_NAMES.length)
     })
 

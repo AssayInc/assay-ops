@@ -27,17 +27,21 @@ codegen:
     # quicktype widens the binary `reward` (schema enum [0,1]) to `number` — it cannot emit a numeric
     # literal union (verified). Pin the DECISIONS.md §8 invariant into the public TS type, but ONLY the
     # RewardRecord.reward field: a blanket file-wide rewrite would silently narrow any future unrelated
-    # `reward: number;` field. So scope the rewrite to the RewardRecord interface block, assert exactly one
-    # field is targeted, and assert the pin landed — a quicktype-format change (the field renamed, dropped,
-    # or duplicated) fails the recipe loudly instead of silently mis-pinning. The Python `Reward` enum encodes the same.
+    # `reward: number;` field. Extract the RewardRecord interface block and fail CLOSED on any quicktype-format
+    # drift — block missing / not terminated by a top-level brace, or not exactly one `reward: number;` — before
+    # rewriting, so the binary invariant can never be silently dropped or applied to the wrong field. The Python
+    # `Reward` enum already encodes the same.
     gen=ts/packages/contracts/src/generated.ts
-    reward_fields=$(perl -ne 'print if /^export interface RewardRecord \{/ .. /^\}/' "$gen" | grep -c '\breward: number;' || true)
-    if [ "$reward_fields" -ne 1 ]; then
-      echo "codegen: expected exactly one 'reward: number;' in the RewardRecord interface, found $reward_fields (quicktype output changed?)" >&2
+    block=$(perl -ne 'print if /^export interface RewardRecord \{/ .. /^\}/' "$gen")
+    [ "$(printf '%s\n' "$block" | tail -1)" = "}" ] || { echo 'codegen: RewardRecord interface block missing or not terminated by a top-level brace (quicktype output changed?)' >&2; exit 1; }
+    reward_fields=$(printf '%s\n' "$block" | grep -c '^[[:space:]]*reward: number;' || true)
+    if [ "${reward_fields:-0}" -ne 1 ]; then
+      echo "codegen: expected exactly one 'reward: number;' in the RewardRecord interface, found ${reward_fields:-0} (quicktype output changed?)" >&2
       exit 1
     fi
     perl -i -pe 's/\breward: number;/reward: 0 | 1;/ if /^export interface RewardRecord \{/ .. /^\}/' "$gen"
-    grep -q 'reward: 0 | 1;' "$gen" || { echo 'codegen: reward 0|1 pin did not apply (quicktype output changed?)' >&2; exit 1; }
+    # Backstop: the pin landed INSIDE the RewardRecord block (not a stray `reward: 0 | 1;` elsewhere in the file).
+    perl -ne 'print if /^export interface RewardRecord \{/ .. /^\}/' "$gen" | grep -q '^[[:space:]]*reward: 0 | 1;' || { echo 'codegen: reward 0|1 pin did not apply to RewardRecord (quicktype output changed?)' >&2; exit 1; }
     # Python: --use-annotated emits Annotated[str, Field(...)] (mypy --strict-valid; the default
     # constr()/conint() are not valid type expressions); --disable-timestamp drops the header stamp so
     # output is reproducible. Directory input -> a modular `models/` package. The long schema-description
