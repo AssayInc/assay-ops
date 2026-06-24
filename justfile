@@ -25,11 +25,19 @@ codegen:
         --out ts/packages/contracts/src/generated.ts \
         contracts/schemas/*.schema.json )
     # quicktype widens the binary `reward` (schema enum [0,1]) to `number` — it cannot emit a numeric
-    # literal union (verified). Pin the DECISIONS.md §8 invariant into the public TS type with one
-    # targeted, anchored rewrite (a single unique field, not a blanket pass), and assert it landed so a
-    # quicktype-format change can't silently drop it. The Python `Reward` enum already encodes the same.
-    perl -i -pe 's/\breward: number;/reward: 0 | 1;/' ts/packages/contracts/src/generated.ts
-    grep -q 'reward: 0 | 1;' ts/packages/contracts/src/generated.ts || { echo 'codegen: reward 0|1 rewrite did not apply (quicktype output changed?)' >&2; exit 1; }
+    # literal union (verified). Pin the DECISIONS.md §8 invariant into the public TS type, but ONLY the
+    # RewardRecord.reward field: a blanket file-wide rewrite would silently narrow any future unrelated
+    # `reward: number;` field. So scope the rewrite to the RewardRecord interface block, assert exactly one
+    # field is targeted, and assert the pin landed — a quicktype-format change (the field renamed, dropped,
+    # or duplicated) fails the recipe loudly instead of silently mis-pinning. The Python `Reward` enum encodes the same.
+    gen=ts/packages/contracts/src/generated.ts
+    reward_fields=$(perl -ne 'print if /^export interface RewardRecord \{/ .. /^\}/' "$gen" | grep -c '\breward: number;' || true)
+    if [ "$reward_fields" -ne 1 ]; then
+      echo "codegen: expected exactly one 'reward: number;' in the RewardRecord interface, found $reward_fields (quicktype output changed?)" >&2
+      exit 1
+    fi
+    perl -i -pe 's/\breward: number;/reward: 0 | 1;/ if /^export interface RewardRecord \{/ .. /^\}/' "$gen"
+    grep -q 'reward: 0 | 1;' "$gen" || { echo 'codegen: reward 0|1 pin did not apply (quicktype output changed?)' >&2; exit 1; }
     # Python: --use-annotated emits Annotated[str, Field(...)] (mypy --strict-valid; the default
     # constr()/conint() are not valid type expressions); --disable-timestamp drops the header stamp so
     # output is reproducible. Directory input -> a modular `models/` package. The long schema-description
