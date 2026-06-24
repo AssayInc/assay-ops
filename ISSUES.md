@@ -75,9 +75,10 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   botocore's capitalized `Authorization`/`X-Amz-Security-Token`); the TS consumer-surface lane stays
   case-sensitive — a low-priority future TS fixture-change only if it ever logs AWS-signed requests.
   **#116 landed (PR #134):** the prefer-official boto3 skill (`aws-sdk-python-usage`, first-party AWS) + the
-  `py/packages/read-smoke` LocalStack boto3 read smoke (Cloud Control `get_resource`/`list_resources` + the
-  `ResourceNotFoundException` negative path; LocalStack does **not** serve `DetectStackDrift`, so drift-read
-  coverage is #80/E2 on real AWS) + the CLAUDE.md language flip — **grounds + unblocks #80**; (2) **brain/wiki
+  **`infra-local` smoke re-homed TS→boto3/Python** (the TS `smoke.test.ts` + `@aws-sdk` deps retired — the
+  verifier reads via boto3 now; Cloud Control `get_resource`/`list_resources` + the `ResourceNotFoundException`
+  negative path, botocore's own bounded retries; LocalStack does **not** serve `DetectStackDrift`, so
+  drift-read coverage is #80/E2 on real AWS) + the CLAUDE.md language flip — **grounds + unblocks #80**; (2) **brain/wiki
   sync** — the raw plans (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) +
   wiki pages still describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** + finish the
   `CLAUDE.md`/skill-layer language flip — **done in #116/PR #134** (`aws-sdk-python-usage` vendored; Toolchain

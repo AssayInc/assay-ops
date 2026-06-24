@@ -1,13 +1,11 @@
 name: localstack-smoke
 
-# The LocalStack dev-loop smokes in CI: the TS infra-local smoke (`just smoke`) and the Python boto3
-# read-path smoke (`just smoke-py`). Both read deployed state via Cloud Control against LocalStack — the
-# verifier's read path (DECISIONS.md §1). Needs the LOCALSTACK_AUTH_TOKEN repo secret.
+# The LocalStack dev-loop smoke in CI: the boto3 read-path smoke (`just smoke`) proving the verifier's
+# Cloud Control read path against LocalStack (DECISIONS.md §1). Needs the LOCALSTACK_AUTH_TOKEN repo secret.
 on:
   pull_request:
     paths:
       - "infra-local/**"
-      - "py/packages/read-smoke/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"
@@ -17,7 +15,6 @@ on:
     branches: [main]
     paths:
       - "infra-local/**"
-      - "py/packages/read-smoke/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"
@@ -50,6 +47,5 @@ jobs:
         env:
           LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
       - run: just smoke
-      - run: just smoke-py
       - if: always()
         run: just down

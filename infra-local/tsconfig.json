@@ -1,4 +1,0 @@
-{
-  "extends": "@assayops/typescript-config/bun.json",
-  "include": ["*.ts"]
-}

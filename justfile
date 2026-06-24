@@ -84,10 +84,6 @@ down:
 logs:
     {{compose}} logs -f
 
-# Run the Cloud Control smoke test (TypeScript) against a running LocalStack
+# Run the boto3 Cloud Control read-path smoke (Python — the verifier's read SDK) against a running LocalStack
 smoke:
     cd infra-local && bun run smoke
-
-# Run the boto3 Cloud Control read-path smoke (Python — the real verifier read SDK) against LocalStack
-smoke-py:
-    cd py/packages/read-smoke && bun run smoke

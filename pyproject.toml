@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["py/packages/*"]
+members = ["py/packages/*", "infra-local"]
 
 [dependency-groups]
 dev = [

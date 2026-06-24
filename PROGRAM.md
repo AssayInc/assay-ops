@@ -24,7 +24,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
 - **Next ready work:** **#80** (boto3 read coverage — now **grounded + unblocked by #116**: the vendored
-  `aws-sdk-python-usage` skill + the `py/packages/read-smoke` LocalStack smoke prove the Cloud Control
+  `aws-sdk-python-usage` skill + the `infra-local` boto3 LocalStack smoke prove the Cloud Control
   read path) + **#29** (the contract-spine CI regenerate-and-diff parity gate, now unblocked — #27/#28
   landed) — the remaining gates for E2–E7 (**#114** + **#115** spikes both landed GO; **E5/#6** unblocked
   by the #114 GO; **E4/#5** inputs surfaced by the #115 GO). **T0 team gate (#25) closed** (founder interim
@@ -40,19 +40,23 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   directly (`verify-skill-absence-beyond-the-registry`). It grounds the read-path SDK mechanics — clients,
   typed `ResourceNotFoundException` (the negative-assertion path), paginators (`list_resources`), waiters
   (async drift polling), adaptive retries. Vendored byte-identical to upstream (markdown-only → no script
-  surface); no `-a '*'` overshoot; lock `skillPath` matches the sibling pattern. **(2) New
-  `py/packages/read-smoke`** (`assayops-read-smoke`): a boto3 LocalStack smoke proving the EXACT verifier
-  read path — Cloud Control `get_resource` + `list_resources` + the `ResourceNotFoundException` negative
-  assertion — against real LocalStack, **negative-controlled** (never a false pass). The Python counterpart
-  to infra-local's TS smoke; the read-path seed that **grounds + unblocks #80**. Wired via `just smoke-py`
-  into `localstack-smoke.yml`; kept OUT of the hermetic `bun run verify` gate (a `smoke` script, not `test`
-  — the infra-local pattern), so the gate stays Docker-free while ruff + mypy --strict still cover it.
-  **Empirical finding (`local-aws-emulator-must-prove-read-api`): LocalStack does not serve `DetectStackDrift`
-  ("not currently supported by LocalStack") — drift-read coverage is #80/E2 against real AWS.** boto3 reuses
-  the pinned workspace dev dep (no new dep); the TS smoke is kept as a dev convenience (mirrors the logger
-  keep-both). **(3) Finished the CLAUDE.md language flip:** Toolchain reordered Python-first (the
-  proof-critical core); the AWS preflight row names `aws-sdk-python-usage`. `bun run verify` green **19/19**;
-  both lockfiles frozen-checked. (PR #134.)
+  surface); no `-a '*'` overshoot; lock `skillPath` matches the sibling pattern. **(2) Re-homed
+  `infra-local`'s smoke from TS to boto3/Python** (E17 Python-first): `infra-local` is now a boto3
+  LocalStack smoke (an env-server-style py package + bun wrapper) proving the EXACT verifier read path —
+  Cloud Control `get_resource` + `list_resources` + the `ResourceNotFoundException` negative assertion —
+  against real LocalStack, **negative-controlled** (never a false pass). Retired the TS `smoke.test.ts` + its
+  `@aws-sdk` deps (the verifier reads via boto3 now, so the TS smoke tested an SDK the verifier no longer
+  uses); one LocalStack home, run via `just smoke`. The read-path seed that **grounds + unblocks #80**. Kept
+  OUT of the hermetic `bun run verify` gate (a `smoke` script, not `test`), so the gate stays Docker-free
+  while ruff + mypy --strict still cover it. **Validated against the Python craft skills**:
+  `python-resilience`/`error-handling` → dropped the hand-rolled retry for botocore's own bounded retries
+  (the `use-the-librarys-official-mechanism-not-a-hand-roll` lesson); `python-type-safety` → `Any` at the
+  untyped-boto3 boundary is idiomatic; `python-testing-patterns` → pytest fixtures. **Empirical finding
+  (`local-aws-emulator-must-prove-read-api`): LocalStack does not serve `DetectStackDrift` ("not currently
+  supported by LocalStack") — drift-read coverage is #80/E2 against real AWS.** boto3 reuses the pinned
+  workspace dev dep (no new dep). **(3) Finished the CLAUDE.md language flip:** Toolchain reordered
+  Python-first (the proof-critical core); the AWS preflight row names `aws-sdk-python-usage`. `bun run verify`
+  green **17/17**; both lockfiles frozen-checked. (PR #134.)
 
 - **E17-F4 (#132): Python structlog logger for the proof-critical core.** New `py/packages/logger`
   (`assayops_logger`) — the structlog mirror of the TS `@assayops/logger` (pino) — for the env-server (E5),

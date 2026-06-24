@@ -125,6 +125,25 @@ load-bearing claims (`turbo run test` filters, pytest collection, mypy/ruff, fro
   change from the review.** Codex ran at **xhigh** (banner-confirmed; the
   [[codex-reviews-run-at-xhigh-not-the-skill-default-high]] override).
 
+### Consolidation + skills validation (founder feedback)
+
+Founder picked **consolidate into infra-local** and asked (a) why Python not TS, (b) did I validate against
+the Python craft skills. Both addressed:
+- **Why Python:** the verifier read path is boto3/Python (E17) — a TS smoke tests an SDK the verifier no
+  longer uses. Re-homed `infra-local`'s smoke TS→boto3/Python (env-server pattern: a py package + bun
+  wrapper), retired `smoke.test.ts` + `@aws-sdk` deps, dropped the separate `read-smoke` package. One
+  LocalStack home, run via `just smoke`. LocalStack (the container/compose) is unchanged — only the smoke's SDK.
+- **Skills validation (the gap I'd skipped):** `python-type-safety` → the `Any`-at-untyped-boto3-boundary is
+  idiomatic (best practice #9), so the reviewers' INFO caveat is skill-sanctioned. `python-resilience` +
+  `python-error-handling` → my `_with_retry` caught **broad `Exception`** (anti-pattern) and hand-rolled what
+  boto3 provides → **dropped it for botocore's own bounded retries** ([[use-the-librarys-official-mechanism-not-a-hand-roll]]).
+  Verified empirically: boto3 retries cover LocalStack cold-start (clean across cold `just up` cycles; a 4xx
+  `ResourceNotFound` is not retried, so the negative test fails fast). `python-testing-patterns` → **pytest
+  fixtures** for the client + seeded bucket. N/A (reasons): pydantic-v2 (no models), async-python-patterns
+  (boto3 is sync), design-patterns/perf/observability (procedural I/O smoke).
+- `bun run verify` green **17/17**; smoke green 3/3 vs real LocalStack, negative-controlled. Re-reviewed the
+  changed code with Codex `gpt-5.5` xhigh — see below.
+
 ---
 
 ## E17-F4 (#132) — Python structlog logger for the proof-critical core — IN PROGRESS (branch `feat/132-py-structlog-logger`)
