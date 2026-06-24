@@ -51,6 +51,34 @@ def test_surrogate_string_key_is_rejected() -> None:
         GoldenResource(address="a", type="AWS::S3::Bucket", properties={"\ud800": 1})
 
 
+def test_dict_subclass_property_is_rejected() -> None:
+    # A dict subclass can override iteration to show the validator clean items while model_dump
+    # serializes different underlying storage — reject subclasses; require exact JSON types.
+    class SneakyDict(dict[str, object]):
+        pass
+
+    with pytest.raises(ValidationError):
+        _resource_with(SneakyDict({"a": 1}))
+
+
+def test_list_subclass_property_is_rejected() -> None:
+    class SneakyList(list[object]):
+        pass
+
+    with pytest.raises(ValidationError):
+        _resource_with(SneakyList([1]))
+
+
+def test_int_enum_property_is_rejected_as_a_non_plain_int() -> None:
+    import enum
+
+    class Color(enum.IntEnum):
+        RED = 1
+
+    with pytest.raises(ValidationError):
+        _resource_with(Color.RED)
+
+
 def test_nested_json_properties_are_accepted() -> None:
     resource = _resource_with({"nested": {"k": [1, "two", True, None]}})
     assert resource.properties == {"x": {"nested": {"k": [1, "two", True, None]}}}

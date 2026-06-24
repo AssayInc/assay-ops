@@ -31,43 +31,43 @@ def _require_utf8(text: str) -> None:
 def _assert_deterministic_json(value: object) -> None:
     """Reject a property value that would canonicalize non-deterministically or lose information.
 
-    The golden is content-addressed (JCS → SHA-256), so every leaf must be a JSON type with a single
-    canonical form. Rejected: ``set``/``frozenset`` (``PYTHONHASHSEED``-ordered); a non-finite float
-    (NaN/inf — ``model_dump`` silently nulls it); an int outside the JCS-safe range; a non-UTF-8
-    (surrogate) string key/value (digest collision / raw leak). ``bool`` is admitted before the int
-    bound; JSON-type subclasses (e.g. ``IntEnum``) coerce to their base value; other non-JSON types
-    (bytes, tuple, ``datetime``, ``Decimal``, …) are rejected below.
+    Only **exact** JSON types are accepted (``None``/``bool``/``str``/``int``/``float``/``dict``/
+    ``list``). A *subclass* is rejected: its iteration / encoding / comparison can diverge from what
+    ``model_dump`` + rfc8785 actually serialize, so the validator could see one structure while a
+    different one is hashed (e.g. a ``dict`` subclass whose ``items()`` hides a ``set``). The
+    validator must inspect exactly what gets hashed. Also rejected: a non-finite float (NaN/inf —
+    ``model_dump`` silently nulls it); an int outside the JCS-safe range (not rfc8785-safe);
+    a non-UTF-8 (surrogate) string key/value (digest collision / raw leak); and any non-JSON type
+    (``set``, bytes, tuple, ``BaseModel``, ``datetime``, ``Decimal``, …).
     """
-    if value is None or isinstance(value, bool):
+    if value is None or type(value) is bool:
         return
-    if isinstance(value, str):
+    if type(value) is str:
         _require_utf8(value)
         return
-    if isinstance(value, int):
+    if type(value) is int:
         if not -_MAX_JCS_SAFE_INT <= value <= _MAX_JCS_SAFE_INT:
             raise ValueError(f"int outside the JCS-safe range (±(2^53−1)): {value}")
         return
-    if isinstance(value, float):
+    if type(value) is float:
         # No magnitude bound (unlike int): rfc8785 serializes any finite float deterministically, so
         # there's no generate-succeeds-but-digest-fails gap — IEEE precision is the builder's type
         # choice (use int for an exact large integer, which is bounded above).
         if not math.isfinite(value):
             raise ValueError(f"non-finite float in golden properties: {value!r}")
         return
-    if isinstance(value, dict):
+    if type(value) is dict:
         for key, item in value.items():
-            if not isinstance(key, str):
-                raise ValueError(f"non-string property key: {key!r}")
+            if type(key) is not str:
+                raise ValueError(f"non-plain-str property key: {key!r}")
             _require_utf8(key)
             _assert_deterministic_json(item)
         return
-    if isinstance(value, list):
+    if type(value) is list:
         for item in value:
             _assert_deterministic_json(item)
         return
-    raise ValueError(
-        f"non-JSON / non-deterministic value in golden properties: {type(value).__name__}"
-    )
+    raise ValueError(f"non-plain-JSON value in golden properties: {type(value).__name__}")
 
 
 class GoldenResource(BaseModel):
