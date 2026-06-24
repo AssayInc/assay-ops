@@ -1,0 +1,58 @@
+[project]
+name = "assayops-verifier"
+version = "0.0.0"
+description = "AssayOps account-B verifier core. E2-5 (#75): the golden-target generator — deterministic, content-addressed regeneration of the expected normalized resource set the verifier grades deployed state against (DECISIONS.md 2A/T1/§1). The engine, not the per-task golden corpus (#76)."
+requires-python = ">=3.12"
+# pydantic for the verifier-internal golden models. The contract spine (TaskSpec input + the single-sourced
+# JCS canonicalization for the content address) is consumed from `assayops_contracts` by source path — see
+# the pytest `pythonpath` + mypy `mypy_path` below (the repo's virtual-member convention; contracts and its
+# rfc8785 dep are already in the shared workspace venv). No agent-reachable / signing / cloud-write deps:
+# this is account-B-pure verifier code (DECISIONS.md §8).
+dependencies = ["pydantic>=2.10"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) and use loose/`Any`-typed synthetic builders/fixtures (ANN) — not the typed,
+# security-critical core. S/ANN stay active in src.
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# pydantic.mypy synthesizes typed model __init__s. With init_typed + init_forbid_extra (below) it drops
+# the plugin's synthesized `Any`, so hand-written Pydantic models pass `disallow_any_explicit` — the
+# pydantic-v2 skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha.
+plugins = ["pydantic.mypy"]
+# Resolve this package AND the contracts spine it consumes (TaskSpec + jcs). `uv run mypy` runs from the
+# package dir, so `../contracts/src` is the sibling contracts source. Cross-package import is consumed by
+# source path here (the repo's virtual-member convention), keeping the landed contracts package untouched.
+mypy_path = "src:../contracts/src"
+
+[tool.pydantic-mypy]
+init_typed = true
+init_forbid_extra = true
+
+[[tool.mypy.overrides]]
+# Ban explicit `Any` in the hand-written verifier core — the Python mirror of the TS lane's `any` ban.
+# `--strict` does NOT enable this. Use `object` (narrow before use, like TS `unknown`) or a Pydantic model.
+module = ["assayops_verifier.*"]
+disallow_any_explicit = true
+
+[[tool.mypy.overrides]]
+# contracts is a separately-typechecked package (its own CI lane). Follow it for the real `TaskSpec` /
+# `canonical_digest` types, but `silent` so its codegen models' intentional `Any` is not re-judged under
+# this package's stricter config (and `disallow_any_explicit` off here mirrors contracts' own models override).
+module = ["assayops_contracts.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../contracts/src"]
+testpaths = ["tests"]
