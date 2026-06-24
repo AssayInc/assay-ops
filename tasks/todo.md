@@ -67,7 +67,41 @@ config, and the trust-boundary hardening (never botocore DEBUG; `show_locals=Fal
 - [x] RED→GREEN stdlib bridge (foreign record → JSON + redacted + trajectory_id) + botocore/boto3/urllib3/s3transfer INFO clamp + `show_locals=False`. Both hardening tests **negative-controlled** (flip → tests fail).
 - [x] TS parity test (SECRET_KEYS extracted from `ts/.../index.ts`, == Python, non-vacuous 13 keys) + no bare `print` in src; TS file gets a scope comment (KEEP, consumer/web surface).
 - [x] `bun run verify` green **17/17** (logger: ruff+format+mypy clean, 53 tests); both lockfiles frozen-checked; PROGRAM.md + ISSUES.md + #116 de-scoped.
-- [ ] PR `Closes #132`; `/review` (Claude + Codex `gpt-5.5` xhigh; re-review fixed code on any finding); await explicit merge approval.
+- [x] PR **#133** `Closes #132`; `/review` (Claude adversarial + Codex `gpt-5.5` xhigh); fixes applied + re-reviewed; **awaiting explicit merge approval**.
+
+### Review (`bun run verify` green 17/17 — 62 logger py tests)
+
+- **Done + proven.** `py/packages/logger` (`assayops_logger`) mirrors the TS `@assayops/logger`, grounded
+  in the official structlog 26.1.0 docs read this pass. All 10 ACs met. The three load-bearing security
+  behaviors (secrets-never-reach-stdout, `show_locals=False`, botocore clamp) were **negative-controlled**
+  (break → tests fail), not green-by-absence.
+- **Perf decision (deliberate):** path (a) unified `ProcessorFormatter` stdlib bridge (folds boto3/uvicorn
+  into one pipeline + one redaction point; `make_filtering_bound_logger` still gives native fast filtering).
+  Path (b) `BytesLoggerFactory`/orjson is the deferred hot-path optimization (verifier is I/O-bound) → no
+  orjson dep (YAGNI).
+- **Grounding caught a load-bearing fact:** `ExceptionDictTransformer.show_locals` defaults to **True**
+  (verified against the installed lib), so the explicit `=False` is the control — confirmed by a negative
+  control that leaked the KMS local when flipped.
+- **`#116` logger task complete:** KEEP `@assayops/logger`, scoped to the TS consumer/web surface (a top
+  comment + the shared `SECRET_KEYS` parity test enact it); #116 retains the LocalStack boto3 smoke + skill.
+
+### `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) — both rounds; fixes applied + re-reviewed
+
+- **Round 1 — both models confirmed at runtime, all fixed:** (1) the case-sensitive censor missed botocore's
+  capitalized `Authorization` / `X-Amz-Security-Token` (STS session token) on the verifier's AWS read path —
+  now case-insensitive (casefold) + `x-amz-security-token` added; (2) the dev/pretty `ConsoleRenderer` dumped
+  frame locals (KMS material — Rich is an installed transitive dep, its formatter defaults to `show_locals=True`)
+  — now pins `plain_traceback`; (3) secret dicts nested in a **tuple** escaped redaction + a cyclic value
+  raised `RecursionError` — now traverses list+tuple with a visited-id guard; (4) the one-shot botocore clamp
+  was bypassable by a later `setLevel(DEBUG)` — added a handler floor-filter; (5) `bind_trajectory_id` docstring
+  overstated thread inheritance — corrected + thread test. Each TDD'd (RED first) + negative-controlled.
+- **Round 2 (Codex xhigh re-review of the FIXED code):** confirmed all five fixes **correct + complete** (cycle
+  guard, casefold, `plain_traceback` incl. Rich-absent, the floor-filter, type-safety). It flagged deeper
+  non-dict shapes (`(key,value)` tuple/pair sequences, `NamedTuple` fields, sets). **Severity downgraded to a
+  documented limitation** (the `flag-not-Block` precedent, my call against the architecture): redaction is
+  **defense-in-depth, not the control** (DECISIONS.md §8); these aren't this system's log payloads (boto3
+  returns dicts); and a simple auditable key-matcher beats a heuristic deep-redactor ([[use-the-librarys-official-mechanism-not-a-hand-roll]]).
+  Documented precisely in the module docstring — flag, don't paper over.
 
 ---
 
