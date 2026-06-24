@@ -32,6 +32,20 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
+  → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv
+  siblings: the `./py/**` CI glob routes it to the **py** lane automatically, so the ci.yml `infra-local`
+  special-case filters, the explicit `uv`/bun workspace member, and the nested-md "py lane despite root" note
+  all **drop** (the move removes more special-casing than it adds). `py/packages/infra-local/README.md`
+  documents the *why* — the smoke validates **LocalStack's fidelity for the verifier's Cloud Control read
+  path** (NOT boto3; the moto/Floci "S3 works ≠ GetResource" precedent + `DECISIONS.md` R3), a **regression
+  canary** on the pinned image (already caught `DetectStackDrift` unsupported). Added a **concise, path-scoped
+  nested `py/packages/infra-local/CLAUDE.md` + `AGENTS.md` symlink** (loads only when an agent works there —
+  grounded in the official Claude Code + Codex nested-loading docs; the first nested constitution in the repo)
+  carrying the one non-inferable landmine: never add a `test` script (unlike its siblings — it would run the
+  LocalStack smoke in the hermetic `bun run verify` gate and break CI). Cross-model `/review` converged to
+  merge. `bun run verify` green. (PR #136.)
+
 - **E17-F1 (#116): boto3/Cloud-Control skill + LocalStack boto3 read smoke + the CLAUDE.md language flip.**
   Closes #116's three remaining parts (its logger task already landed as #132/#133). **(1) Vendored the
   prefer-official boto3 skill** `aws-sdk-python-usage` — first-party AWS (`aws/agent-toolkit-for-aws`, the
@@ -203,9 +217,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 - **E0-2 (#19): two-lane CI + branch protection.** `.github/workflows/ci.yml` runs the canonical
   `verify` gate (`turbo run typecheck lint test`) on every PR as two parallel, independently
-  cache-keyed lanes that don't block each other — **`ts`** (bun/turbo) and **`py`** (uv + turbo, which
-  also owns `infra-local`); the two filters partition all packages by toolchain, so the union is
-  exactly `bun run verify`. `permissions: contents: read`, no secrets/OIDC — **zero account-B creds**
+  cache-keyed lanes that don't block each other — **`ts`** (bun/turbo) and **`py`** (uv + turbo); the two
+  filters partition all packages by toolchain, so the union is exactly `bun run verify`. `permissions: contents: read`, no secrets/OIDC — **zero account-B creds**
   (DECISIONS.md §1/§8). Branch protection on `main` is **applied** — a repository ruleset requires the
   `ts` + `py` checks + a PR and blocks force-push/deletion. The **codegen-parity gate (#29)** is deferred —
   it's blocked-by #27/#28 and there's no `contracts/` schema yet (a parity check against nothing would be

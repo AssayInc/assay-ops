@@ -49,4 +49,4 @@ just smoke   # seed an S3 bucket, read it back via Cloud Control GetResource
 just down    # stop LocalStack and remove its volumes
 ```
 
-Details: [`infra-local/README.md`](./infra-local/README.md). Why licensed LocalStack: [`DECISIONS.md`](./DECISIONS.md).
+Details: [`py/packages/infra-local/README.md`](./py/packages/infra-local/README.md). Why licensed LocalStack: [`DECISIONS.md`](./DECISIONS.md).

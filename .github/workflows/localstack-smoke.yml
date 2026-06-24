@@ -5,7 +5,7 @@ name: localstack-smoke
 on:
   pull_request:
     paths:
-      - "infra-local/**"
+      - "py/packages/infra-local/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"
@@ -15,7 +15,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "infra-local/**"
+      - "py/packages/infra-local/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"
