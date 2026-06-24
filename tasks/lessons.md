@@ -15,6 +15,34 @@ Entry format:
 
 ---
 
+## 2026-06-23 — no-any-ban-targets-our-data-not-a-typed-librarys-intentional-any
+- **Mistake:** Building the structlog logger (E17-F4 / #132), a `/review` subagent flagged that
+  `redact_secrets` used structlog's `WrappedLogger`/`EventDict` (which are `Any`-backed aliases), and I
+  "fixed" it by retyping to generic `object`/`MutableMapping[str, object]` to "close a hole in
+  `disallow_any_explicit`." Both premises were wrong: (1) there was **no hole** — `disallow_any_explicit`
+  flags only **literal in-module `Any`**, never an imported alias that happens to contain `Any`, so using a
+  library's typed aliases passes the ban *by design* (mypy was green on both versions — I never confirmed
+  the mechanism); (2) replacing a **`py.typed`** framework's **documented processor types** with generic
+  ones at the adapter boundary is *less* idiomatic, made the package inconsistent (`config.py` still needs
+  structlog's `Processor`/`FilteringBoundLogger`), and bought zero real safety (the internal recursion
+  already narrows `object` via `isinstance`). It was also a needless **3rd post-approval commit** on
+  already-Ship'd code. The founder pushed back and a Codex `gpt-5.5` xhigh second opinion both said revert.
+- **Rule:** The no-`Any` policy (`disallow_any_explicit`; `object`-not-`Any`) governs **our own data** —
+  open/untrusted payloads (env observations, deployed cloud state) get `dict[str, object]` + a runtime
+  narrow. It does **NOT** mean fighting a third-party **`py.typed`** library's intentional `Any`: at a
+  **framework-adapter boundary** (a structlog processor, a callback signature) **use the library's own
+  documented types** — their `Any` is deliberate API design (a processor's logger + event-dict are open by
+  nature), and `disallow_any_explicit` doesn't flag them. Reserve `object`+`isinstance` for the **internal**
+  implementation. Operationally: don't reopen already-approved code with another commit for a non-blocking
+  P2, and **never act on a "this is a hole/bug" finding** (mine, a review subagent's, or Codex's) **without
+  confirming the mechanism first** — 60 seconds checking what `disallow_any_explicit` actually flags would
+  have prevented the whole detour.
+- **Context:** E17-F4 (#132) / PR #133; `py/packages/logger` `redaction.py`/`config.py`; commit `ef22c91`
+  (the mistake) reverted in `4c40e54`. Also surfaced `structlog.types` is deprecated since 22.2.0 (its own
+  module docstring) → import from `structlog.typing`. Sharpens
+  [[verify-against-official-docs-and-skills-before-acting]] +
+  [[use-the-librarys-official-mechanism-not-a-hand-roll]].
+
 ## 2026-06-23 — create-and-link-the-tracking-issue-before-opening-a-PR
 - **Mistake:** For founder-initiated review/improvement work (the Python type-safety parity) I branched and
   opened PR #124 directly with **no tracking issue** — so it had no `Closes #N` and wasn't on the board. The
