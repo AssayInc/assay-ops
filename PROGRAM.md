@@ -56,9 +56,9 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   states is what AC2 requires and keeps the determinism-critical diff in one place (the brain leaves the
   diff-owner open). **Wiring:** the first intra-workspace import (diff-ir → contracts via `pythonpath`/`mypy_path`;
   the `pydantic.mypy` plugin — first hand-written plain-`BaseModel` package under the `Any` ban —
-  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 40 tests (a
-  cross-model `/review` hardened the diff against value-type-collapse false-reward-1 paths). `bun run verify`
-  green **20/20** (forced, 0-cached). (PR #145.)
+  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 43 tests; a
+  cross-model `/review` (Claude + Codex `gpt-5.5` xhigh, 6 passes to convergence) hardened the diff against
+  value-type-collapse / laundering false-reward-1 paths. `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
 - **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
   #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now
   **disk-enumerates** `contracts/schemas/*.schema.json` for the Draft-2020-12 + ajv-compile coverage (a new
