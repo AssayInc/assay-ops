@@ -57,8 +57,9 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   uncovered families get fallback adapters). Surfaces a **new T7 requirement** (SCP create-allow-list aligned
   to CC-listable types + Regions). Grounded against AWS primary docs (live) + `DECISIONS.md` §1/§5/§8 + brain;
   **cross-model `/review` (Claude + Codex `gpt-5.5` xhigh) caught the closed-world hole + an IAM-prefix error**
-  (both fixed + re-reviewed). Decision recorded on #80; a **proposed `[spike]`→resolved `DECISIONS.md` note is
-  flagged for ratification** (not silently edited). (PR #138.)
+  (both fixed + re-reviewed). Decision recorded on #80; the resolved-`[spike]` note is **landed in
+  `DECISIONS.md` §1** (founder-ratified), and the follow-up work is **tracked as #141** (E2 verifier-side
+  read-coverage enforcement) + **#53** (the T7 closed-world create-allow-list) — not left in comments. (PR #138.)
 
 - **infra-local: relocate under `py/packages/` + docs + nested agent-config (#135).** **Moved `infra-local`
   → `py/packages/infra-local`** so the one Python package that lived at the repo root now sits with its uv

@@ -43,13 +43,12 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     CC-readable types — conditional on (1) the closed-world predicate (T7 allow-lists + enumeration), (2) the
     per-asserted-property coverage gate, (3) the corrected IAM set. **Representativeness caveat (R2/§6):** the
     CC-readable screen must NOT silently shape the Phase-2 proof/OOD corpus (uncovered families get fallback
-    adapters there, not exclusion). **Inputs #3/#4** (verifier core), **T2** (Terraform adapter), **T7** (a new
-    requirement this spike surfaces: SCP create-allow-list aligned to CC-listable types + Regions).
-  - **Proposed `DECISIONS.md` addition** (a `[spike]`→resolved note capturing the above: Terraform =
-    Cloud-Control-only `cloudformation:`-prefixed; CFN drift = CDK path + incomplete; unsupported/unreadable/
-    un-property-covered = FAIL-CLOSED; extra-resource detection needs a closed-world T7 allow-list; corpus
-    scoped to CC-readable but not at the cost of Phase-2 representativeness) is **flagged on #80 for founder
-    ratification** — not silently merged into the frozen floor.
+    adapters there, not exclusion).
+  - **Recorded as tracked work (not just comments):** the findings are **landed in `DECISIONS.md` §1** as a
+    resolved-`[spike]` note (founder-ratified, PR #138); the implementation conditions are **#141** (E2 —
+    verifier-side read-coverage enforcement: FAIL-CLOSED + closed-world + per-property gate + coverage tooling +
+    corrected read IAM, under epic #3) and the **closed-world create-allow-list is appended to #53** (E9-1,
+    the T7 SCP issue). Informs **T2** (#35 Terraform adapter) + the read role (#52 / #33).
 
 - **Python type-safety parity + its three hardening tails (#126, #128, #127) — all landed.** The Python
   lane now bans explicit `Any` (mypy `disallow_any_explicit` per source package + ruff `ANN401`), mirroring
