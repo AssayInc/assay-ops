@@ -15,19 +15,26 @@ Entry format:
 
 ---
 
-## 2026-06-24 — codex-review-prompts-must-tell-it-to-use-gh
-- **Mistake:** A Codex `gpt-5.5` xhigh review prompt asked it to `gh issue view #141/#53`, but the run returned
-  `error connecting to api.github.com` and its GitHub connector hit 404/permission — so it reviewed the
-  `DECISIONS.md` diff but **could not see the two issue bodies**, leaving part of the review unverified. I framed
-  the fetch generically instead of steering it to the authenticated tool.
-- **Rule (founder directive):** When Codex reviews anything that lives on GitHub (issue/PR bodies, comments,
-  the diff), **explicitly tell it to use the `gh` CLI** — `gh` is authenticated with full repo permissions here
-  (e.g. `gh issue view <n> --repo AssayInc/assay-ops --json body -q .body`, `gh pr diff <n>`,
-  `gh pr view <n> --json body -q .body`). Don't rely on Codex's GitHub connector/MCP (404s) or a raw API call
-  (sandbox network). If `gh` still can't reach the network in a given run, fall back to pasting the content
-  **inline** in the prompt. Pairs with [[gh-cli-first-for-pr-workflow]] +
-  [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
-- **Context:** #80 / PR #138 final pre-merge re-review.
+## 2026-06-24 — codex-sandbox-has-no-github-network-paste-content-inline
+- **Mistake:** A Codex `gpt-5.5` xhigh review needed the bodies of issues #141/#53; every run hit
+  `error connecting to api.github.com` — first with a `gh issue view ...` prompt, and **again after I retried
+  steering it to `gh`**. I first logged the cause as "didn't tell it to use `gh`." **Wrong root cause:** `gh` is
+  authenticated and works in *my* shell, but **Codex's `codex exec -s read-only` sandbox has no network
+  egress** — `gh`, the GitHub connector/MCP, and raw `curl` to api.github.com all fail there. Telling Codex to
+  "use `gh`" cannot fix a missing network; only its `--enable web_search_cached` worked (it AWS-fact-checked
+  fine, just couldn't read the GitHub artifacts).
+- **Rule:** A Codex review run **cannot reach GitHub** (no api.github.com egress in the sandbox). So:
+  - **GitHub-only content** — issue/PR **bodies**, descriptions, review **comments** — must be **pasted inline**
+    in the Codex prompt. That is the reliable method, not `gh` / the connector / `curl`.
+  - The **code diff** Codex CAN obtain **locally** (no network): have it run `git diff origin/<base>...HEAD` /
+    `git log` under `-C <repo>` (it did this successfully for the `DECISIONS.md` diff). Prefer local git for the
+    diff; inline for anything GitHub-resident.
+  - Don't spend a review pass instructing Codex to "use `gh`" — up front, hand it the diff via local git and
+    paste any GitHub-only bodies inline.
+- **Context:** #80 / PR #138 final pre-merge re-review (4 Codex xhigh passes; the inline pass returned "merge
+  as-is"). **Supersedes** the earlier "tell it to use `gh`" framing — that was the wrong diagnosis.
+  [[gh-cli-first-for-pr-workflow]] still holds for *my own* shell (gh is the right PR tool there); it just
+  doesn't apply inside Codex's sandbox. Pairs with [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
 
 ## 2026-06-24 — todo-md-is-ephemeral-durable-records-go-elsewhere
 - **Mistake:** Resolving the #80 spike, I recorded durable outputs (a surfaced T7 requirement, the proposed
