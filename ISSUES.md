@@ -65,7 +65,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   non-waivable** (§8). **E2–E7 (#3–#8) are re-scoped to Python and gated on the feasibility spikes** —
   the **OpenEnv/TRL spike (#114) is delivered: GO on OpenEnv-native Python → E5 (#6) unblocked** and the
   **ledger spike (#115) is delivered: GO → E4 (#5) inputs surfaced** (both see above); **verifier-read
-  (#80, boto3)** remains. **Open
+  (#80, boto3)** remains — now **grounded + unblocked by #116** (the boto3 skill + the read smoke). **Open
   migration follow-ups** (no proof-critical code moved — it is unbuilt): (1) **re-home the
   built TS** — the **`@assayops/logger` retire-vs-keep + the Python structured-logging story carved out
   to #132 and landed**: **KEEP** `@assayops/logger` (scoped to the TS consumer/web surface) and the new
@@ -74,11 +74,14 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   the `SECRET_KEYS` contract, parity-tested). The Python censor matches **case-insensitively** (to catch
   botocore's capitalized `Authorization`/`X-Amz-Security-Token`); the TS consumer-surface lane stays
   case-sensitive — a low-priority future TS fixture-change only if it ever logs AWS-signed requests.
-  **#116 retains** the **boto3 counterpart** to the `infra-local`
-  LocalStack smoke + the boto3/Cloud-Control skill; (2) **brain/wiki sync** — the raw plans
-  (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) + wiki pages still
-  describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** and finish the
-  `CLAUDE.md`/skill-layer language flip beyond the top-line + AWS row.
+  **#116 landed (PR #134):** the prefer-official boto3 skill (`aws-sdk-python-usage`, first-party AWS) + the
+  `py/packages/read-smoke` LocalStack boto3 read smoke (Cloud Control `get_resource`/`list_resources` + the
+  `ResourceNotFoundException` negative path; LocalStack does **not** serve `DetectStackDrift`, so drift-read
+  coverage is #80/E2 on real AWS) + the CLAUDE.md language flip — **grounds + unblocks #80**; (2) **brain/wiki
+  sync** — the raw plans (`assayops-implementation-plan-2026-06-17`, `assay-eng-architecture-2026-06-17`) +
+  wiki pages still describe the TS-IP split; (3) **vendor a boto3 / Cloud-Control skill** + finish the
+  `CLAUDE.md`/skill-layer language flip — **done in #116/PR #134** (`aws-sdk-python-usage` vendored; Toolchain
+  reordered Python-first; the AWS preflight row names the skill).
 - **LocalStack auth token + plan tier (E0-3 / #20).** The free tokenless community edition was retired in
   the 2026-03-23 single-image change; the `infra-local` dev loop + the smoke CI run the licensed **LocalStack
   for AWS** image with `LOCALSTACK_AUTH_TOKEN` (a secret, never committed — local `.env` + a CI repo secret,

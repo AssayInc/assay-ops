@@ -76,8 +76,33 @@ parts remain**, and #116 is the foundation that grounds **#80** (the boto3 read-
       Toolchain ordering Python-first + any residual TS-core implication.
 - [ ] `bun run verify` green (paste evidence); both lockfiles frozen-checked.
 - [ ] PROGRAM.md (Recently Landed) + ISSUES.md (close #116's parts; **#80 unblocked + grounded**).
-- [ ] Focused PR `Closes #116`; `/review` (Claude + Codex `gpt-5.5` xhigh; re-review fixes); await explicit
-      merge approval; on "merge" → `gh pr merge --squash --delete-branch`.
+- [x] Focused PR **#134** `Closes #116`; `/review` (Claude + Codex `gpt-5.5` xhigh; re-review fixes);
+      await explicit merge approval; on "merge" → `gh pr merge --squash --delete-branch`.
+
+### Review (`bun run verify` green 19/19; `just smoke-py` green 3/3 vs real LocalStack)
+
+- **Done + proven (all three parts).** (1) Vendored the **prefer-official** boto3 skill `aws-sdk-python-usage`
+  (first-party AWS `aws/agent-toolkit-for-aws` — the Python peer of the demoted `aws-sdk-js-v3-usage`;
+  skills.sh had only off-target community skills, so checked the maintainer's GitHub directly per
+  `verify-skill-absence-beyond-the-registry`). Byte-identical to upstream (markdown-only → no script surface),
+  no `-a '*'` overshoot, lock `skillPath` matches the siblings. (2) New `py/packages/read-smoke`: a boto3
+  LocalStack smoke proving Cloud Control `get_resource` + `list_resources` + the `ResourceNotFoundException`
+  negative path, **negative-controlled** (a broken assertion fails on the real read value — never a false
+  pass). Out of the hermetic gate (a `smoke` script, not `test`); ruff + mypy --strict still cover it.
+  (3) CLAUDE.md Toolchain reordered Python-first + the AWS row names the skill.
+- **Empirical LocalStack-fidelity finding (`local-aws-emulator-must-prove-read-api`):** LocalStack serves
+  Cloud Control `get_resource`/`list_resources` but **not `DetectStackDrift`** ("not currently supported by
+  LocalStack", verified) — drift-read coverage is the #80/E2 job against real AWS. This scoping is the lesson
+  in action: prove what LocalStack actually supports, not assume.
+- **Grounding.** Read `DECISIONS.md` §1/§8 + the brain (`references/aws-cloud-control-api`,
+  `concepts/iac-verification-primitives`) for the verifier read path; loaded the vendored
+  `aws-sdk-python-usage` skill (+ its `s3.md` reference) before writing boto3 — the read-path idioms
+  (clients, typed exceptions, paginators, `BaseClient` boundary typing) come from the skill, not cached
+  knowledge. No floor conflict (additive infra + docs).
+- **Decisions (smallest change):** skill is **vendored** (not homegrown — the ladder's first rung was
+  satisfied); smoke home is a **new uv package** (infra-local is bun-only — a Python file there escapes the
+  ruff/mypy lane); **TS smoke kept** as a dev convenience (issue-sanctioned; mirrors the logger keep-both);
+  boto3 **reuses** the pinned workspace dev dep (no new dependency). **#80 is now grounded + unblocked.**
 
 ---
 
