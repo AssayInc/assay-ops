@@ -77,16 +77,42 @@ CC-readable types."
 
 **Steps:**
 - [x] Plan + ground (issue + §1/§5/§8/7A/T1/T2 + brain + the 3 AWS skills + primary AWS docs via `/browse`).
-- [ ] Compose the recorded-decision comment on #80 (4 AC + matrix + clarification + citations + proposed floor addition).
-- [ ] PR `Closes #80`: PROGRAM.md (Recently Landed) + ISSUES.md (durable findings + proposed floor addition)
-      + this todo. **No code** (real-AWS probe is T7-gated; LocalStack is non-authoritative for coverage per
-      the gotcha + [[local-aws-emulator-must-prove-read-api]]; evidence = the live AWS docs). **No DECISIONS.md
-      edit** (proposed, not silent).
-- [ ] `bun run verify` green (docs-only, still run the gate); paste evidence.
-- [ ] `/review` (Claude adversarial + Codex `gpt-5.5` **xhigh**) on the PR + the decision reasoning; await
-      explicit merge approval; on "merge" -> `gh pr merge --squash --delete-branch`.
+- [x] PR **#138** `Closes #80`: PROGRAM.md (Recently Landed) + ISSUES.md (durable findings + proposed floor
+      addition) + this todo. **No code** (real-AWS probe is T7-gated; LocalStack is non-authoritative for
+      coverage per the gotcha + [[local-aws-emulator-must-prove-read-api]]; evidence = the live AWS docs). **No
+      DECISIONS.md edit** (proposed, not silent).
+- [x] `bun run verify` green **17/17 FULL TURBO** (docs-only, gate still run).
+- [x] `/review` (Claude adversarial + Codex `gpt-5.5` **xhigh**) on the decision reasoning — both converged on a
+      real gap; verified each load-bearing claim against primary docs; revised the decision (GO → **GO with
+      conditions**). Re-review the FIXED decision with Codex xhigh before finalizing.
+- [ ] Post the recorded-decision comment on #80 (the final, post-review decision); await explicit merge
+      approval; on "merge" -> `gh pr merge --squash --delete-branch`.
 
-### Review (pending)
+### Review (`bun run verify` green 17/17; cross-model `/review` hardened the decision GO → GO-with-conditions)
+
+- **Done + grounded.** All 4 AC recorded as a decision; deliverable = the #80 issue comment (a SPIKE, not the
+  verifier). Diff is docs-only (PROGRAM.md / ISSUES.md / tasks/todo.md); no code (real-AWS reads are T7-gated;
+  LocalStack is non-authoritative for coverage). Every load-bearing AWS fact grounded against **primary docs
+  fetched live** (`/browse`, then `WebFetch` after `/browse`'s daemon died), not cached knowledge.
+- **Issue-bundling correction (flag, not code-around):** Terraform read path = Cloud Control only; CFN drift =
+  the CDK (T3) path. Confirmed by both reviewers + the brain.
+- **Cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh) earned its keep — both independently
+  found the same load-bearing gap.** Each finding re-verified against primary sources before acting
+  ([[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]]):
+  - **Closed-world hole (P1, both):** `list_resources` is per-`TypeName`/per-Region, so reads can't detect an
+    *extra* resource of an out-of-scope/non-listable type → vector #15 stayed partially open. Added AC2-II
+    (reward = deployed set ≡ golden set) + named the **T7 SCP create-allow-list** dependency.
+  - **IAM prefix error (blocker, Codex; VERIFIED):** AWS service-authorization ref — Cloud Control's IAM
+    prefix is **`cloudformation`** (not `cloudcontrol`), `Resource:"*"`. Fixed AC3; added `list`-handler perms.
+  - **Matrix corrections (VERIFIED locally):** inline `RolePolicy`/`UserPolicy`/`GroupPolicy` = Read-but-no-List;
+    `Route53::RecordSetGroup` also absent; added the per-asserted-property gate (write-only omission).
+  - Refined AC2(b) (read-after-create → 7A), AC4 (GO-with-conditions + R2/§6 representativeness caveat),
+    demoted `ReadOnlyAccess` to bootstrap; `kms:Decrypt` correctly absent.
+- **Verdict: GO with conditions** (closed-world via T7; per-property gate; corrected IAM) — feasibility holds;
+  conditions are inputs to #3/#4/T2/T7, not spike blockers. Surfaced a **new T7 requirement** (SCP create-
+  allow-list aligned to CC-listable types + Regions). Trust boundary (§8) intact (no agent-code exec; no A→B;
+  read-only). Per [[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]], re-review the revised
+  decision with Codex xhigh, then post the comment + await merge approval.
 
 ---
 

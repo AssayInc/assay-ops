@@ -6,34 +6,48 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
-- **E3-4 (#80) boto3 read-coverage spike — GO; recorded decision (no floor change).** Resolves the E17 #113
-  verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md` §1/§5/§8 + brain
-  (`iac-verification-primitives`, `aws-cloud-control-api`):
+- **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
+  Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
+  §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):
   - **Read path split by tool:** **Terraform → Cloud Control `GetResource`/`ListResources` only**
     (provisioning-agnostic; no provider plugins — the T1 constraint). **CFN drift / `DescribeStackResources`
-    are CloudFormation-stack-scoped → the CDK adapter's (T3) path**, N/A for Terraform (it creates no stack).
-    Clarifies the AI-issue's "Cloud Control + CFN drift … Terraform" bundling (flag, not code-around).
-  - **Coverage (AC1):** authoritative = AWS "Resource types that support Cloud Control API" (per-type CRUD-L;
-    **1300** public types; readable = a `read` handler, enumerable = a `list` handler — can differ per type).
-    Common Terraform corpus ~fully covered; checked gaps = inline **`IAM::Policy`** (use
-    `ManagedPolicy`/`RolePolicy` instead) + **`Route53::RecordSet`** (service-specific
-    `route53:ListResourceRecordSets`). Exact matrix regenerated via `cloudformation list-types
-    --provisioning-type FULLY_MUTABLE|IMMUTABLE` + `describe-type` (`Schema.handlers`) — real-AWS, T7-gated;
-    **LocalStack is non-authoritative** for coverage (and doesn't serve `DetectStackDrift`).
-  - **Unsupported policy (AC2) = FAIL-CLOSED** (never silently reward — §5 vector #15): unsupported type →
-    quarantine the task family at authoring time; transient unreadable → `7A` transient/genuine classifier +
-    K-run; genuine unreadable → `reward=0`. `skip`-and-grade-the-rest rejected.
-  - **Read-only IAM (AC3):** `cloudcontrol:GetResource` + `cloudcontrol:ListResources` + the union of in-scope
-    types' `handlers.read.permissions` (least-privilege via `describe-type`; AWS-managed `ReadOnlyAccess` as a
-    broad fallback). The **account-B** verifier assumes (`sts:AssumeRole`) a **read-only role in account A**
-    (SCP-protected from the agent, T7; no A→B path). CDK/T3 adds `cloudformation:*StackDrift*` +
-    `DescribeStackResource*`. No write/mutate actions.
-  - **Go/no-go (AC4) = GO:** scope the Phase-1 Terraform corpus to CC-readable types — coverage is ample, the
-    read path stays a uniform `(TypeName, Identifier) → Properties` shape (no per-type fallback adapters in
-    Phase 1), and the moat (vector #15) stays intact; the `list-types`/`describe-type` recipe is the
-    authoring-time coverage gate. **Inputs #3/#4** (verifier core) + **T2** (Terraform adapter).
-  - **Proposed `DECISIONS.md` addition** (a `[spike]`→resolved note: Terraform = Cloud-Control-only; CFN drift =
-    CDK path; unreadable = FAIL-CLOSED; corpus scoped to CC-readable) is **flagged on #80 for founder
+    are CloudFormation-stack-scoped → the CDK adapter's (T3) path** (and drift alone is itself incomplete:
+    `NOT_CHECKED`, uncomparable properties), N/A for Terraform (it creates no stack). Clarifies the AI-issue's
+    bundling (flag, not code-around).
+  - **Coverage (AC1):** authoritative = AWS "Resource types that support Cloud Control API" (~**1300** public
+    types). Three distinct properties: **readable** (a `read` handler), **enumerable** (a `list` handler —
+    differs per type), **property-covered** (`GetResource` omits write-only props). Common Terraform corpus
+    well covered; gaps = **`IAM::Policy`** + **`Route53::RecordSet`/`RecordSetGroup`** (fallbacks:
+    `ManagedPolicy` / `iam:List*Policies`; `route53:ListResourceRecordSets`); inline
+    `RolePolicy`/`UserPolicy`/`GroupPolicy` are **Read-but-not-List** (readable, not enumerable). Exact matrix
+    + IAM set regenerated via `cloudformation list-types --provisioning-type FULLY_MUTABLE|IMMUTABLE` +
+    `describe-type` (`Schema.handlers` + `writeOnlyProperties`) — real-AWS, T7-gated; LocalStack
+    non-authoritative.
+  - **Unsupported/unreadable policy (AC2) = FAIL-CLOSED + CLOSED-WORLD** (never silently reward — §5 vector
+    #15). Expected-resource unreadability: type/property uncovered → quarantine at authoring; transient (incl.
+    read-after-create) → `7A` classifier; genuine → `reward=0`. **Extra/over-provisioned resources are the
+    moat-critical half:** `list_resources` is per-`TypeName`/per-Region, so reads alone can't see an extra
+    resource of an out-of-scope/non-listable type or in an unscanned Region → reward must be **deployed set ≡
+    golden set**, enforced primarily by **T7 SCP create-allow-lists** (a closed set of CC-listable types +
+    Regions makes an out-of-scope resource unreachable by construction) + union-enumeration as
+    defense-in-depth.
+  - **Read-only IAM (AC3):** control-plane = **`cloudformation:GetResource` + `cloudformation:ListResources`**
+    (Cloud Control's IAM service prefix is `cloudformation`, verified) with **`Resource:"*"`** (no ARN
+    scoping); underneath, the union of in-scope types' **`handlers.read.permissions` ∪
+    `handlers.list.permissions`** (least-privilege via `describe-type`; `ReadOnlyAccess` = Phase-1 bootstrap
+    only). `kms:Decrypt`/`GetSecretValue` intentionally absent (reads config/metadata, not plaintext).
+    Account-B verifier assumes (`sts:AssumeRole`) a read-only role in account A (SCP-protected from the agent;
+    no A→B path; read-only). CDK/T3 adds `cloudformation:*StackDrift*` + `DescribeStackResource*`.
+  - **Go/no-go (AC4) = GO (with conditions):** scope the Phase-1 **Terraform engine-validation** corpus to
+    CC-readable types — conditional on (1) the closed-world predicate (T7 allow-lists + enumeration), (2) the
+    per-asserted-property coverage gate, (3) the corrected IAM set. **Representativeness caveat (R2/§6):** the
+    CC-readable screen must NOT silently shape the Phase-2 proof/OOD corpus (uncovered families get fallback
+    adapters there, not exclusion). **Inputs #3/#4** (verifier core), **T2** (Terraform adapter), **T7** (a new
+    requirement this spike surfaces: SCP create-allow-list aligned to CC-listable types + Regions).
+  - **Proposed `DECISIONS.md` addition** (a `[spike]`→resolved note capturing the above: Terraform =
+    Cloud-Control-only `cloudformation:`-prefixed; CFN drift = CDK path + incomplete; unsupported/unreadable/
+    un-property-covered = FAIL-CLOSED; extra-resource detection needs a closed-world T7 allow-list; corpus
+    scoped to CC-readable but not at the cost of Phase-2 representativeness) is **flagged on #80 for founder
     ratification** — not silently merged into the frozen floor.
 
 - **Python type-safety parity + its three hardening tails (#126, #128, #127) — all landed.** The Python
