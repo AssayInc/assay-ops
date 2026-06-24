@@ -15,6 +15,35 @@ Entry format:
 
 ---
 
+## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
+- **Mistake:** Built the E3-1 `diff-ir` reward core (#34) grounded against the domain + craft **skills**
+  (deterministic-verification, write-isolated-verifier, pydantic-v2, python-type-safety,
+  python-testing-patterns, uv) + TDD + **6 cross-model review passes to convergence**, then presented it as
+  done. The founder asked the standing three questions ("did you review AND re-review? everything grounded on
+  official docs? did you validate with the python skills?"). Two gaps: (1) I had **not opened the PRIMARY
+  Pydantic docs** myself for the load-bearing behaviors — the whole `validate-and-copy` snapshot rests on an
+  after-mode `field_validator` **returning-and-storing the transformed value**, and the `grade` re-validation
+  rests on **`frozen` NOT deep-freezing a dict field**; I'd only confirmed both via the *skill* (secondary) +
+  an empirical green. (2) I'd validated against type-safety/testing/pydantic but **skipped two relevant craft
+  skills** — `python-error-handling` and `python-design-patterns`. Closing the gaps surfaced **real
+  refinements**: `python-error-handling` Pattern 4 (invalid input → `ValueError`) → `UntrustedInputError` now
+  subclasses `ValueError` (consistent with the validators); the doc examples → made `mode="after"` explicit.
+- **Rule (founder directive, recurring):** The grounding pass is **part of "done," done PROACTIVELY** — not a
+  thing you do when the founder asks. Before claiming a build complete, even after heavy TDD + cross-model
+  review: (a) **open the PRIMARY docs yourself** for every load-bearing library behavior and quote them — a
+  skill, a green test, and a Codex pass are all **secondary** ([[ground-in-official-docs-first]],
+  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]],
+  [[reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production]]); (b) **enumerate
+  which craft skills apply and validate against EACH**, stating which are N/A and why
+  ([[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]]) — for a pure typed core that was
+  type-safety + testing-patterns + pydantic-v2 + **error-handling** (exception design) + **design-patterns**
+  (KISS/SRP/composition), with resilience/async/observability N/A (no I/O, sync, no metrics). Cross-model
+  review hardens correctness; it does **not** substitute for primary-source grounding or the craft-skill sweep.
+- **Context:** E3-1 (#34) / PR #145; `py/packages/diff-ir`. Primary Pydantic v2 docs (docs.pydantic.dev):
+  validators ("important to return the validated value" + the mutating-value example), models ("Faux
+  immutability" Caution + the `foobar.b['apple']='grape'` example), serialization (`exclude_none`). Pairs with
+  the every-build grounding rules above.
+
 ## 2026-06-24 — act-decisively-on-airtight-code-evidence-dont-bounce-it-back
 - **Mistake:** Grounding #140 against `origin/main`, I proved **three ways** that quicktype is already globbed
   (`git show origin/main:justfile` → `contracts/schemas/*.schema.json`; PR #139's squash `e641784` diff =
