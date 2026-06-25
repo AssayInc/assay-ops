@@ -35,21 +35,27 @@ the `deterministic-verification` skill's checklist; that skill and DECISIONS.md 
 - **Canonical ordering.** Resources are matched by `address` and emitted **sorted by address**;
   `propertyDiffs` are **sorted by path**. The DiffIR is therefore independent of the order resources or
   properties were supplied in — the same two states always produce the same DiffIR.
-- **Structural comparison (`bool` distinct from numbers).** Property values are compared recursively
-  and key-order-independently for mappings. **`bool` is a JSON boolean, distinct from numbers** — `True`
-  never equals `1` (Python's `==` collapses them, which would grade a boolean property in-sync with a
-  numeric one, a false reward 1) — but **`int` and `float` of the same value are equal** (`90 == 90.0`;
-  JSON has one number type and JCS canonicalizes them identically, so treating them distinct would be a
-  false-negative drift). Lists compare order-sensitively (the adapter sorts order-insensitive collections).
-- **Value representability (fail closed).** Property values must be the **JSON domain** — finite
-  numbers and **string object keys**, recursively. A `NormalizedResource` rejects, at construction, what
-  would forge a reward or break the signed digest: a **non-string nested key** (`{1: …}` and `{True: …}`
-  collide under Python equality — a false reward 1), a **non-finite** number (NaN/Infinity break
-  determinism and RFC 8785 JCS), a **non-JSON value** (tuple/set/bytes/object), a present top-level
-  **`None`** (absent = omit the key; `exclude_none` can't tell `None` from absent), and a
-  **`$`-prefixed key** (reserved — see below). `grade` **re-validates** its inputs, so a
-  post-construction in-place mutation of a properties dict (which `frozen` does not prevent) is caught
-  at the trust boundary.
+- **Comparison: equal iff JCS canonical bytes match.** Two property values are equal **iff their RFC 8785
+  (JCS) canonical bytes are identical** — the same canonical form `RewardRecord.reportDigest` is signed
+  with, so the grade and the digest can never disagree (the diff can't call "in sync" two values the digest
+  would distinguish). The JSON value semantics fall out of JCS instead of being re-derived by hand:
+  **`bool` is a JSON boolean distinct from a number** (`True`→`true` ≠ `1`→`1`, so Python's `==`-collapse
+  can't forge a reward 1), **one number type** means `90 == 90.0` (treating them distinct would be a
+  false-negative drift), object keys are **sorted** (mappings compare key-order-independently), and **lists
+  stay order-sensitive** (the adapter sorts order-insensitive collections).
+- **Value representability (fail closed): valid iff it canonicalizes.** A property value is valid **iff it
+  canonicalizes under RFC 8785 JCS** — iff it can be signed. `NormalizedResource` canonicalizes each value
+  at construction, so JCS itself fails closed on what would forge a reward or break the digest: a
+  **non-string object key** (`{1: …}`/`{True: …}` → "object keys must be strings"), a **non-finite** number
+  (NaN/Infinity — not representable in JCS), and any **non-JSON type** (set/bytes/object/dataclass). Two
+  rules layer on top, because JCS *accepts* both: a present top-level **`None`** (absent = omit the key;
+  `exclude_none` can't tell `None` from absent) and a **`$`-prefixed key** (reserved — see below) are
+  rejected by AssayOps. Validation stores the **canonical snapshot** (re-parsed from the JCS bytes), so a
+  scalar **subclass** is reduced to its base value — an overloaded `__eq__` is never consulted, comparison
+  is on bytes — and the report is decoupled from the caller's objects. `grade` **re-validates** its inputs
+  from the raw object graph (never `copy.deepcopy`/`model_dump`, whose user dunders could launder a non-JSON
+  value past the gate), so a post-construction in-place mutation of a properties dict — which `frozen` does
+  not prevent — is caught at the trust boundary.
 - **Unique addresses.** A `NormalizedState` rejects duplicate addresses at construction — a duplicate
   would silently collapse in the address map and lose data (a wrong grade). Fail closed.
 - **Reserved paths.** `$`-prefixed property paths are reserved by the IR for structural markers. A
@@ -73,8 +79,8 @@ emitting it, the adapter must:
 - **Drop timestamps & generation counters** — `CreationDate`, `LastModified`, `VersionId`, `ETag`,
   drift `LastCheckTimestamp`.
 - **Sort order-insensitive collections** *within* a property value (tag sets, policy statements,
-  ingress rules). The core compares values with `==`, which is order-sensitive for lists — only the
-  adapter knows which lists are semantically sets.
+  ingress rules). The core compares values by their **JCS canonical bytes**, which preserve array order —
+  only the adapter knows which lists are semantically sets.
 - **Make intent-bearing defaults explicit, exclude server-filled metadata.** Do **not** exclude an
   intent-bearing property just because AWS defaults it (encryption, public-access/ACL posture,
   retention, deletion protection) — that would reward the agent for omitting required intent. The golden

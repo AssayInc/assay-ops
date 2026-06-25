@@ -1,10 +1,11 @@
-"""E3-1 (#34) — value guards + type-strict comparison (review-hardening).
+"""E3-1 (#34) — value guards + canonical-JSON comparison (review-hardening).
 
-The reward core must never grade a real divergence as in-sync. Python `==` collapses `True == 1` and
-`1 == 1.0`, and `NaN != NaN`; a property value of `None` is ambiguous with "absent" under the sparse
-serialization. So the normalized IR fails closed on values that break determinism or the digest
-(non-finite floats, `None`, `$`-reserved keys), and the diff compares values **type-strictly**
-(`bool` != `int` != `float`) so no value-type coercion can forge a reward 1.
+The reward core must never grade a real divergence as in-sync. Python `==` collapses `True == 1`,
+and a property value of `None` is ambiguous with "absent" under the sparse serialization. So a value
+is valid iff it canonicalizes (RFC 8785 / JCS — the form the reward record is signed with), and two
+values are equal iff their canonical bytes match: `bool` stays distinct from a number (`True` !=
+`1`), one number type means `90 == 90.0`, and NaN/Inf/`None`/non-JSON/`$`-keys fail closed. Grading
+on the signed canonical form means the diff and the `reportDigest` can never disagree.
 """
 
 from __future__ import annotations
@@ -53,12 +54,13 @@ def test_bool_and_int_nested_in_a_dict_are_not_equal() -> None:
 
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
 def test_normalized_resource_rejects_non_finite_float(bad: float) -> None:
-    with pytest.raises(ValueError, match="finite"):
+    # NaN/Inf are not representable in JCS, so they can't be signed -> fail closed at validation.
+    with pytest.raises(ValueError, match="JSON"):
         res("r", metric=bad)
 
 
 def test_normalized_resource_rejects_non_finite_float_nested() -> None:
-    with pytest.raises(ValueError, match="finite"):
+    with pytest.raises(ValueError, match="JSON"):
         res("r", cfg={"threshold": float("nan")})
 
 
@@ -81,20 +83,27 @@ def test_normalized_resource_rejects_non_string_nested_object_key() -> None:
 
 
 def test_normalized_resource_rejects_a_non_json_property_value() -> None:
+    # A non-JSON type (here a bare object) can't be canonicalized/signed -> fail closed. (A tuple is
+    # NOT a counterexample: JCS accepts it as an array, matching json -- so it is a valid value.)
     with pytest.raises(ValueError, match="JSON"):
-        res("r", bad=(1, 2))
+        res("r", bad=object())
 
 
-def test_normalized_resource_rejects_a_scalar_subclass_with_overloaded_eq() -> None:
-    # A bool/int/float/str SUBCLASS passes isinstance and can overload __eq__ to forge a reward 1.
+def test_a_scalar_subclass_is_graded_by_canonical_value_not_its_overloaded_eq() -> None:
+    # A bool/int/float/str SUBCLASS can overload __eq__ to always return True to forge a reward 1.
+    # JCS neutralizes that by comparing canonical BYTES, never `==`: _Sneaky(1) canonicalizes to its
+    # base value `1` (the __eq__ is never consulted), so it is in-sync with a golden 1 -- but a
+    # DIFFERENT value (_Sneaky(2) -> b"2") still diffs against golden 1. The forge dies either way.
     class _Sneaky(int):
         def __eq__(self, other: object) -> bool:
             return True
 
         __hash__ = int.__hash__
 
-    with pytest.raises(ValueError, match="JSON"):
-        res("r", v=_Sneaky(1))
+    in_sync = grade(deployed(res("r", v=_Sneaky(1))), golden(res("r", v=1)))
+    assert in_sync.reward is Reward.number_1
+    drift = grade(deployed(res("r", v=_Sneaky(2))), golden(res("r", v=1)))
+    assert drift.reward is Reward.number_0
 
 
 def test_grade_revalidates_inputs_and_rejects_post_construction_tampering() -> None:

@@ -10,7 +10,10 @@ requires-python = ">=3.12"
 # pydantic for the normalized-state IR (the adapter -> core interface). The DiffIR / Reward contract types
 # come from assayops_contracts (the E1 spine), resolved as workspace source via pythonpath/mypy_path below —
 # every workspace member is `virtual` (package=false), so this is the in-convention way to import a sibling.
-dependencies = ["pydantic>=2.10"]
+# rfc8785 is THE source of truth for value equality + validity: a property value is valid iff it
+# canonicalizes (RFC 8785 JCS, the form the reward record is signed with), and two values are equal iff
+# their canonical bytes match — so the grade and the signed reportDigest can never disagree (pin = workspace).
+dependencies = ["pydantic>=2.10", "rfc8785>=0.1.4"]
 
 [tool.uv]
 package = false

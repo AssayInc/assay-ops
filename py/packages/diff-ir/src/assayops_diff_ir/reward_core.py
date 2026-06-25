@@ -21,7 +21,12 @@ from assayops_contracts import (
     Reward,
 )
 
-from assayops_diff_ir.normalized_state import NormalizedResource, NormalizedState, Provenance
+from assayops_diff_ir.normalized_state import (
+    NormalizedResource,
+    NormalizedState,
+    Provenance,
+    _canonical_bytes,
+)
 
 # Reserved structural marker for a resource-type mismatch at the same address. `$`-prefixed paths
 # are rejected as property keys (the NormalizedResource validator), so this never collides with one.
@@ -157,29 +162,15 @@ def _property_diffs(
 
 
 def _values_equal(golden: object, deployed: object) -> bool:
-    """Equality on validated JSON values: ``bool`` != a number; int/float compare by value.
+    """Two validated JSON values are equal iff their RFC 8785 (JCS) canonical bytes match.
 
-    JSON has one number type, so ``int``/``float`` of the same value are equal (``90 == 90.0``; JCS
-    canonicalizes them the same) -- distinguishing them is a false-negative drift. But ``bool`` is a
-    JSON boolean, NOT a number: ``True`` must never equal ``1`` (``==`` collapses them, grading a
-    boolean property in-sync with a numeric one -- a false reward 1). Inputs are validated to exact
-    JSON types upstream, so no subclass / NaN reaches here.
+    JCS is the form the reward record is signed with (``assayops_contracts.jcs``), so equality-by-
+    canonical-bytes makes the grade and the signed ``reportDigest`` agree by construction: the diff
+    can't call two values "in sync" that the digest would distinguish. It folds the JSON value
+    semantics into one place instead of re-deriving them by hand: one number type (``90 == 90.0``),
+    ``bool`` kept distinct from a number (``True`` canonicalizes to ``true``, never ``1`` -- so
+    Python's ``==``-collapse can't forge a reward 1), object keys sorted, structure recursive.
+    Both sides are already validated/canonicalized snapshots (``NormalizedResource``), so
+    ``_canonical_bytes`` never raises here.
     """
-    if _is_json_number(golden) and _is_json_number(deployed):
-        return golden == deployed
-    if type(golden) is not type(deployed):
-        return False
-    if isinstance(golden, dict) and isinstance(deployed, dict):
-        if golden.keys() != deployed.keys():
-            return False
-        return all(_values_equal(golden[key], deployed[key]) for key in golden)
-    if isinstance(golden, list) and isinstance(deployed, list):
-        if len(golden) != len(deployed):
-            return False
-        return all(_values_equal(g, d) for g, d in zip(golden, deployed, strict=True))
-    return golden == deployed
-
-
-def _is_json_number(value: object) -> bool:
-    # A JSON number is an exact int or float; `bool` is a JSON boolean, not a number.
-    return type(value) is int or type(value) is float
+    return _canonical_bytes(golden) == _canonical_bytes(deployed)
