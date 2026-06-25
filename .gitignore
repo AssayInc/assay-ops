@@ -26,6 +26,7 @@ __pycache__/
 
 # Tooling state
 .gstack/
+.gbrain-source
 
 # Misc
 .DS_Store
