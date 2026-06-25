@@ -39,6 +39,10 @@
     "py/packages/verifier": {
       "name": "@assayops/py-verifier",
       "version": "0.0.0",
+      "dependencies": {
+        "@assayops/py-contracts": "workspace:*",
+        "@assayops/py-diff-ir": "workspace:*",
+      },
     },
     "ts/packages/biome-config": {
       "name": "@assayops/biome-config",

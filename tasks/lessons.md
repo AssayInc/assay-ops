@@ -15,6 +15,39 @@ Entry format:
 
 ---
 
+## 2026-06-25 — a-github-issue-isnt-filed-until-its-on-the-project-board-under-its-epic
+- **Mistake:** Created the two #31 follow-ups (#152, #153) with `gh issue create` + labels only. The founder
+  asked "did you assign them to the right Project + Epic?" — they were on **neither**: `gh issue create` sets
+  labels/milestone but does **not** add to the org Project (#1 "AssayOps"), does not set its Epic/Lane/Status
+  fields, and does not link the issue as a **native sub-issue** of its parent epic.
+- **Rule:** An issue is **not filed until it's on the board, categorized, and parented.** After
+  `gh issue create`: (1) `gh project item-add 1 --owner AssayInc --url <url>`; (2) set the **Epic / Lane /
+  Status** single-selects via `gh project item-edit` by **mirroring a sibling issue** (read one with
+  `gh project item-list`, don't guess option ids); (3) where the parent epic is open, add it as a **native
+  sub-issue** (`gh api --method POST repos/AssayInc/assay-ops/issues/<epic>/sub_issues -F sub_issue_id=<child
+  db id>`). The **project `Epic` field is the source of truth** for categorization — it has **no E16/E17
+  option**, so **toolchain/infra follow-ups file under `E0 Infra`** (like #116/#135; the E0 epic issue #1 is
+  closed, so those get the field but no native parent). Verify with `gh project item-list` + the epic's
+  `sub_issues`; don't leave a wrong milestone (infra ≠ a phase milestone).
+- **Context:** #152 → E0 Infra (no native parent, milestone cleared); #153 → E2 Verifier + native sub-issue
+  of #3 + Phase 1. Project #1 = `PVT_kwDOEYppDc4BbCzj`. Pairs with
+  [[read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue]].
+
+## 2026-06-25 — read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue
+- **Mistake:** On #31 I grounded the issue against DECISIONS/brain/code and read the related issues' *bodies*
+  early, but didn't re-read the **comments / state / closing-PRs** of the issues its AC cites (#75, #46, #34)
+  before claiming merge-ready. The founder asked "did you review those related issues/PRs for context?" —
+  doing so confirmed the cross-issue contracts (#75's AC3 literally scopes #31's grading; #46 is open with no
+  harness to integrate; the #75/#34 closing-PR comments hold the design reconciliations the contract rests on)
+  and prompted a determinism negative-control.
+- **Rule:** When an issue's description / AC / comments **cite other issues or PRs** (`#NN`), read those cited
+  items' **body AND comments AND state/closing-PR** as part of grounding — the load-bearing cross-issue
+  contract (what a dependency guarantees, what a sibling owns, what is still open) often lives in the
+  **comments**, not the body. Do it proactively, before claiming done.
+- **Context:** #31 cited #75 (golden gen, CLOSED via PR #146) + #46 (determinism, OPEN) + #34 (reward core,
+  CLOSED via PR #145). Pairs with [[ground-in-decisions-and-brain-not-the-ai-written-issue]] +
+  [[proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt]].
+
 ## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
 - **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
   JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it

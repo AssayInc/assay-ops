@@ -2,6 +2,10 @@
   "name": "@assayops/py-verifier",
   "version": "0.0.0",
   "private": true,
+  "dependencies": {
+    "@assayops/py-diff-ir": "workspace:*",
+    "@assayops/py-contracts": "workspace:*"
+  },
   "scripts": {
     "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",
     "format": "uv run --frozen ruff format .",
