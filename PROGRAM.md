@@ -28,7 +28,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
+- **Next ready work:** **E2 verifier core started** — the golden-target generator (**#75**,
+  `py/packages/verifier`) landed (account-B-pure; needs no cloud substrate). Next E2: the deployed-state
+  read path / skeleton (**#30**) + reward core (**#32**), with E3's diff-IR + Terraform adapter (**#34**/**#35**).
+  Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
   cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO); and
@@ -64,6 +67,35 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   xhigh, **9 passes to convergence** — 6 on the original diff + 3 on the JCS refactor that caught the
   subclass-coercion forge then the cycle crash) hardened the reward against false-reward-1 / laundering paths.
   `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
+- **E2-5 (#75): golden-target generator — the account-B verifier's reproducible ephemeral target (2A).**
+  The first **E2 verifier-core** code: new **`py/packages/verifier`** (`assayops_verifier`).
+  `generate(task, seed)` deterministically regenerates the expected **normalized resource set**
+  (`GoldenResource` = address/type/properties — diff-IR-compatible, so the E3/#34 adapter diffs deployed
+  state against it) — **pure over (task, seed)**, never the agent's synth/plan/state (T1/§1/§8); a
+  **declarative regeneration, not running reference IaC**. The per-task golden builders are the engine's
+  **corpus seam** (`GoldenRegistry`); real builders live in the **private corpus (#76)** (the engine, NOT
+  corpus authoring), and in-repo tests use **synthetic** builders only (held-out residency). **Determinism
+  (AC1, feeds #46):** hash-based ephemeral tokens (no clock/RNG) + canonical address-sort + JCS key-sort →
+  byte-identical across K runs (negative-controlled). **Content address (AC4):** `golden_digest` =
+  lowercase-hex SHA-256 over RFC 8785 JCS canonical bytes, **reusing the locked `assayops_contracts.jcs`
+  recipe** (DRY) — reproducible from (task, seed) + the record's `trajectory_id`→`task_id`→seed +
+  `graderVersion`; **no contract-schema change** (the reward record has no golden-digest field; a dedicated
+  one would be a flagged #28 `fixture-change`, not silently added). **Fail-closed** (unknown task / duplicate
+  addresses raise — vector #15). **Hardened** Pydantic models (frozen/extra-forbid/strict; the pydantic.mypy
+  `disallow_any_explicit` gotcha fixed via the plugin + init_typed/init_forbid_extra). First cross-package
+  Python dep — consumes `assayops_contracts` by source path (the repo's virtual-member convention); contracts
+  untouched. **Three adversarial-review rounds converged to MERGE** (`/review`, then a founder-requested
+  **Opus 4.8 max** + **Codex `gpt-5.5` xhigh** pair): the **moat held in all** (no agent-reachable forge
+  path — the golden is account-B-internal), and every finding was **content-address-integrity / fail-closed
+  hardening** of the open-`properties` channel, all closed + negative-controlled: reject
+  set/non-finite-float/oversized-int/non-UTF-8-surrogate/non-JSON and **only exact JSON types** (subclass
+  iteration/encoding can diverge from what's hashed); canonical-by-construction model + immutable `resources`
+  tuple; `generate` wraps **any** builder failure into the single `GoldenError`; `golden_digest` re-checks the
+  **live** golden (catching a mutated set/BaseModel/cycle) before canonicalizing; injective length-prefixed
+  token. `bun run verify` green **20/20** (35 verifier tests; the load-bearing guards negative-controlled);
+  both lockfiles frozen-checked. Runtime-import hardening (consume contracts as an installed pkg) deferred to
+  #147. **Gates #31** (golden→reward integration). (PR #146.)
+
 - **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
   #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now
   **disk-enumerates** `contracts/schemas/*.schema.json` for the Draft-2020-12 + ajv-compile coverage (a new

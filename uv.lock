@@ -23,6 +23,7 @@ members = [
     "assayops-env-server",
     "assayops-infra-local",
     "assayops-logger",
+    "assayops-verifier",
 ]
 
 [manifest.dependency-groups]
@@ -146,6 +147,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "structlog", specifier = ">=25" }]
+
+[[package]]
+name = "assayops-verifier"
+version = "0.0.0"
+source = { virtual = "py/packages/verifier" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 
 [[package]]
 name = "ast-serialize"

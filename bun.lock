@@ -32,6 +32,10 @@
       "name": "@assayops/py-logger",
       "version": "0.0.0",
     },
+    "py/packages/verifier": {
+      "name": "@assayops/py-verifier",
+      "version": "0.0.0",
+    },
     "ts/packages/biome-config": {
       "name": "@assayops/biome-config",
       "version": "0.0.0",
@@ -84,6 +88,8 @@
     "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
 
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
+
+    "@assayops/py-verifier": ["@assayops/py-verifier@workspace:py/packages/verifier"],
 
     "@assayops/typescript-config": ["@assayops/typescript-config@workspace:ts/packages/typescript-config"],
 
