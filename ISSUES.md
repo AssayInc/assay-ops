@@ -6,17 +6,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
-- **Spike #60 (IAM eventual consistency) resolved — the measurement probe is PROVISIONAL, tracked for
-  removal/graduation (#156).** `py/packages/iam-readiness-probe` measured IAM read-after-create + assume/use
-  propagation (n=20, us-east-1): the verifier read path is sub-second (`cc_get` p99 ~0.76s, 0 bound-exceeded),
-  so its read-after-create 7A budget is small + FAIL-CLOSED; the delay is **provision-then-use** (assume ~7s
-  p50, tail to ~42s) → the E8 episode-setup readiness gate is a bounded (~60s) FAIL-CLOSED 7A-budget
-  calibration, isolated from the grade. Recommendation ratified in `DECISIONS.md` §1; consumers updated (#45
-  7A classifier, #141 read-coverage, #52/#33 cross-account assume). **The probe is NOT core IP** (§8 "build
-  only the IP") — a one-shot measurement kept committed (founder call) for plausible future value; **#156**
-  tracks the call at E8-landing: **graduate** it to the **cross-account** re-measure E8 needs (it is
-  same-account today), or **remove** it (the numbers + recommendation live in `DECISIONS.md` §1 + #60; the
-  script is preserved in the #60 thread). Fenced out of `verify` (a `probe` script, never `test`) + `--yes`-gated.
+- **Spike #60 (IAM eventual consistency) resolved — the measurement probe was NOT committed (removed per
+  review; not core IP).** It measured IAM read-after-create + assume/use propagation (n=20, us-east-1): the
+  verifier read path is sub-second (`cc_get` p99 ~0.76s, 0 bound-exceeded), so its read-after-create 7A budget
+  is small + FAIL-CLOSED; the delay is **provision-then-use** (assume ~7s p50, tail to ~42s) → the E8
+  episode-setup readiness gate is a bounded (~60s) FAIL-CLOSED 7A-budget calibration, isolated from the grade.
+  Recommendation ratified in `DECISIONS.md` §1; consumers updated (#45 7A classifier, #141 read-coverage,
+  #52/#33 cross-account assume). The probe is **not** a `py/packages/*` member (§8 "build only the IP" — a
+  spike's output is the decision, not a package); the reproducible script is preserved in the #60 thread, and
+  the disposition tracker #156 is closed.
 - **E3-1 (#34) diff-ir landed — two non-blocking follow-ups.** The `diff-ir` package (the normalized IR +
   shared reward core) is in. Durable notes for the consumers (adapters #35, golden gen #75, verifier E2/#3):
   - **Schema-description prose vs the implemented split (contracts-doc only).** `diff-ir.schema.json`'s
@@ -29,6 +27,25 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     normalized property name (values carry the full nested object, so no information is lost; the binary reward
     is unaffected). Deeper **dotted leaf paths** (e.g. `VersioningConfiguration.Status`) are a future
     report-granularity refinement, most naturally in the adapter's normalization (it knows the resource shape).
+- **E2-2 (#31) golden→reward integration landed — one non-blocking follow-up (validator divergence).**
+  `grade_deployment` (`py/packages/verifier/grading.py`) bridges a regenerated `GoldenTarget` (#75) into the
+  reward core's `NormalizedState` (#34) and grades deployed state against it. It surfaced a divergence between
+  the two value validators: the **golden generator (#75) accepts** a `None` property value and a `$`-prefixed
+  key that the **diff-ir grading core (#34) rejects**. The bridge handles it correctly — it **fails closed**
+  (`GoldenNotGradableError`, never a silent reward) — but the two could be **harmonized** (make the generator
+  as strict as the grading core, so any golden that generates can always be graded), a future #75/#34 cleanup.
+  Not urgent (fail-closed is safe; real builders #76 emit neither); the grading core is deliberately the
+  **stricter trust gate**. **Tracked as #153.**
+- **Repo-wide: Turbo doesn't model the Python lane's cross-package *source* deps — a cache-invalidation gap
+  (surfaced by #31's Codex gpt-5.5 review).** The Python packages consume siblings by source path
+  (`pythonpath`/`mypy_path`), but the root `turbo.json` tasks are all `{}` and the package.json files declared
+  no workspace deps — so a dependency's *source* change did **not** invalidate a dependent's `typecheck`/`test`
+  cache (a stale-cache risk; the TS lane shares the pattern). #31 fixed this **for the verifier** (declared its
+  `@assayops/py-diff-ir` + `py-contracts` workspace deps + a verifier `turbo.json` with `dependsOn:
+  ["^typecheck"]`/`["^test"]`; verified empirically — a diff-ir content change now flips the verifier task
+  hash). The **remaining edges are unwired** — notably **diff-ir→contracts** (its own cache won't invalidate
+  on a contracts change) plus any TS-lane gaps; a small follow-up infra PR should apply the same pattern
+  lane-wide (or a root transit-node). Pre-existing, not #31-specific. **Tracked as #152.**
 - **E3-2 (#35) Terraform adapter landed — a deploy-tagging convention is now a corpus requirement.** The
   adapter bridges a Cloud Control **physical** id to the golden's **logical** `address` via a reserved,
   case-sensitive **`assayops:address`** tag on each deployed resource (read from the schema tag property under

@@ -28,9 +28,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **E2 verifier core started** — the golden-target generator (**#75**,
-  `py/packages/verifier`) landed (account-B-pure; needs no cloud substrate). Next E2: the deployed-state
-  read path / skeleton (**#30**) + reward core (**#32**); **E3's diff-IR (#34) + Terraform adapter (#35) have landed** (the adapter in PR #150).
+- **Next ready work:** **E2 verifier core progressing** — the golden-target generator (**#75**) and the
+  **golden→reward integration (#31** — `grade_deployment`, generate→bridge→grade) landed in
+  `py/packages/verifier` (account-B-pure). Next E2: the deployed-state read path / skeleton (**#30**) +
+  the reward-record/ledger handoff (**#32**) + read-coverage enforcement (**#141**).
   Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
@@ -42,8 +43,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 ## Recently Landed
 
 - **#60 (spike): IAM eventual consistency — resolved (measured against real AWS).** A bounded engineer probe
-  (new `py/packages/iam-readiness-probe`, fenced out of the `verify` gate like `infra-local` — a `probe`
-  script, never `test`, since it mutates real AWS) measured propagation for a fresh `AWS::IAM::Role` (n=20,
+  (**not committed** — a spike's output is the recorded decision, not a package; the script is preserved in the
+  #60 thread) measured propagation for a fresh `AWS::IAM::Role` (n=20,
   us-east-1): **Cloud Control read-after-create is effectively immediate** (p99 < 0.2s, zero variance) — the
   verifier read path (E2/T1) is largely insulated (cc_get p99 ~0.76s, 0 bound-exceeded), so its
   read-after-create 7A budget is small + FAIL-CLOSED — while **`AssumeRole`/use propagates at ~7s p50 with a
@@ -55,8 +56,42 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Ratified note landed in `DECISIONS.md` §1; consumers updated (#45 the 7A classifier, #141 read-coverage,
   #52/#33 cross-account role assume). Probe is mypy-strict/ruff-clean (boto3 `BaseClient` boundary). Grounded
   in `deterministic-verification` (7A) + `aws-iam` + `aws-sdk-python-usage` + brain `retries-and-backoff`.
-  The probe is **provisional, not core IP** (§8 build-only-the-IP) — kept for plausible future value, with
-  removal/graduation tracked in **#156**. `bun run verify` green 19/19. (PR #151.)
+  The probe is **not committed** (§8 build-only-the-IP) — a spike resolves into a recorded decision, not a
+  package (#156 closed). `bun run verify` green. (PR #151.)
+- **E2-2 (#31): golden→reward integration — `grade_deployment` (generate→bridge→grade), the verifier's
+  grade entry (2A/6A/T1).** The seam between the golden-target generator (#75) and the shared reward core
+  (#34) — which had no bridge yet (`verifier` didn't import `diff-ir`). New
+  `py/packages/verifier/grading.py`: **`grade_deployment(registry, task, seed, deployed) -> GradeOutcome`**
+  — the account-B verifier **regenerates** the golden from (task, seed) (never accepts one from the caller —
+  2A "independently regenerated golden"), bridges it into the reward core's `NormalizedState` IR via
+  **`golden_as_normalized_state`** (tagged `GOLDEN_TARGET`), and `grade`s a B-side deployed-state read
+  against it → `reward∈{0,1}` = zero **normalized** diff. The bridge **fails closed**
+  (`GoldenNotGradableError`) on a golden the grading core can't represent — the diff-ir value validator (#34)
+  is intentionally **stricter** than the generator's (#75) (rejects a `None` value / `$`-key the generator
+  allows): never a silent reward (§8, vector #15). **Flag (ISSUES.md):** harmonizing the two validators is a
+  possible #75/#34 follow-up, out of #31's scope. **Wiring:** `verifier` now consumes `diff-ir` by source
+  path (mypy_path/pythonpath + an `assayops_diff_ir.*` mypy override mirroring the contracts one); the
+  existing cross-hash-seed determinism subprocess got diff-ir added to its PYTHONPATH (re-exporting
+  `grade_deployment` pulls diff-ir into the package import). **TDD (RED→GREEN, +19 tests → 54 total):** AC1 —
+  known-pair integration (correct deploy→1; value/missing/extra/type drift→0; a JCS-equal-but-differently-
+  encoded deploy — int `90` read back as float `90.0` + reordered keys — still →1, the "*normalized*"
+  proof); AC2/#46 — generate→bridge→grade ×K → identical reward + report (in-process + cross-hash-seed
+  subprocess; plus a negative control — a nondeterministic golden fails the check via the load-bearing
+  diff-bytes assertion, satisfying #46's "a nondeterministic path fails"); T1 — deployed slot rejects agent
+  plan/state (fail closed), golden regenerated internally (no caller slot to inject), non-normalizable
+  golden fails closed. **Cross-model review converged** — Claude
+  (`code-reviewer` subagent: no Critical/High, moat verified — no false-reward-1 path, golden un-injectable)
+  **+ Codex gpt-5.5 xhigh**. Findings closed: the `$`-key fail-closed case now tested too (the adjacent case,
+  lessons.md); the bridge `except` simplified to `except ValueError` (verified against the pydantic docs that
+  `ValidationError ⊂ ValueError`, not memory); a determinism comment de-overclaimed; and **Codex caught a
+  Turbo cache-graph gap** — the verifier reads diff-ir by source path but Turbo didn't model the edge, so a
+  reward-core change wouldn't invalidate the verifier's cached tests — now fixed (verifier declares its
+  `py-diff-ir`/`py-contracts` workspace deps + a verifier `turbo.json` `dependsOn ^typecheck/^test`;
+  empirically a diff-ir content change now flips the verifier task hash). The same gap is repo-wide/pre-existing
+  — now tracked as **#152** (Turbo cache-graph), with the #75↔#34 validator divergence as **#153**. Pre-merge,
+  the AC-cited issues (#75/#46/#34 — bodies, comments, state) were re-reviewed: #31 honors all three contracts.
+  **Out of scope** (unchanged): the boto3 read path (#30/#141), the reward-record/ledger handoff (#32).
+  `bun run verify` green **23/23** (54 tests). (PR #149.)
 - **E3-2 (#35): `adapter-terraform` package — the Terraform deployed-state → diff-IR adapter (6A/T2, the
   A-spike engine).** New **`py/packages/adapter-terraform`** (`assayops_adapter_terraform`):
   `normalize(reads, registry)` turns already-enumerated **Cloud Control deployed-state reads** into the

@@ -131,9 +131,9 @@ The verifier-read coverage spike resolved **GO**, refining the §1 read path (de
 
 ### IAM eventual consistency — resolved [spike] (#60)
 
-Measured against real AWS (n=20, us-east-1, `AWS::IAM::Role`; probe in **`py/packages/iam-readiness-probe`**,
-fenced out of the `verify` gate). The "readiness gate" is a **calibration of the 7A transient budget**, not a
-new mechanism — across two surfaces:
+Measured against real AWS (n=20, us-east-1, `AWS::IAM::Role`; a bounded engineer probe, not committed — the
+reproducible script is preserved in #60). The "readiness gate" is a **calibration of the 7A transient budget**,
+not a new mechanism — across two surfaces:
 
 - **Verifier read path (E2/T1).** Cloud Control read-after-create (`GetResource`/`ListResources`) of a fresh
   role is **effectively immediate** (sub-second, resolved on the first poll; `GetResource` p99 ~0.8s, 0
