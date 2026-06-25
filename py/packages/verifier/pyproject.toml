@@ -3,14 +3,16 @@ name = "assayops-verifier"
 version = "0.0.0"
 description = "AssayOps account-B verifier core. E2-5 (#75): the golden-target generator — deterministic, content-addressed regeneration of the expected normalized resource set the verifier grades deployed state against (DECISIONS.md 2A/T1/§1). The engine, not the per-task golden corpus (#76)."
 requires-python = ">=3.12"
-# pydantic for the verifier-internal golden models. Two sibling cores are consumed by source path (the
-# repo's virtual-member convention — see the pytest `pythonpath` + mypy `mypy_path` below): the contract
+# pydantic for the verifier-internal golden models; boto3 for the account-B Cloud Control read path
+# (E2-1/#30 — read-only `get_resource`/`list_resources`; the read SDK, never a cloud write / signing dep, so
+# the verifier stays account-B-pure, DECISIONS.md §1/§8). Three sibling cores are consumed by source path
+# (the repo's virtual-member convention — see the pytest `pythonpath` + mypy `mypy_path` below): the contract
 # spine `assayops_contracts` (TaskSpec input + the single-sourced JCS canonicalization for the content
-# address) and the shared reward core `assayops_diff_ir` (E3-1/#34 — `grade` + the NormalizedState IR the
-# golden is bridged into for grading; E2-2/#31). Both, and their rfc8785 dep, are already in the shared
-# workspace venv. No agent-reachable / signing / cloud-write deps: this is account-B-pure verifier code
-# (DECISIONS.md §8).
-dependencies = ["pydantic>=2.10"]
+# address), the shared reward core `assayops_diff_ir` (E3-1/#34 — `grade` + the NormalizedState IR the golden
+# is bridged into for grading; E2-2/#31), and the Terraform adapter `assayops_adapter_terraform` (E3-2/#35 —
+# `normalize` turns the read harness's Cloud Control records into the DEPLOYED_READ IR). All, and their
+# rfc8785 dep, are already in the shared workspace venv.
+dependencies = ["pydantic>=2.10", "boto3>=1.40"]
 
 [tool.uv]
 package = false
@@ -32,11 +34,12 @@ strict = true
 # the plugin's synthesized `Any`, so hand-written Pydantic models pass `disallow_any_explicit` — the
 # pydantic-v2 skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha.
 plugins = ["pydantic.mypy"]
-# Resolve this package AND the two siblings it consumes: the contracts spine (TaskSpec + jcs) and the
-# diff-ir reward core (`grade` + NormalizedState). `uv run mypy` runs from the package dir, so the sibling
-# sources are `../contracts/src` and `../diff-ir/src`. Cross-package imports are consumed by source path
-# here (the repo's virtual-member convention), keeping the landed packages untouched.
-mypy_path = "src:../contracts/src:../diff-ir/src"
+# Resolve this package AND the three siblings it consumes: the contracts spine (TaskSpec + jcs), the
+# diff-ir reward core (`grade` + NormalizedState), and the Terraform adapter (`normalize` — #30 reads, #35
+# normalizes). `uv run mypy` runs from the package dir, so the sibling sources are `../contracts/src`,
+# `../diff-ir/src`, and `../adapter-terraform/src`. Cross-package imports are consumed by source path here
+# (the repo's virtual-member convention), keeping the landed packages untouched.
+mypy_path = "src:../contracts/src:../diff-ir/src:../adapter-terraform/src"
 
 [tool.pydantic-mypy]
 init_typed = true
@@ -65,6 +68,23 @@ module = ["assayops_diff_ir.*"]
 follow_imports = "silent"
 disallow_any_explicit = false
 
+[[tool.mypy.overrides]]
+# adapter-terraform is separately-typechecked under its OWN strict + disallow_any_explicit lane. Follow it
+# for the real `normalize` / `DeployedResourceRead` / `UnreadableResource` / error types the read path emits
+# and consumes, but `silent` so its internals aren't re-judged here. Mirrors the diff-ir override; the
+# adapter's public surface is `Any`-free, so this only avoids double-judging, never hides an `Any`.
+module = ["assayops_adapter_terraform.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
+# boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The #30 read harness's
+# boundary is botocore's own `BaseClient` + `ClientError` (imported names, not a literal `Any`; `Any` at an
+# untyped-third-party boundary is idiomatic per python-type-safety — narrow the open responses to
+# `dict[str, object]` before use). Mirrors infra-local; #141 can adopt boto3-stubs for real call-shape typing.
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
-pythonpath = ["src", "../contracts/src", "../diff-ir/src"]
+pythonpath = ["src", "../contracts/src", "../diff-ir/src", "../adapter-terraform/src"]
 testpaths = ["tests"]

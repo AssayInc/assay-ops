@@ -15,6 +15,14 @@ Entry format:
 
 ---
 
+## 2026-06-25 — re-read-the-target-issues-own-comments-before-finalizing
+- **Mistake:** Built #30 from the body alone — my initial `gh issue view 30 --json comments` returned `[]`, but
+  the founder posted a detailed pre-start grounding review *during* the session and I never re-checked.
+- **Rule:** Re-read the target issue's **own** comments (`gh issue view <N> --comments`) right before opening
+  the PR, not just once at fetch — a reviewer may post grounding mid-session that overrides the AI-written body.
+  Finalize-time complement to [[read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue]].
+- **Context:** #30 / PR #160.
+
 ## 2026-06-25 — verify-an-issues-build-state-not-just-its-requirements
 - **Mistake:** Started designing a new `py/packages/replay` package for #46 (a P1 "ready" `(S)` Phase-1 issue)
   before checking its build-state: the check was **already done + negative-controlled by #31**

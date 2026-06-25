@@ -4,7 +4,10 @@ E2-5 (#75): the golden-target generator (``GoldenRegistry.generate(task, seed)``
 content-addressed ``GoldenTarget``; the per-task builders are the private corpus #76, this package
 is the engine). E2-2 (#31): the grade entry ``grade_deployment`` — regenerate the golden, bridge it
 into the reward core's IR, and grade a B-side deployed-state read against it → ``reward ∈ {0, 1}``.
-The deployed-state read path is E2-1/#30 + #141; the reward-record/ledger handoff is E2-3/#32.
+
+E2-1 (#30): the deployed-state read path -- ``DeployedStateReader`` and ``verify_deployment`` --
+lives in ``assayops_verifier.read``; it depends on boto3 + the Terraform adapter, kept out of this
+top-level import so golden/grade stay cloud-free. The reward-record/ledger handoff is E2-3/#32.
 """
 
 from __future__ import annotations

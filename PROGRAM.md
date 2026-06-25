@@ -28,16 +28,18 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   E2's first step once it is Stable + Pydantic-clean (**#119**). **Other tooling follow-ups:** **#132
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
-- **Next ready work:** **E2 verifier core progressing** — the golden-target generator (**#75**) and the
-  **golden→reward integration (#31** — `grade_deployment`, generate→bridge→grade) landed in
-  `py/packages/verifier` (account-B-pure). Next E2: the deployed-state read path / skeleton (**#30**) +
-  the reward-record/ledger handoff (**#32**) + read-coverage enforcement (**#141**).
+- **Next ready work:** **E2 verifier core progressing** — the golden-target generator (**#75**), the
+  **golden→reward integration (#31** — `grade_deployment`), and now the **deployed-state read skeleton
+  (#30** — `read.py`: `DeployedStateReader` + `verify_deployment`, read→normalize→grade) landed in
+  `py/packages/verifier` (account-B-pure). Next E2: the reward-record/ledger handoff (**#32**) +
+  read-coverage enforcement (**#141**).
   Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
   cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO); and
   the **E3 diff-ir core (#34) + Terraform adapter (#35) have landed** — the shared reward core + normalized
-  IR + the deployed-state adapter, so the verifier core (E2/#3 — read path #30, reward wiring #32) is next.
+  IR + the deployed-state adapter, so the verifier core (E2/#3) is progressing — read path #30 landed;
+  reward wiring #32 is next.
   **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 - **E6 determinism (#7): verifier-determinism check status clarified; #46 re-scoped → E13.** The
   compute-level check — **golden ×K → identical reward; a nondeterministic path fails** — is **already
@@ -50,6 +52,40 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   classifier + quarantine).
 
 ## Recently Landed
+
+- **E2-1 (#30): verifier skeleton — the account-B Cloud Control deployed-state read → grade path (T1/1C/§1).**
+  New **`py/packages/verifier/read.py`**: **`DeployedStateReader`** wraps an **injected** boto3 Cloud Control
+  client and reads DEPLOYED state read-only (`get_resource`/`list_resources`) into the adapter's
+  `DeployedRead` records (#35); **`verify_deployment(reader, registry, task, seed, type_names)`** wires read →
+  `normalize` (#35) → `grade_deployment` (#31) → `reward∈{0,1}`. **The moat, proven not asserted:** a
+  recording-fake test shows the harness invokes **only** Cloud Control read ops (no write / STS / A→B assume —
+  vectors **#1** + **#10** fail by construction, negative-control-verified); the produced state is always
+  `DEPLOYED_READ` provenance, so `grade_deployment` (which rejects agent provenance, T1) can never be fed
+  agent-reported state. **Fail-closed per record** (vector #15): `ResourceNotFoundException` = absent (a drift),
+  any other `ClientError`/`BotoCoreError` or unparseable/malformed read = `UnreadableResource` → the adapter's
+  `UnreadableResourceError` (never a silent reward); a listed-then-absent resource fails closed too (never
+  dropped). Optional `role_arn` = the documented **B→A read-only** Cloud Control `RoleArn` hook (never A→B).
+  **Grounding reconciliation (stale AI-written issue):** the body's `ts/packages/verifier` is **Python**
+  (`py/packages/verifier`, E17); the `+ CloudFormation drift` is the **CDK path (#66)** — **Terraform = Cloud
+  Control only** (#80, DECISIONS §1; #35 already dropped it). boto3 `get_resource`/`list_resources` shapes +
+  the `RoleArn` param **primary-doc-verified**; anchored to `infra-local`'s LocalStack proof of the exact read
+  APIs (no duplicate #30 smoke). **Scope deferred** (flagged, not built): the closed-world `deployed set ≡
+  golden set` enumeration + per-property coverage gate + 7A transient/genuine classifier → **#141**; the
+  cross-account read-only role + IAM/SCP → **#141/#53/E8**; CFN drift → **#66**; the reward-record/ledger
+  (KMS-sign + WORM) handoff → **#32**; the 15-vector red-team fixtures → **#56**. **Layering:** `read.py` is
+  kept **out of the package top-level `__init__`** (boto3-dependent), so golden/grade stay cloud-free (the
+  determinism subprocess needs no boto3). **TDD (RED→GREEN, +39 tests → 74 verifier total):** parsing, the
+  absent/unreadable/malformed fail-closed classification, paginated discovery, `role_arn` threading, the
+  read-only moat, and the AC integration (clean→1, property-drift→0, missing→0, unreadable→fail-closed,
+  unsupported-type→fail-closed) end-to-end through the **real** `normalize` + `grade_deployment`. **Cross-model
+  `/review` converged to SHIP** — Claude `code-reviewer` (moat negative-control-verified: a planted write op
+  trips the fake's guard; no false-reward-1) **+ Codex `gpt-5.5` xhigh** (re-reviewed to convergence) —
+  hardening the fail-closed read: `BotoCoreError` (network/timeout/creds) now → `UnreadableResource` (was
+  escaping raw); a malformed `list_resources` page now **fails closed** (was fail-OPEN — a missing
+  `ResourceDescriptions` had defaulted to `[]`); a listed-then-`RNF` resource now → `UnreadableResource` (was
+  dropped). Adds `boto3>=1.40` to the verifier (the read SDK; account-B-pure, no write/sign deps) + the
+  `adapter-terraform` workspace dep (Turbo cache edge). `bun run verify` green **26/26** (74 verifier tests);
+  both lockfiles frozen-checked. (PR #160.)
 
 - **#60 (spike): IAM eventual consistency — resolved (measured against real AWS).** A bounded engineer probe
   (**not committed** — a spike's output is the recorded decision, not a package; the script is preserved in the
