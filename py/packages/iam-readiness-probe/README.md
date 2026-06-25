@@ -32,11 +32,13 @@ seen within `--max-wait-seconds` is a bound-exceedance — the datum that sets t
 
 ## Baseline result (n=20, us-east-1, `AWS::IAM::Role`)
 
-- Reads (`iam_read` / `cc_get` / `cc_list`): **effectively immediate** (p99 < 0.2s) → the verifier read
-  path is largely insulated from IAM eventual consistency; a small fail-closed retry budget suffices.
-- `assume`: **p50 ~7.1s** (tight). `perm`: **p50 ~7.2s with a tail to ~41s** → the delay is on
+- Reads (`iam_read` / `cc_get` / `cc_list`): resolve on the first poll, **sub-second** (`cc_get` p99
+  ~0.76s, 0 bound-exceeded) → the verifier read path is largely insulated from IAM eventual consistency;
+  a small fail-closed retry budget suffices.
+- `assume`: **p50 ~7.1s** (tight). `perm`: **p50 ~7.7s with a tail to ~42s** → the delay is on
   provision-then-use; gate first use of a fresh cross-account role behind a bounded (~60s), fail-closed
-  readiness poll, isolated from the grade. Re-measure cross-region once the account pool (E8) lands.
+  readiness poll, isolated from the grade. Measured **same-account** (one session) — re-measure
+  cross-region and cross-account once the account pool (E8) lands.
 
 ## Run it
 
@@ -44,9 +46,12 @@ seen within `--max-wait-seconds` is a bound-exceedance — the datum that sets t
    needs IAM create/read/delete-role, `sts:AssumeRole`, and `cloudformation:GetResource`/`ListResources`
    (the Cloud Control prefix is `cloudformation`). `AdministratorAccess` on a throwaway account is
    simplest and avoids a missing permission being misread as propagation lag.
-2. `bun run --filter @assayops/iam-readiness-probe probe -- --profile assay-iam-spike` (or
-   `uv --directory <repo> run python iam_propagation_probe.py --profile assay-iam-spike`).
-3. Sweep any orphan from a crashed run: append `--cleanup-only`.
+2. `bun run --filter @assayops/iam-readiness-probe probe -- --profile assay-iam-spike --yes` (or
+   `uv --directory <repo> run python iam_propagation_probe.py --profile assay-iam-spike --yes`). The
+   `--yes` flag is required: it gates every mutating path so a forgotten `--profile` can't silently
+   create/delete roles in whatever account the default credential chain resolves to.
+3. Sweep any orphan from a crashed run: append `--cleanup-only --yes` (matches the name prefix AND the
+   probe tag, so it never touches an unrelated role).
 
 Flags: `--trials` (default 12), `--region` (default us-east-1), `--max-wait-seconds`, `--poll-interval`,
-`--skip-list`, `--trust-principal`.
+`--skip-list`, `--trust-principal`, `--yes`.

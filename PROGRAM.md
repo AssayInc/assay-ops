@@ -40,8 +40,9 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (new `py/packages/iam-readiness-probe`, fenced out of the `verify` gate like `infra-local` — a `probe`
   script, never `test`, since it mutates real AWS) measured propagation for a fresh `AWS::IAM::Role` (n=20,
   us-east-1): **Cloud Control read-after-create is effectively immediate** (p99 < 0.2s, zero variance) — the
-  verifier read path (E2/T1) is largely insulated, so its read-after-create 7A budget is small + FAIL-CLOSED —
-  while **`AssumeRole`/use propagates at ~7s p50 with a tail to ~41s**, so the real delay is the **E8
+  verifier read path (E2/T1) is largely insulated (cc_get p99 ~0.76s, 0 bound-exceeded), so its
+  read-after-create 7A budget is small + FAIL-CLOSED — while **`AssumeRole`/use propagates at ~7s p50 with a
+  tail to ~42s**, so the real delay is the **E8
   provision-then-use** path: gate first use of a fresh cross-account role behind a **bounded (~60s) FAIL-CLOSED
   readiness poll, isolated from the grade**. The "readiness gate" is a **calibration of the locked 7A transient
   budget**, not a new mechanism (reconciles with #80's read-after-create→7A + #141). The smoke caught a real

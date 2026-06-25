@@ -15,15 +15,17 @@ Reports p50/p95/p99/max across N trials. Bounded + fail-closed: a signal not see
 readiness gate's retry budget. Creates one role + one inline policy per trial in the target
 (throwaway/dev) account; tears them down in a finally.
 
-This MUTATES real AWS (creates/deletes IAM roles + policies; STS/Cloud Control reads). Cost ~ $0. It
-is a bounded engineer measurement, not an agent episode. Run only against a dev/throwaway account.
+This MUTATES real AWS (creates/deletes IAM roles + policies; STS/Cloud Control reads). Cost ~ $0. A
+bounded engineer measurement, not an agent episode -- run only against a throwaway/dev account, with
+--yes (which gates every mutating path). assume/perm are SAME-ACCOUNT; the verifier's cross-account
+assume + cross-region reads are re-measured when E8 lands.
 
-Baseline result (n=20, us-east-1, AWS::IAM::Role): reads (iam_read/cc_get/cc_list) effectively
-immediate (p99 < 0.2s); assume p50 ~7.1s; perm p50 ~7.2s with a tail to ~41s. See issue #60.
+Baseline result (n=20, us-east-1, AWS::IAM::Role): reads resolve on the first poll, sub-second
+(cc_get p99 ~0.76s); assume p50 ~7.1s; perm p50 ~7.7s, tail to ~42s. See issue #60.
 
 Usage:
-  uv --directory <repo> run python iam_propagation_probe.py --profile assay-iam-spike
-  uv --directory <repo> run python iam_propagation_probe.py --profile assay-iam-spike --cleanup-only
+  uv --directory <repo> run python iam_propagation_probe.py --profile assay-iam-spike --yes
+  (add --cleanup-only to sweep orphaned probe roles from a crashed run)
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ from collections.abc import Callable
 import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 # Identifying tag + name prefix so any orphaned role from a crashed run is findable and sweepable.
 _TAG_KEY = "assay-spike"
@@ -47,6 +49,14 @@ _NAME_PREFIX = "assay-iam-spike-"
 _INLINE_POLICY_NAME = "probe-inline"
 _SIGNALS = ("iam_read", "cc_get", "cc_list", "assume", "perm")
 _ROLE_TYPE = "AWS::IAM::Role"
+
+# Throttling codes treated as "retry the poll" everywhere (a throttle is never a readiness signal).
+_THROTTLE = {
+    "Throttling",
+    "ThrottlingException",
+    "TooManyRequestsException",
+    "RequestLimitExceeded",
+}
 
 # A benign, free, account-scoped read granted by the inline policy, to measure authz (perm)
 # propagation from the assumed role's creds. s3:ListAllMyBuckets has no resource and is free.
@@ -58,6 +68,10 @@ _GATED_ACTION_POLICY = {
 # Poll clients must NOT retry internally: botocore's backoff would inject hidden sleeps and skew the
 # measured propagation time. We poll on our own monotonic clock instead.
 _NO_RETRY = Config(retries={"total_max_attempts": 1}, connect_timeout=5, read_timeout=10)
+
+
+def _code(exc: ClientError) -> str:
+    return str(exc.response.get("Error", {}).get("Code", ""))
 
 
 def _trust_doc(principal_arn: str) -> str:
@@ -79,29 +93,21 @@ def _percentile(sorted_vals: list[float], q: float) -> float:
     return sorted_vals[k]
 
 
-def _try(call: Callable[[], object], not_ready: tuple[type[BaseException], ...]) -> bool:
-    """Run a read call; True on success, False on a not-ready/throttle signal, else re-raise."""
+def _try_read(call: Callable[[], object], not_found: tuple[type[BaseException], ...]) -> bool:
+    """A read poll: True on success, False on not-found/throttle (still propagating), else re-raise.
+
+    AccessDenied is NOT swallowed here -- on reads it means a missing permission / SCP denial,
+    not propagation lag, so it must fail loud rather than masquerade as an infinite wait.
+    """
     try:
         call()
         return True
-    except not_ready:
+    except not_found:
         return False
     except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code", "")
-        # Throttling and the access/not-found family are "still propagating" -> keep polling.
-        if code in {
-            "Throttling",
-            "ThrottlingException",
-            "TooManyRequestsException",
-            "RequestLimitExceeded",
-            "AccessDenied",
-            "AccessDeniedException",
-            "ResourceNotFoundException",
-            "ResourceNotFound",
-            "NoSuchEntity",
-        }:
+        if _code(exc) in _THROTTLE:
             return False
-        raise  # unknown error: fail loud (mis-scoped perms, bad region, etc.)
+        raise
 
 
 def probe_once(
@@ -124,15 +130,15 @@ def probe_once(
         signals["cc_list"] = -1.0  # sentinel: not measured this run
     perm_client: BaseClient | None = None
 
-    iam.create_role(
-        RoleName=role_name,
-        AssumeRolePolicyDocument=_trust_doc(trust_principal),
-        Description="AssayOps spike #60 -- IAM eventual-consistency probe (safe to delete)",
-        MaxSessionDuration=3600,
-        Tags=[{"Key": _TAG_KEY, "Value": _TAG_VALUE}],
-    )
-    t0 = time.monotonic()
     try:
+        iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=_trust_doc(trust_principal),
+            Description="AssayOps spike #60 -- IAM eventual-consistency probe (safe to delete)",
+            MaxSessionDuration=3600,
+            Tags=[{"Key": _TAG_KEY, "Value": _TAG_VALUE}],
+        )
+        t0 = time.monotonic()
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName=_INLINE_POLICY_NAME,
@@ -142,26 +148,26 @@ def probe_once(
         deadline = t0 + max_wait
 
         while time.monotonic() < deadline and any(signals[k] is None for k in _SIGNALS):
-            elapsed = time.monotonic() - t0
-
-            if signals["iam_read"] is None and _try(
+            # Stamp each signal at its OWN success time (calls are sequential round-trips, so one
+            # shared timestamp would under-report whichever signal resolves later in the tick).
+            if signals["iam_read"] is None and _try_read(
                 lambda: iam.get_role(RoleName=role_name), (iam.exceptions.NoSuchEntityException,)
             ):
-                signals["iam_read"] = elapsed
+                signals["iam_read"] = time.monotonic() - t0
 
-            if signals["cc_get"] is None and _try(
+            if signals["cc_get"] is None and _try_read(
                 lambda: cc.get_resource(TypeName=_ROLE_TYPE, Identifier=role_name),
                 (cc.exceptions.ResourceNotFoundException,),
             ):
-                signals["cc_get"] = elapsed
+                signals["cc_get"] = time.monotonic() - t0
 
             if signals["cc_list"] is None and not skip_list and _cc_list_has(cc, role_name):
-                signals["cc_list"] = elapsed
+                signals["cc_list"] = time.monotonic() - t0
 
             if signals["assume"] is None:
                 creds = _try_assume(sts, role_arn)
                 if creds is not None:
-                    signals["assume"] = elapsed
+                    signals["assume"] = time.monotonic() - t0
                     perm_client = session.client(
                         "s3",
                         region_name=region,
@@ -172,31 +178,36 @@ def probe_once(
                     )
 
             if signals["perm"] is None and perm_client is not None and _try_perm(perm_client):
-                signals["perm"] = elapsed
+                signals["perm"] = time.monotonic() - t0
 
             if all(signals[k] is not None for k in _SIGNALS):
                 break
             time.sleep(poll_interval)
         return signals
     finally:
-        # Idempotent best-effort teardown -- never leak resources, even on an unexpected raise.
+        # Best-effort teardown -- each delete is independent (a throttle on one must not skip the
+        # other), and a non-NoSuchEntity error is logged (an orphan record), never silently masked.
         try:
             iam.delete_role_policy(RoleName=role_name, PolicyName=_INLINE_POLICY_NAME)
         except iam.exceptions.NoSuchEntityException:
             pass
+        except ClientError as exc:
+            print(f"teardown warning, delete_role_policy {role_name}: {exc}", file=sys.stderr)
         try:
             iam.delete_role(RoleName=role_name)
         except iam.exceptions.NoSuchEntityException:
             pass
+        except ClientError as exc:
+            print(f"teardown warning, delete_role {role_name}: {exc}", file=sys.stderr)
 
 
 def _try_assume(sts: BaseClient, role_arn: str) -> dict[str, str] | None:
     try:
         creds = sts.assume_role(RoleArn=role_arn, RoleSessionName="assay-spike-60")["Credentials"]
     except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code", "")
-        if code in {"AccessDenied", "AccessDeniedException", "Throttling", "ThrottlingException"}:
-            return None  # trust policy not yet propagated -> keep polling
+        # On the assume path, AccessDenied IS the propagation signal (trust not yet effective).
+        if _code(exc) in {"AccessDenied", "AccessDeniedException"} | _THROTTLE:
+            return None
         raise
     return {
         "AccessKeyId": creds["AccessKeyId"],
@@ -215,41 +226,52 @@ def _try_perm(client: BaseClient) -> bool:
         client.list_buckets()
         return True
     except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code", "")
-        if code in {
-            "InvalidAccessKeyId",
-            "SignatureDoesNotMatch",
-            "TokenRefreshRequired",
-            "AccessDenied",
-            "AccessDeniedException",
-            "Throttling",
-            "ThrottlingException",
-        }:
+        if (
+            _code(exc)
+            in {
+                "InvalidAccessKeyId",
+                "SignatureDoesNotMatch",
+                "TokenRefreshRequired",
+                "AccessDenied",
+                "AccessDeniedException",
+            }
+            | _THROTTLE
+        ):
             return False
         raise
 
 
 def _cc_list_has(cc: BaseClient, role_name: str) -> bool:
+    """True once list_resources enumerates the role; throttles retry, other errors fail loud."""
     try:
         for page in cc.get_paginator("list_resources").paginate(TypeName=_ROLE_TYPE):
             for desc in page.get("ResourceDescriptions", []):
                 if desc.get("Identifier") == role_name:
                     return True
         return False
-    except ClientError:
-        return False  # throttle / transient -> not yet
+    except ClientError as exc:
+        if _code(exc) in _THROTTLE:
+            return False
+        raise
 
 
 def cleanup_orphans(iam: BaseClient) -> int:
-    """Delete any leftover probe roles (tag/prefix match) from a crashed run; return the count."""
+    """Delete leftover probe roles from a crashed run -- match the name prefix AND the probe tag."""
     deleted = 0
     for page in iam.get_paginator("list_roles").paginate():
         for role in page.get("Roles", []):
             name = role["RoleName"]
             if not name.startswith(_NAME_PREFIX):
                 continue
-            for pol in iam.list_role_policies(RoleName=name).get("PolicyNames", []):
-                iam.delete_role_policy(RoleName=name, PolicyName=pol)
+            tags = iam.list_role_tags(RoleName=name).get("Tags", [])
+            if not any(t.get("Key") == _TAG_KEY and t.get("Value") == _TAG_VALUE for t in tags):
+                continue  # prefix collision with a non-probe role -- never touch it
+            for pol_page in iam.get_paginator("list_role_policies").paginate(RoleName=name):
+                for pol in pol_page.get("PolicyNames", []):
+                    try:
+                        iam.delete_role_policy(RoleName=name, PolicyName=pol)
+                    except iam.exceptions.NoSuchEntityException:
+                        pass
             try:
                 iam.delete_role(RoleName=name)
                 deleted += 1
@@ -288,6 +310,16 @@ def run(args: argparse.Namespace) -> int:
         f"caller account={account} arn={ident['Arn']} region={args.region} profile={args.profile}",
         file=sys.stderr,
     )
+
+    # Both paths below MUTATE real IAM. Require an explicit --yes so a forgotten --profile cannot
+    # silently create/delete roles in whatever account the default credential chain resolves to.
+    if not args.yes:
+        print(
+            f"Refusing to mutate IAM in account {account} without --yes -- re-run with --yes once "
+            f"you have confirmed this is a throwaway/dev account.",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.cleanup_only:
         deleted = cleanup_orphans(iam)
@@ -357,10 +389,11 @@ def main() -> int:
     p.add_argument(
         "--cleanup-only", action="store_true", help="sweep orphaned probe roles and exit"
     )
+    p.add_argument("--yes", action="store_true", help="confirm: mutate real IAM (required to run)")
     args = p.parse_args()
     try:
         return run(args)
-    except ClientError as exc:
+    except (ClientError, BotoCoreError) as exc:
         print(f"AWS error: {exc}", file=sys.stderr)
         return 1
 

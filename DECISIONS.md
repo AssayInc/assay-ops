@@ -136,7 +136,8 @@ fenced out of the `verify` gate). The "readiness gate" is a **calibration of the
 new mechanism — across two surfaces:
 
 - **Verifier read path (E2/T1).** Cloud Control read-after-create (`GetResource`/`ListResources`) of a fresh
-  role is **effectively immediate** (p99 < 0.2s, zero variance) — so the read-after-create transient (per #80)
+  role is **effectively immediate** (sub-second, resolved on the first poll; `GetResource` p99 ~0.8s, 0
+  bound-exceeded) — so the read-after-create transient (per #80)
   gets a **small, rarely-firing retry budget**, then **FAIL-CLOSED** (genuine unreadability ⇒ `reward=0`,
   vector #15). The verifier read is largely insulated from IAM eventual consistency.
 - **Provision-then-use (E8/T6 episode + account setup).** A freshly-created role is **assumable/usable at ~7s
@@ -144,8 +145,9 @@ new mechanism — across two surfaces:
   Gate first use of a fresh cross-account role behind a **bounded (~60s) FAIL-CLOSED readiness poll, isolated
   from the grade** (a setup timeout is an infra/episode failure, never a forged reward); never a fixed `sleep`.
 
-Single region/account/time-of-day, so directional — **re-measure cross-region when E8 lands**. Consumed by
-**#141** (the read-path FAIL-CLOSED budget) + the **E8** episode/account-setup work (the assume-readiness gate).
+Single region/account/time-of-day and **same-account** assume, so directional — **re-measure cross-region +
+cross-account when E8 lands**. Consumed by **#141** (the read-path FAIL-CLOSED budget) + the **E8**
+episode/account-setup work (the assume-readiness gate).
 
 ---
 
