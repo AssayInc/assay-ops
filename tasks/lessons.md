@@ -16,40 +16,19 @@ Entry format:
 ---
 
 ## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
-- **Mistake:** The diff-ir reward core (#34) decided property-value **equality** with a hand-rolled
-  comparator (`_values_equal` + `_is_json_number` + exact-type gates + a recursive walk) and **validity**
-  with hand-rolled guards. Re-deriving JSON value semantics by hand is where the bugs lived: 6 review passes
-  to close false-reward-1 holes, and it STILL shipped an over-strict cut (`90 ≠ 90.0` —
-  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]). Yet the record is **already signed
-  over its RFC 8785 (JCS) canonical bytes** (`assayops_contracts.jcs`) — *the* authoritative definition of
-  "are these two JSON values the same" — so I refactored both onto JCS. **The first cut was unsafe:** I made
-  *validity* "does it canonicalize?" too — but a Codex `gpt-5.5` **xhigh** re-review of the fixed code found
-  `rfc8785.dumps` canonicalizes a builtin **subclass** by calling `int()`/`float()`/`list()`/`dict()` on it —
-  **user code** — so `LyingInt(9)` (which `== 9`) with `__int__ -> 1` canonicalizes the value 9 to `b"1"`: a
-  **false reward 1**, and nondeterministic (a flipping `__int__` alternates the bytes). "It canonicalizes" is
-  NOT a safe validity check.
-- **Rule:** **Equality** → delegate to the authoritative canonical form: `_values_equal` =
-  `rfc8785.dumps(a) == rfc8785.dumps(b)`. This is sound and makes the grade and the signed `reportDigest`
-  **agree by construction** — the JSON semantics (`90 == 90.0`, `True ≠ 1`, keys sorted, lists order-sensitive)
-  fall out for free, no hand-rolled rule, and it deleted `_is_json_number` + the type gates + the recursive
-  walk. **Validity** → you still need a thin **exact-type input guard** (`type(x) is T` recursively, never
-  `isinstance`) BEFORE canonicalizing, because the canonicalizer **invokes user code on builtin subclasses**
-  and can be driven to forge or flip its own bytes. The trap is treating the canonicalizer as the *whole
-  validator*: it silently **coerces** an adversarial input instead of rejecting it. The split: **JCS owns the
-  number/structure/equality domain; a `type(x) is T` guard owns the input domain** (so `dumps` only ever sees
-  exact builtins). Net it's still *less* code than the hand-rolled comparator AND safe — the anti-over-fix
-  holds — but "fold validation onto the canonicalizer" is only safe once the input is provably an exact
-  builtin. (Scope guard for the delegate-to-the-canonical-form move: the trigger is "an authoritative form
-  already exists and is load-bearing elsewhere," not "always call a library instead of comparing.")
-- **Context:** E3-1 (#34) / PR #145; `_canonical_bytes`/`_require_exact_json`/`_values_equal`
-  (`reward_core.py`/`normalized_state.py`) + NORMALIZATION.md; the canonical form is the `rfc8785` JCS recipe
-  from E1-3 (#28). The subclass-coercion forge was caught **only** by the cross-model xhigh re-review of the
-  *fixed* code — exactly why that pass exists
-  ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]); my own pre-review probe (numbers,
-  unicode, `-0.0`, large-int) missed it. Root-cause companion to
-  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]; sharpens
-  [[use-the-librarys-official-mechanism-not-a-hand-roll]] — the "mechanism" is the system's own signing form,
-  but a canonicalizer that coerces subclasses is **not** a free input validator.
+- **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
+  JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it
+  canonicalize?" was not. A Codex xhigh re-review found `rfc8785.dumps` canonicalizes a builtin **subclass** by
+  calling `int()`/`list()`/… on it (USER code), so `LyingInt(9)` (== 9) with `__int__→1` canonicalizes 9 to
+  `b"1"` — a false reward 1, nondeterministic. A canonicalizer **coerces** adversarial input, doesn't reject it.
+- **Rule:** Delegate the *equality semantics* to the system's canonical/signed form (no hand-rolled comparator;
+  `90==90.0`, `True≠1` fall out free, grade ↔ digest agree by construction). But guard the *input domain* to
+  exact types (`type(x) is T`, never `isinstance`) **before** canonicalizing — restrict to the library's
+  documented domain; never pass an open `object` and rely on undocumented coercion. Still less code, and safe.
+- **Context:** #34 / PR #145; `_require_exact_json`/`_canonical_bytes`/`_values_equal`. rfc8785's subclass
+  coercion is **undocumented** (verified vs its docs) → guard, don't rely. Caught only by the xhigh re-review of
+  the *fixed* code ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]); companion to
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]].
 
 ## 2026-06-24 — harden-to-the-precise-domain-semantics-not-an-over-general-rule
 - **Mistake:** Fixing the value-type-collapse false-reward-1 in the diff-ir reward core (#34), the real bug
@@ -67,40 +46,26 @@ Entry format:
   the ground-truth semantics is itself a bug.** Keep the genuinely bug-preventing hardening; cut the
   over-reach. Distinguish *defense-in-depth that prevents real future bugs* (keep) from *strictness beyond
   the correct semantics* (cut).
-- **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The semantic rule stands, but
-  the over-strict cut was the trigger to stop hand-rolling it: `_values_equal` was then replaced entirely by
-  JCS canonical-byte delegation (`90 == 90.0` and `bool` != number now fall out for free) — the deeper
-  root-cause fix in [[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]. Pairs
-  with the KISS/YAGNI bar and "smallest change that meets the AC."
+- **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The over-strict cut later
+  triggered replacing the hand-rolled comparator entirely with JCS delegation
+  ([[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]). Pairs with KISS/YAGNI.
 
 ## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
-- **Mistake:** Built the E3-1 `diff-ir` reward core (#34) grounded against the domain + craft **skills**
-  (deterministic-verification, write-isolated-verifier, pydantic-v2, python-type-safety,
-  python-testing-patterns, uv) + TDD + **6 cross-model review passes to convergence**, then presented it as
-  done. The founder asked the standing three questions ("did you review AND re-review? everything grounded on
-  official docs? did you validate with the python skills?"). Two gaps: (1) I had **not opened the PRIMARY
-  Pydantic docs** myself for the load-bearing behaviors — the whole `validate-and-copy` snapshot rests on an
-  after-mode `field_validator` **returning-and-storing the transformed value**, and the `grade` re-validation
-  rests on **`frozen` NOT deep-freezing a dict field**; I'd only confirmed both via the *skill* (secondary) +
-  an empirical green. (2) I'd validated against type-safety/testing/pydantic but **skipped two relevant craft
-  skills** — `python-error-handling` and `python-design-patterns`. Closing the gaps surfaced **real
-  refinements**: `python-error-handling` Pattern 4 (invalid input → `ValueError`) → `UntrustedInputError` now
-  subclasses `ValueError` (consistent with the validators); the doc examples → made `mode="after"` explicit.
-- **Rule (founder directive, recurring):** The grounding pass is **part of "done," done PROACTIVELY** — not a
-  thing you do when the founder asks. Before claiming a build complete, even after heavy TDD + cross-model
-  review: (a) **open the PRIMARY docs yourself** for every load-bearing library behavior and quote them — a
-  skill, a green test, and a Codex pass are all **secondary** ([[ground-in-official-docs-first]],
-  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]],
-  [[reground-a-spikes-library-usage-against-primary-docs-when-promoting-to-production]]); (b) **enumerate
-  which craft skills apply and validate against EACH**, stating which are N/A and why
-  ([[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]]) — for a pure typed core that was
-  type-safety + testing-patterns + pydantic-v2 + **error-handling** (exception design) + **design-patterns**
-  (KISS/SRP/composition), with resilience/async/observability N/A (no I/O, sync, no metrics). Cross-model
-  review hardens correctness; it does **not** substitute for primary-source grounding or the craft-skill sweep.
-- **Context:** E3-1 (#34) / PR #145; `py/packages/diff-ir`. Primary Pydantic v2 docs (docs.pydantic.dev):
-  validators ("important to return the validated value" + the mutating-value example), models ("Faux
-  immutability" Caution + the `foobar.b['apple']='grape'` example), serialization (`exclude_none`). Pairs with
-  the every-build grounding rules above.
+- **Mistake:** Presented the #34 reward core as done after grounding against the **skills** + TDD + 6 review
+  passes — but had NOT (a) opened the **primary** Pydantic docs myself for the load-bearing behaviors
+  (after-mode `field_validator` returns-and-stores the value; `frozen` doesn't deep-freeze a dict), nor (b)
+  validated against two applicable craft skills (`python-error-handling`, `python-design-patterns`). The
+  founder asked the standing three questions; closing the gaps surfaced real refinements
+  (`UntrustedInputError(ValueError)`; explicit `mode="after"`).
+- **Rule (recurring founder directive):** The grounding pass is **part of "done," done proactively** — not when
+  asked. Before claiming a build complete: open the **primary docs yourself** for each load-bearing library
+  behavior (a skill / green test / Codex pass are all **secondary**), and **validate against every applicable
+  craft skill**, stating which are N/A and why. Cross-model review hardens correctness; it does **not**
+  substitute for either. Pairs with [[ground-in-official-docs-first]] +
+  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]].
+- **Context:** E3-1 (#34) / PR #145; primary Pydantic v2 docs (validators "return the validated value"; "Faux
+  immutability" Caution; `exclude_none`).
+
 ## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
 - **Mistake:** On #75 (the golden generator — a proof-critical content-addressed verifier) I first **piled on**
   validations chasing every Codex adversarial finding, then, when the founder asked "are you over-fixing?",

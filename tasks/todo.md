@@ -26,7 +26,7 @@ with `RewardRecord.reportDigest`. Honors 6A. → noted on the issue.
 rejected) · `NormalizedResource`/`NormalizedState` (frozen Pydantic; unique-address + JSON-domain value
 validators) · `grade(deployed, golden) -> GradeOutcome(reward, diff)` — the **only** public reward entry, so
 consumption is exactly {deployed, golden}; T1 guard **fails closed** + **re-validates** inputs · tool-agnostic
-deterministic diff with **type-strict** value comparison (sort by address + path; golden=expected,
+deterministic diff with **JCS canonical-byte** value equality (sort by address + path; golden=expected,
 deployed=actual; type-mismatch → reserved `$type` propertyDiff) · `NORMALIZATION.md` (the adapter↔core split +
 the determinism + value-representability contract). Report serializes with `exclude_none` (schema-valid sparse).
 
@@ -34,11 +34,11 @@ the determinism + value-representability contract). Report serializes with `excl
 `../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
 plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
 
-**Steps:** [x] all — TDD (45 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
+**Steps:** [x] all — TDD (50 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
 green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
 `/review`; issue comment.
 
-### Review (`bun run verify` green 20/20 forced; 45 tests)
+### Review (`bun run verify` green 20/20 forced; 50 tests)
 
 - **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
   dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
@@ -71,3 +71,10 @@ green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #14
   now subclasses **`ValueError`**, Pattern 4 invalid-input + consistent with the validators; +1 test) and
   `python-design-patterns` (KISS/SRP/composition/small-functions confirmed, no change). `mode="after"` made
   explicit per the doc examples.
+
+**Final state (supersedes the hand-rolled design above).** Value equality + validity now use **RFC 8785 JCS
+canonicalization** (`rfc8785.dumps`, the same form the record is signed with) behind a thin **exact-type input
+guard** (`type(x) is T`) + a **cycle guard** (stdlib-`json`-style `id()` detection) — replacing the hand-rolled
+comparator + validate-and-copy. 3 more Codex `gpt-5.5` xhigh passes (subclass-coercion forge → cycle crash →
+SHIP) + a **complete** review (SHIP, no blockers). rfc8785/JCS re-grounded vs RFC 8785 + the library docs (its
+subclass coercion is undocumented → guard, don't rely). **50 tests; `bun run verify` 20/20; merged `main`.**
