@@ -15,6 +15,70 @@ Entry format:
 
 ---
 
+## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
+- **Mistake:** On #75 (the golden generator — a proof-critical content-addressed verifier) I first **piled on**
+  validations chasing every Codex adversarial finding, then, when the founder asked "are you over-fixing?",
+  started **removing working validations + their tests** because a proportionality reviewer (Opus) framed them
+  as disproportionate. The founder caught it: "if the tests and the validations are important, keep them — why
+  did you remove them?" Both moves were the same error in opposite directions — letting a reviewer's verdict
+  drive me instead of holding judgment. The validations (reject a `set`/subclass/surrogate/non-finite float in
+  a property; re-check after construction) are **cheap, fail-closed, runtime-free, and protect the load-bearing
+  invariant** (a deterministic content-address) — they belong, even though each defends a low-probability or
+  trusted-corpus input.
+- **Rule:** For the proof-critical core, a **cheap fail-closed validation protecting a load-bearing invariant
+  STAYS** — "a plausible-but-wrong verifier is worse than none" (DECISIONS.md stance). Do **not** delete a
+  working safety check + its test to lower a test count or win a "proportionality" argument; a check that can
+  only reject *pathological* input (never a legitimate golden) costs ~nothing and is pure insurance. Reviewer
+  verdicts are **inputs, not directives** — don't let an adversarial reviewer ping-pong you to "add everything"
+  and a proportionality reviewer ping-pong you to "cut everything"; weigh each finding's cost vs. what it
+  protects yourself. The legitimate answer to "over-fixing" is: keep the protective checks, **clarify intent**
+  so they aren't silently weakened later, and cut only genuine speculative abstraction / true redundancy — not
+  safety. Where two strong reviewers disagree on a real tradeoff, surface it as the user's call; never
+  unilaterally strip safety.
+- **Context:** #75 / PR #146 — founder flagged removing validations/tests after an over-fixing question.
+  Reverted; kept all 35 tests + validations. Pairs with
+  [[ground-and-validate-craft-skills-before-claiming-done-not-when-asked]] (don't over-defer to reviews).
+
+## 2026-06-24 — negative-control-restore-with-a-file-backup-never-git-checkout
+- **Mistake:** Running a negative control on #75 (temporarily break code → prove the test fails → restore),
+  I restored with `git checkout -- src/assayops_verifier/models.py src/assayops_verifier/golden.py`. That
+  reverts to **HEAD (the last commit)**, not to my working tree — so it silently wiped **all the uncommitted
+  fixes** from that turn (two rounds of adversarial-review fixes), not just the one-line negative-control
+  patch. I only caught it because the harness flagged the files as reverted, then had to reconstruct both
+  files from memory and re-`Write` them.
+- **Rule:** A negative control mutates **uncommitted** code in place; restore it from a **file backup**, never
+  from git. Before the patch: `cp <file> /tmp/<file>.bak`; after: `cp /tmp/<file>.bak <file>` (or keep the
+  original text in the patch script and write it back). **Never `git checkout -- <file>` / `git restore` while
+  there are uncommitted changes you want to keep** — it discards them to HEAD. (If you must use git to revert
+  a negative-control patch, commit the good state first so HEAD *is* the good state.) Pairs with the
+  negative-control discipline ([[no-any-ban-targets-our-data...]] and the structlog/redaction negative
+  controls) — the control is only safe if the restore is non-destructive.
+- **Context:** #75 / PR #146, the Opus-4.8-max + Codex-xhigh adversarial-review fixes; the `git checkout`
+  reverted models.py/golden.py to `d35cf3c`, dropping that turn's fixes. Recovered by re-`Write`-ing the final
+  files. Forward fix: every subsequent negative control used `cp`-backup restore.
+
+## 2026-06-24 — ground-and-validate-craft-skills-before-claiming-done-not-when-asked
+- **Mistake:** Presented #75 (the golden generator) as merge-ready after grounding only against the
+  **API/feature skills** (`pydantic-v2`, `uv`) + the empirical gate + the cross-model `/review`. I had **not**
+  proactively (a) validated the implementation against the applicable **Python craft skills** the repo vendors
+  (`python-type-safety` / `python-error-handling` / `python-testing-patterns` / `python-design-patterns`), nor
+  (b) opened the **primary docs** for the load-bearing library behaviors (pydantic's `model_dump(mode="json")`
+  inf/nan→`null` default, strict `list`→`tuple` rejection, the rfc8785 integer domain). The founder had to ask
+  "did you ground on official docs and skills? did you use the python skills available?" — only then did I. It
+  paid off (confirmed the design is skill-aligned, surfaced a `parametrize` test improvement, and proved my JCS
+  int bound is **exactly** rfc8785's `_INT_MAX = 2**53−1`), but it should have come **before** I claimed done.
+- **Rule:** Validating against **all applicable vendored craft skills** + grounding **load-bearing library
+  behavior against primary docs (or an empirical probe of the pinned lib)** is a **pre-completion / pre-PR
+  checklist item — proactive, not a reaction to being asked**. The API skill is necessary, not sufficient: for
+  Python in a domain with craft skills, load + validate against the applicable ones and **state which apply vs
+  N/A** (here N/A with reasons: resilience/async/configuration/observability — pure sync compute, no
+  I/O/secrets/logging yet). A green gate + a skill's doc-citation are **secondary** — for the bytes a
+  content-address covers / what serializes to `null` / a coercion rule, open the primary source yourself or
+  probe the pinned library and cite it. "I ran the cross-model review" is not a substitute for that pass.
+- **Context:** #75 / PR #146 — founder's three grounding questions after the PR was presented ready. Sharpens
+  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]] + [[ground-in-official-docs-first]] +
+  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]] with the proactive/pre-PR trigger.
+
 ## 2026-06-24 — act-decisively-on-airtight-code-evidence-dont-bounce-it-back
 - **Mistake:** Grounding #140 against `origin/main`, I proved **three ways** that quicktype is already globbed
   (`git show origin/main:justfile` → `contracts/schemas/*.schema.json`; PR #139's squash `e641784` diff =
