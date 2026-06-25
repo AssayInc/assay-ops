@@ -1,6 +1,7 @@
 # tasks/todo.md — #60 Spike: IAM eventual consistency / readiness gate
 
-> Ephemeral per-session scratchpad (lessons.md: durable records go to GitHub/PROGRAM/DECISIONS, not here).
+Plan-first scratchpad for the current piece of work (see `CLAUDE.md`/`AGENTS.md` → **Agent Operating
+Loop**). Ephemeral per-session — durable records go to GitHub/PROGRAM.md/DECISIONS.md, not here.
 
 ## Decision (founder, this session)
 **"Measure now (real AWS)"** — a bounded engineer probe (NOT an agent episode, so T7's cost-bomb gate
@@ -14,7 +15,7 @@ doesn't bind; cost ~ $0), in a throwaway/dev account. Authorized one-off excepti
 - [x] Cross-model `/review` (Claude + Codex gpt-5.5 xhigh, converged to ship): hardened probe (leak-proof
       teardown, tag-checked cleanup, per-signal timing, fail-loud reads, `--yes` gate, BotoCoreError);
       re-measured n=20 with the fixed probe; synced numbers across probe/DECISIONS/README/PROGRAM.
-- [x] PROGRAM.md updated; `bun run verify` green 19/19.
+- [x] PROGRAM.md updated; merged latest main; `bun run verify` green.
 - [ ] **Awaiting founder go to merge** (never merge without explicit approval).
 
 ## Result (n=20, us-east-1, fixed probe)

@@ -12,6 +12,10 @@
         "typescript": "^6.0.3",
       },
     },
+    "py/packages/adapter-terraform": {
+      "name": "@assayops/py-adapter-terraform",
+      "version": "0.0.0",
+    },
     "py/packages/contracts": {
       "name": "@assayops/py-contracts",
       "version": "0.0.0",
@@ -86,6 +90,8 @@
     "@assayops/infra-local": ["@assayops/infra-local@workspace:py/packages/infra-local"],
 
     "@assayops/logger": ["@assayops/logger@workspace:ts/packages/logger"],
+
+    "@assayops/py-adapter-terraform": ["@assayops/py-adapter-terraform@workspace:py/packages/adapter-terraform"],
 
     "@assayops/py-contracts": ["@assayops/py-contracts@workspace:py/packages/contracts"],
 
