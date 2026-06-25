@@ -56,13 +56,17 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   addresses raise — vector #15). **Hardened** Pydantic models (frozen/extra-forbid/strict; the pydantic.mypy
   `disallow_any_explicit` gotcha fixed via the plugin + init_typed/init_forbid_extra). First cross-package
   Python dep — consumes `assayops_contracts` by source path (the repo's virtual-member convention); contracts
-  untouched. **Cross-model `/review` (Claude + Codex `gpt-5.5` xhigh, 3 passes to convergence) hardened the
-  open-`properties` channel** (reject set/non-finite-float/oversized-int/non-JSON → the AC1 determinism hole)
-  **+ content-address integrity** (canonical-by-construction model, immutable `resources` tuple, `golden_digest`
-  re-validates so post-generation tampering fails closed — all account-B-internal, the moat intact).
-  `bun run verify` green **20/20** (21 verifier tests; the load-bearing guards negative-controlled); both
-  lockfiles frozen-checked. Runtime-import hardening (consume contracts as an installed pkg) deferred to #147.
-  **Gates #31** (golden→reward integration). (PR #146.)
+  untouched. **Three adversarial-review rounds converged to MERGE** (`/review`, then a founder-requested
+  **Opus 4.8 max** + **Codex `gpt-5.5` xhigh** pair): the **moat held in all** (no agent-reachable forge
+  path — the golden is account-B-internal), and every finding was **content-address-integrity / fail-closed
+  hardening** of the open-`properties` channel, all closed + negative-controlled: reject
+  set/non-finite-float/oversized-int/non-UTF-8-surrogate/non-JSON and **only exact JSON types** (subclass
+  iteration/encoding can diverge from what's hashed); canonical-by-construction model + immutable `resources`
+  tuple; `generate` wraps **any** builder failure into the single `GoldenError`; `golden_digest` re-checks the
+  **live** golden (catching a mutated set/BaseModel/cycle) before canonicalizing; injective length-prefixed
+  token. `bun run verify` green **20/20** (35 verifier tests; the load-bearing guards negative-controlled);
+  both lockfiles frozen-checked. Runtime-import hardening (consume contracts as an installed pkg) deferred to
+  #147. **Gates #31** (golden→reward integration). (PR #146.)
 
 - **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
   #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now

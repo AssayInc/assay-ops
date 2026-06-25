@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-06-24 — negative-control-restore-with-a-file-backup-never-git-checkout
+- **Mistake:** Running a negative control on #75 (temporarily break code → prove the test fails → restore),
+  I restored with `git checkout -- src/assayops_verifier/models.py src/assayops_verifier/golden.py`. That
+  reverts to **HEAD (the last commit)**, not to my working tree — so it silently wiped **all the uncommitted
+  fixes** from that turn (two rounds of adversarial-review fixes), not just the one-line negative-control
+  patch. I only caught it because the harness flagged the files as reverted, then had to reconstruct both
+  files from memory and re-`Write` them.
+- **Rule:** A negative control mutates **uncommitted** code in place; restore it from a **file backup**, never
+  from git. Before the patch: `cp <file> /tmp/<file>.bak`; after: `cp /tmp/<file>.bak <file>` (or keep the
+  original text in the patch script and write it back). **Never `git checkout -- <file>` / `git restore` while
+  there are uncommitted changes you want to keep** — it discards them to HEAD. (If you must use git to revert
+  a negative-control patch, commit the good state first so HEAD *is* the good state.) Pairs with the
+  negative-control discipline ([[no-any-ban-targets-our-data...]] and the structlog/redaction negative
+  controls) — the control is only safe if the restore is non-destructive.
+- **Context:** #75 / PR #146, the Opus-4.8-max + Codex-xhigh adversarial-review fixes; the `git checkout`
+  reverted models.py/golden.py to `d35cf3c`, dropping that turn's fixes. Recovered by re-`Write`-ing the final
+  files. Forward fix: every subsequent negative control used `cp`-backup restore.
+
 ## 2026-06-24 — ground-and-validate-craft-skills-before-claiming-done-not-when-asked
 - **Mistake:** Presented #75 (the golden generator) as merge-ready after grounding only against the
   **API/feature skills** (`pydantic-v2`, `uv`) + the empirical gate + the cross-model `/review`. I had **not**
