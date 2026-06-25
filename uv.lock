@@ -18,6 +18,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "assayops-adapter-terraform",
     "assayops-contracts",
     "assayops-diff-ir",
     "assayops-env-server",
@@ -90,6 +91,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/38/61/0b9ae6399dd4a58d8
 wheels = [
     { url = "https://files.pythonhosted.org/packages/74/f5/9373290775639cb67a2fce7f629a1c240dce9f12fe927bc32b2736e16dfc/argcomplete-3.6.3-py3-none-any.whl", hash = "sha256:f5007b3a600ccac5d25bbce33089211dfd49eab4a7718da3f10e3082525a92ce", size = 43846, upload-time = "2025-10-20T03:33:33.021Z" },
 ]
+
+[[package]]
+name = "assayops-adapter-terraform"
+version = "0.0.0"
+source = { virtual = "py/packages/adapter-terraform" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 
 [[package]]
 name = "assayops-contracts"

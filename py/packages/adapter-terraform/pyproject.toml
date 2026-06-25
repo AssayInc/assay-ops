@@ -1,0 +1,59 @@
+[project]
+name = "assayops-adapter-terraform"
+version = "0.0.0"
+# DECISIONS.md 6A / T2: the Terraform adapter -- one half of the per-tool 6A split. It normalizes the
+# verifier's read-only B-side Cloud Control deployed-state read (GetResource/ListResources; never CFN
+# drift -- Terraform creates no stack, #80) into the diff-ir NormalizedState(DEPLOYED_READ), which the
+# shared reward core (assayops_diff_ir.grade) diffs against the regenerated golden (#75). Pure: it makes
+# NO boto3 call and NEVER runs terraform / loads providers / reads .tfstate or plan JSON (T1, the moat);
+# enumeration + closed-world coverage are the read harness's job (#30/#141/#53).
+description = "AssayOps Terraform adapter (DECISIONS.md 6A/T2): normalize a B-side Cloud Control deployed-state read into the diff-ir NormalizedState the shared reward core grades."
+requires-python = ">=3.12"
+# pydantic: construct the diff-ir NormalizedState/NormalizedResource and catch their ValidationError to
+# fail closed. assayops_diff_ir (the IR + core) and assayops_contracts (the spine, transitive via diff-ir's
+# reward core) are sibling workspace members -- resolved as source via mypy_path/pythonpath below, the
+# repo's virtual-member convention (every member is `package = false`), not declared as pip deps.
+dependencies = ["pydantic>=2.10"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) and use loose/`Any`-typed fixtures (ANN). S/ANN stay active in src (the typed,
+# trust-boundary adapter).
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# The pydantic.mypy plugin teaches mypy the synthesized model __init__; init_typed + init_forbid_extra drop
+# the synthesized `**data: Any` that would otherwise trip disallow_any_explicit (per the pydantic-v2 skill).
+plugins = ["pydantic.mypy"]
+# src is this package; ../diff-ir/src + ../contracts/src make the sibling IR/core + contract spine importable
+# (assayops_diff_ir re-exports through its reward core, which imports assayops_contracts).
+mypy_path = "src:../diff-ir/src:../contracts/src"
+# Ban explicit `Any` in hand-written code -- the Python mirror of the TS lane's `any` ban; `--strict` does
+# NOT enable this. Use `object` (narrowed before use, like TS `unknown`) or a Pydantic model.
+disallow_any_explicit = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+# Consume the sibling IR/core + contract spine as vetted dependencies: each is type-checked under its own
+# strict mypy run (the py lane), so follow them for types but don't re-report their internals here.
+# contracts' codegen models open JSON-Schema objects as Any (relaxed there) -- relax the same so following is clean.
+module = ["assayops_diff_ir.*", "assayops_contracts.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../diff-ir/src", "../contracts/src"]
+testpaths = ["tests"]
