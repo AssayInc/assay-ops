@@ -15,36 +15,41 @@ Entry format:
 
 ---
 
-## 2026-06-24 — derive-equality-and-validity-from-the-signed-canonical-form-not-a-hand-roll
+## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
 - **Mistake:** The diff-ir reward core (#34) decided property-value **equality** with a hand-rolled
   comparator (`_values_equal` + `_is_json_number` + exact-type gates + a recursive walk) and **validity**
-  with hand-rolled guards (finite-float, non-string-key, non-JSON-type, scalar-subclass). Re-deriving JSON
-  value semantics by hand is exactly where the bugs lived: it took **6 cross-model review passes** to close
-  false-reward-1 holes (`True == 1`, non-string keys, `__eq__`-overloading subclasses,
-  `model_dump`/`deepcopy` laundering) and STILL shipped an over-strict cut (`90 ≠ 90.0` —
-  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]). Yet the reward record is **already
-  signed over its RFC 8785 (JCS) canonical bytes** (`assayops_contracts.jcs`): that form is *the*
-  authoritative definition of "are these two JSON values the same," and I was re-implementing it by hand,
-  with subtle disagreements, right next to it.
-- **Rule:** When a check (equality / validity / identity) is **already defined by a canonical, authoritative
-  form the system depends on elsewhere — especially at a trust boundary** (here, the JCS bytes the reward
-  record is signed with), compute the check by **delegating to that exact form**; do not hand-roll a parallel
-  re-derivation. `_values_equal` became `rfc8785.dumps(a) == rfc8785.dumps(b)` and validity became "does it
-  canonicalize" — which **deleted** `_is_json_number`, the type gates, and the recursive walk, and made the
-  grade and the signed `reportDigest` **agree by construction** (the diff can't call equal two values the
-  digest distinguishes). A hand-rolled re-derivation can both **drift** from the authoritative form (grade vs
-  digest disagree) and get the domain semantics subtly wrong — both of which the canonical form gets right for
-  free (`90 == 90.0`, `True ≠ 1`, subclass-reduced-to-base-value, keys sorted). Crucially this is the
-  **anti-over-fix**: the fix was *less* code anchored to the source of truth, not *more* hand-rolled
-  strictness — so reach for the canonical form BEFORE hand-rolling a value-semantics check, not after six
-  passes of patching one. (Scope guard: the trigger is "an authoritative canonical form already exists and is
-  load-bearing elsewhere," not "always call a library instead of comparing.")
-- **Context:** E3-1 (#34) / PR #145; `_values_equal`/`_canonical_bytes` (`reward_core.py`/`normalized_state.py`)
-  + NORMALIZATION.md; the canonical form is the `rfc8785` JCS recipe from E1-3 (#28). Root-cause companion to
-  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]] (that lesson fixes a hand-rolled rule's
-  semantics; this one says don't hand-roll it when the signed form already defines it). Sharpens
-  [[use-the-librarys-official-mechanism-not-a-hand-roll]] — here the "mechanism" is the system's **own** signing
-  form, so the derived check and the trust boundary can't diverge.
+  with hand-rolled guards. Re-deriving JSON value semantics by hand is where the bugs lived: 6 review passes
+  to close false-reward-1 holes, and it STILL shipped an over-strict cut (`90 ≠ 90.0` —
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]). Yet the record is **already signed
+  over its RFC 8785 (JCS) canonical bytes** (`assayops_contracts.jcs`) — *the* authoritative definition of
+  "are these two JSON values the same" — so I refactored both onto JCS. **The first cut was unsafe:** I made
+  *validity* "does it canonicalize?" too — but a Codex `gpt-5.5` **xhigh** re-review of the fixed code found
+  `rfc8785.dumps` canonicalizes a builtin **subclass** by calling `int()`/`float()`/`list()`/`dict()` on it —
+  **user code** — so `LyingInt(9)` (which `== 9`) with `__int__ -> 1` canonicalizes the value 9 to `b"1"`: a
+  **false reward 1**, and nondeterministic (a flipping `__int__` alternates the bytes). "It canonicalizes" is
+  NOT a safe validity check.
+- **Rule:** **Equality** → delegate to the authoritative canonical form: `_values_equal` =
+  `rfc8785.dumps(a) == rfc8785.dumps(b)`. This is sound and makes the grade and the signed `reportDigest`
+  **agree by construction** — the JSON semantics (`90 == 90.0`, `True ≠ 1`, keys sorted, lists order-sensitive)
+  fall out for free, no hand-rolled rule, and it deleted `_is_json_number` + the type gates + the recursive
+  walk. **Validity** → you still need a thin **exact-type input guard** (`type(x) is T` recursively, never
+  `isinstance`) BEFORE canonicalizing, because the canonicalizer **invokes user code on builtin subclasses**
+  and can be driven to forge or flip its own bytes. The trap is treating the canonicalizer as the *whole
+  validator*: it silently **coerces** an adversarial input instead of rejecting it. The split: **JCS owns the
+  number/structure/equality domain; a `type(x) is T` guard owns the input domain** (so `dumps` only ever sees
+  exact builtins). Net it's still *less* code than the hand-rolled comparator AND safe — the anti-over-fix
+  holds — but "fold validation onto the canonicalizer" is only safe once the input is provably an exact
+  builtin. (Scope guard for the delegate-to-the-canonical-form move: the trigger is "an authoritative form
+  already exists and is load-bearing elsewhere," not "always call a library instead of comparing.")
+- **Context:** E3-1 (#34) / PR #145; `_canonical_bytes`/`_require_exact_json`/`_values_equal`
+  (`reward_core.py`/`normalized_state.py`) + NORMALIZATION.md; the canonical form is the `rfc8785` JCS recipe
+  from E1-3 (#28). The subclass-coercion forge was caught **only** by the cross-model xhigh re-review of the
+  *fixed* code — exactly why that pass exists
+  ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]); my own pre-review probe (numbers,
+  unicode, `-0.0`, large-int) missed it. Root-cause companion to
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]; sharpens
+  [[use-the-librarys-official-mechanism-not-a-hand-roll]] — the "mechanism" is the system's own signing form,
+  but a canonicalizer that coerces subclasses is **not** a free input validator.
 
 ## 2026-06-24 — harden-to-the-precise-domain-semantics-not-an-over-general-rule
 - **Mistake:** Fixing the value-type-collapse false-reward-1 in the diff-ir reward core (#34), the real bug
@@ -65,7 +70,7 @@ Entry format:
 - **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The semantic rule stands, but
   the over-strict cut was the trigger to stop hand-rolling it: `_values_equal` was then replaced entirely by
   JCS canonical-byte delegation (`90 == 90.0` and `bool` != number now fall out for free) — the deeper
-  root-cause fix in [[derive-equality-and-validity-from-the-signed-canonical-form-not-a-hand-roll]]. Pairs
+  root-cause fix in [[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]. Pairs
   with the KISS/YAGNI bar and "smallest change that meets the AC."
 
 ## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
