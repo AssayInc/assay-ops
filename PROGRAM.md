@@ -64,9 +64,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   unexpected exception (a deep-nested `RecursionError`) into the fail-closed `AdapterError` family;
   case-insensitive reserved-`assayops:*` check; dropped the unused/`json.dumps`-divergent set-sort seam
   (real set normalization → #66, JCS-aligned). `bun run verify` green **26/26**; both lockfiles
-  frozen-clean. Establishes the **corpus deploy-tagging convention** (#76/#13 must tag resources
+  frozen-clean. Establishes the **corpus deploy-tagging convention** (#76/#67 must tag resources
   `assayops:address`; goldens must also declare server-defaulted posture, e.g. S3 encryption/BPA, for a
-  real-cloud read). (PR #150.)
+  real-cloud read) — tracked as **#155** (E11), with the reward-core empty-golden guard as **#154** (E2).
+  (PR #150.)
 - **E3-1 (#34): `diff-ir` package — the normalized IR + shared reward core (6A); the first E3 deliverable.**
   New `py/packages/diff-ir`: the tool-agnostic normalized-state IR (`NormalizedResource`/`NormalizedState` —
   the adapter↔core interface) + the **shared, write-isolated reward core** `grade(deployed, golden) ->
