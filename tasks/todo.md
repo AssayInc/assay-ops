@@ -1,41 +1,48 @@
-# tasks/todo.md — #140 Codegen hardening (E1 follow-up from the #29 review)
+# tasks/todo.md — #60 Spike: IAM eventual consistency / readiness gate
 
 > Ephemeral per-session scratchpad (lessons.md: durable records go to GitHub/PROGRAM/DECISIONS, not here).
 
-## Grounding outcome (reconciled: code + DECISIONS §2/5A·§4/I3·§8 + ARCHITECTURE + issue/comments)
+## Decision (founder, this session)
+**"Measure now (real AWS)"** — a bounded engineer probe (NOT an agent episode, so T7's cost-bomb gate
+doesn't bind; cost ~ $0), in a throwaway/dev account. Strict floor is "LocalStack-only until T7"; this is a
+conscious one-off measurement exception the founder authorized.
 
-**The founder's correction comment on #140 is itself stale on its headline item.** `main` (justfile:23-26,
-commit `a4be645` inside PR #139, which changed justfile +11/-9) **already globs quicktype** over
-`contracts/schemas/*.schema.json` under `LC_ALL=C`. So:
-- Issue BODY is *correct* that quicktype was globbed in #29/#139.
-- Correction comment's item 1 ("quicktype is NOT globbed; PR #139 never touched justfile") is **wrong vs main** →
-  **already done, do NOT redo.** Flag to the user + correct the issue/PROGRAM.
-- `just-version` already pinned (ci.yml:87, localstack-smoke.yml:45) → done.
+## Grounding (reconciled: DECISIONS §1/§3/§5(#15)/§8 + eng-arch 7A + impl-plan §9.2 + brain + skills)
+- #60 = impl-plan §9 item 2, verbatim. NOT stale/invented. AC: measure IAM propagation + record a
+  readiness-gate recommendation (feeds E2 verifier read-path + E8 episode/account setup).
+- The "readiness gate" = **calibrate the 7A transient-retry budget for IAM propagation**, not a new
+  mechanism. `deterministic-verification`: a not-yet-propagated IAM role is the canonical *transient* —
+  scoring it 0 is a false-negative reward; retry-with-backoff, only a *settled* mismatch is reward 0.
+- #80 (landed) already locked read-after-create -> 7A transient, FAIL-CLOSED on genuine; #141 (open) =
+  verifier-side read-coverage enforcement. The gate is an INPUT to those, must stay **bounded + FAIL-CLOSED**
+  (vector #15: never wait-forever, never skip; timing only from the verifier's independent reads).
+- brain `retries-and-backoff`: AWS SDKs class `ResourceNotFoundException` as **non-retryable** -> boto3's
+  built-in retry will NOT retry a read-after-create 404 -> the gate is a **purpose-built bounded poll on top**.
+  Full-jitter `random(0,1) x min(20000ms, base x 2^n)`, base 50ms transient/1000ms throttle; adaptive mode
+  for single-API high-volume AI workloads. No measured propagation number exists anywhere (genuine gap).
+- `aws-iam`: canonical IAM-propagation tell = instance-profile "waiter + time.sleep(10)" (~10s slow case);
+  verify exact behaviors vs AWS docs. Cloud Control's IAM action prefix is `cloudformation` (DECISIONS §1/#80).
+- No verifier/replay pkg exists -> output is a recorded recommendation + a reproducible probe, not wired code.
 
-**Genuinely remaining (verified against `main`):**
-1. `ts/packages/contracts/tests/schemas.test.ts` hardcodes the 4 names (line 11) → enumerate the dir.
-2. justfile reward-pin (lines 31-32) is an unanchored blanket rewrite asserting only ≥1 match → anchor to the
-   RewardRecord interface + fail-closed exactly-one guard. (§8 binary-reward invariant — must never drop the pin.)
-3. `py/.../assayops_contracts/__init__.py` hand-lists re-exports; `models/__init__.py` is empty → a 3rd
-   "won't follow a new schema" list. (comment (4); comment C's bullets omit it but A/B fold it in — in-theme.)
-   Fix as a **fail-loud parity test** (NOT dynamic re-export — that breaks mypy-strict re-export visibility).
+## Plan
+- [x] Ground vs deterministic-verification + brain retries-and-backoff + aws-iam + aws-sdk-python-usage.
+- [x] Build the probe (scratchpad `iam_propagation_probe.py`) — boto3, 5 signals, bounded+fail-closed, teardown.
+- [ ] **Founder wires a dev/throwaway AWS profile** (no creds in env; no aws CLI — boto3 reads `~/.aws`).
+      Verify with read-only `get_caller_identity` (account/ARN only, no secret).
+- [ ] Run probe (us-east-1 baseline) -> p50/p95/p99/max per signal; tear down all created roles/policies.
+- [ ] Record durably: methodology + script + numbers + readiness-gate recommendation as a **comment on #60**;
+      propose the calibrated note for **DECISIONS.md §1** (the 7A read-after-create line) — land on ratification.
+      Reconcile explicitly with 7A/#80/#141. Close the spike.
+- [ ] Update PROGRAM.md.
 
-Not touching: `contracts/vectors` + `tools/red-team` (locked §8); `gen_vectors.py` authored record set;
-generated files by hand. `contracts/schemas` editable (not locked) — only a throwaway probe, reverted.
+## Probe — 5 signals measured per fresh role (delay from CreateRole to first success)
+- `iam_read` : iam.get_role                         — IAM control-plane read-after-write (baseline)
+- `cc_get`   : cloudcontrol.get_resource            — the verifier's REAL read path (T1/E2) [most important]
+- `cc_list`  : cloudcontrol.list_resources contains — enumeration lag -> closed-world (#80/#141)
+- `assume`   : sts.assume_role                       — trust-policy propagation (E8 "provision-then-use")
+- `perm`     : policy-gated call w/ assumed creds    — authz propagation (deepest; the sleep(10) horizon)
 
-## Plan (TDD: each AC → failing test → green)
-
-- [ ] **AC1 — schemas.test.ts enumerates the dir.** RED: with a throwaway 5th schema, a coverage guard fails
-      against the hardcoded list. GREEN: derive the validated set from `readdirSync(contracts/schemas/*.schema.json)`;
-      keep the 4 bespoke instance/modeling tests; add a non-tautological guard (non-empty + ⊇ fixtured names).
-- [ ] **AC2 — reward-pin anchored.** RED (local fixture, 2 interfaces each with `reward: number;`): old blanket
-      perl narrows both. GREEN: scope the rewrite to the `RewardRecord` block + assert exactly-one `reward: number;`
-      pre / pin lands post (fail-closed). Then `just codegen` → byte-identical to committed generated.ts.
-- [ ] **AC3 — __init__ re-export parity test (py).** RED: throwaway 5th schema → `just codegen` makes a model not
-      in `__all__` → test fails. GREEN: every BaseModel/Enum defined under `models/*.py` is in
-      `assayops_contracts.__all__` and importable.
-- [ ] **Guard (end-to-end).** Throwaway `zzz-probe.schema.json`: `just codegen` → TS interface + Pydantic model
-      with NO hardcoded-list edits; schemas.test ajv-validates it; __init__ parity test goes red until exported.
-      Remove it; `just codegen` + `just vectors` → `git diff` empty (byte-identical; vectors untouched throughout).
-- [ ] `bun run verify` green; `just codegen`/`just vectors` reproduce committed artifacts (codegen-parity gate).
-- [ ] Update PROGRAM.md + ISSUES.md; PR `Closes #140` with the quicktype-already-done correction; `/review`.
+Correctness: poll clients run `retries={"total_max_attempts": 1}` (no hidden SDK backoff skewing timing);
+own monotonic clock; typed not-ready exceptions = keep polling, throttle = keep polling, unknown = raise;
+unique role name per trial (per-NEW-resource propagation); region pinned; bounded max-wait = the fail-closed
+datum. Single region (us-east-1) v1 + caveat: re-measure in the verifier's real region once E8 lands.

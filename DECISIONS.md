@@ -129,6 +129,24 @@ The verifier-read coverage spike resolved **GO**, refining the §1 read path (de
   **not** shape the Phase-2 proof / OOD corpus (§6 / R2) — there, uncovered families (e.g. Route53 records,
   inline `IAM::Policy`) get service-specific fallback adapters, not exclusion.
 
+### IAM eventual consistency — resolved [spike] (#60)
+
+Measured against real AWS (n=20, us-east-1, `AWS::IAM::Role`; probe in **`py/packages/iam-readiness-probe`**,
+fenced out of the `verify` gate). The "readiness gate" is a **calibration of the 7A transient budget**, not a
+new mechanism — across two surfaces:
+
+- **Verifier read path (E2/T1).** Cloud Control read-after-create (`GetResource`/`ListResources`) of a fresh
+  role is **effectively immediate** (p99 < 0.2s, zero variance) — so the read-after-create transient (per #80)
+  gets a **small, rarely-firing retry budget**, then **FAIL-CLOSED** (genuine unreadability ⇒ `reward=0`,
+  vector #15). The verifier read is largely insulated from IAM eventual consistency.
+- **Provision-then-use (E8/T6 episode + account setup).** A freshly-created role is **assumable/usable at ~7s
+  (p50) with a tail to ~40s+** — the delay is on `AssumeRole` + STS-credential/authz propagation, not the read.
+  Gate first use of a fresh cross-account role behind a **bounded (~60s) FAIL-CLOSED readiness poll, isolated
+  from the grade** (a setup timeout is an infra/episode failure, never a forged reward); never a fixed `sleep`.
+
+Single region/account/time-of-day, so directional — **re-measure cross-region when E8 lands**. Consumed by
+**#141** (the read-path FAIL-CLOSED budget) + the **E8** episode/account-setup work (the assume-readiness gate).
+
 ---
 
 ## 2. Locked architecture decisions (1C–T3)

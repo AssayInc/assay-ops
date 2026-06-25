@@ -20,6 +20,7 @@ resolution-markers = [
 members = [
     "assayops-contracts",
     "assayops-env-server",
+    "assayops-iam-readiness-probe",
     "assayops-infra-local",
     "assayops-logger",
 ]
@@ -114,6 +115,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "openenv", extras = ["core"], specifier = "==0.3.1" }]
+
+[[package]]
+name = "assayops-iam-readiness-probe"
+version = "0.0.0"
+source = { virtual = "py/packages/iam-readiness-probe" }
 
 [[package]]
 name = "assayops-infra-local"

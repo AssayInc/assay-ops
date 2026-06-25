@@ -20,6 +20,10 @@
       "name": "@assayops/py-env-server",
       "version": "0.0.0",
     },
+    "py/packages/iam-readiness-probe": {
+      "name": "@assayops/iam-readiness-probe",
+      "version": "0.0.0",
+    },
     "py/packages/infra-local": {
       "name": "@assayops/infra-local",
       "version": "0.0.0",
@@ -68,6 +72,8 @@
     "@assayops/biome-config": ["@assayops/biome-config@workspace:ts/packages/biome-config"],
 
     "@assayops/contracts": ["@assayops/contracts@workspace:ts/packages/contracts"],
+
+    "@assayops/iam-readiness-probe": ["@assayops/iam-readiness-probe@workspace:py/packages/iam-readiness-probe"],
 
     "@assayops/infra-local": ["@assayops/infra-local@workspace:py/packages/infra-local"],
 

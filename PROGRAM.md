@@ -36,6 +36,20 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#60 (spike): IAM eventual consistency — resolved (measured against real AWS).** A bounded engineer probe
+  (new `py/packages/iam-readiness-probe`, fenced out of the `verify` gate like `infra-local` — a `probe`
+  script, never `test`, since it mutates real AWS) measured propagation for a fresh `AWS::IAM::Role` (n=20,
+  us-east-1): **Cloud Control read-after-create is effectively immediate** (p99 < 0.2s, zero variance) — the
+  verifier read path (E2/T1) is largely insulated, so its read-after-create 7A budget is small + FAIL-CLOSED —
+  while **`AssumeRole`/use propagates at ~7s p50 with a tail to ~41s**, so the real delay is the **E8
+  provision-then-use** path: gate first use of a fresh cross-account role behind a **bounded (~60s) FAIL-CLOSED
+  readiness poll, isolated from the grade**. The "readiness gate" is a **calibration of the locked 7A transient
+  budget**, not a new mechanism (reconciles with #80's read-after-create→7A + #141). The smoke caught a real
+  bug pre-full-run (fresh STS creds are transiently `InvalidAccessKeyId` — folded into the `perm` horizon).
+  Ratified note landed in `DECISIONS.md` §1; consumers updated (#45 the 7A classifier, #141 read-coverage,
+  #52/#33 cross-account role assume). Probe is mypy-strict/ruff-clean (boto3 `BaseClient` boundary). Grounded
+  in `deterministic-verification` (7A) + `aws-iam` + `aws-sdk-python-usage` + brain `retries-and-backoff`.
+  `bun run verify` green 19/19. (PR pending — branch `e60-iam-readiness-spike`.)
 - **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
   #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now
   **disk-enumerates** `contracts/schemas/*.schema.json` for the Draft-2020-12 + ajv-compile coverage (a new
