@@ -1,9 +1,9 @@
 """The per-type bridge registry -- the codified #80 read-coverage matrix.
 
 A ``TypeBridge`` is the adapter's knowledge of one supported CloudFormation type: where tags live
-(the schema ``tagging.tagProperty``), which properties are AWS-computed and dropped (the schema
-``readOnlyProperties``), and which are order-insensitive collections. Registering a type asserts the
-#80 matrix marked it readable and an ``infra-local`` smoke proved Cloud Control returns the
+(the schema ``tagging.tagProperty``) and which properties are AWS-computed and dropped (the schema
+``readOnlyProperties``). Registering a type asserts the #80 matrix marked it readable and an
+``infra-local`` smoke proved Cloud Control returns the
 ``assayops:address`` tag for it (founder T2 rule). An unregistered type fails closed.
 """
 
@@ -26,9 +26,8 @@ class TypeBridge:
     # deploys (Arn/DomainName/...). Dropped before the diff, else a correct deploy scores a nonzero
     # diff -- a nondeterministic reward. A frozenset is an immutable, frozen-safe default.
     read_only_paths: frozenset[str] = frozenset()
-    # Top-level order-insensitive collection properties (sets), sorted before the diff. The core
-    # compares by JCS bytes (order matters); only the adapter -- knowing the shape -- sorts a set.
-    set_paths: frozenset[str] = frozenset()
+    # Order-insensitive set normalization (policy statements, ingress rules) is deferred to the CDK
+    # adapter (#66), which has the nested set-bearing types and designs it JCS-aligned.
 
 
 class BridgeRegistry:

@@ -45,3 +45,14 @@ def test_a_non_json_property_value_fails_closed() -> None:
     read = s3_read("primary_bucket", BadProp={1, 2, 3})  # a set is not JSON
     with pytest.raises(AdapterError):
         normalize([read], s3_registry())
+
+
+def test_a_deeply_nested_property_fails_closed() -> None:
+    # A crafted deep-nested property must stay inside the AdapterError family, never escape as a
+    # RecursionError (a fail-closed-contract break + a verifier-crash DoS).
+    nested: object = "leaf"
+    for _ in range(2000):
+        nested = {"k": nested}
+    read = s3_read("primary_bucket", BadProp=nested)
+    with pytest.raises(AdapterError):
+        normalize([read], s3_registry())

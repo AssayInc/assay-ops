@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from factories import ADDRESS_TAG, s3_read, s3_registry, tag
 
-from assayops_adapter_terraform import BridgeRegistry, DeployedResourceRead, TypeBridge, normalize
+from assayops_adapter_terraform import DeployedResourceRead, normalize
 
 
 def test_resource_order_does_not_change_the_normalized_state() -> None:
@@ -46,23 +46,3 @@ def test_two_reads_of_the_same_correct_deploy_produce_the_same_ir() -> None:
         tags={"env": "prod"},
     )
     assert normalize([read_one], s3_registry()) == normalize([read_two], s3_registry())
-
-
-def test_order_insensitive_set_properties_are_sorted() -> None:
-    # A declared set property (policy statements, ingress rules) is order-normalized so a
-    # reordered-but-equal set yields the same IR -- the seam the corpus's sets + CDK (#66) need.
-    registry = BridgeRegistry()
-    registry.register(TypeBridge(type_name="AWS::IAM::Role", set_paths=frozenset({"Statements"})))
-    forward = DeployedResourceRead(
-        type_name="AWS::IAM::Role",
-        identifier="r1",
-        properties={"Statements": [{"Sid": "b"}, {"Sid": "a"}], "Tags": [tag(ADDRESS_TAG, "role")]},
-    )
-    reverse = DeployedResourceRead(
-        type_name="AWS::IAM::Role",
-        identifier="r2",
-        properties={"Statements": [{"Sid": "a"}, {"Sid": "b"}], "Tags": [tag(ADDRESS_TAG, "role")]},
-    )
-    [resource] = normalize([forward], registry).resources
-    assert resource.properties["Statements"] == [{"Sid": "a"}, {"Sid": "b"}]
-    assert normalize([forward], registry) == normalize([reverse], registry)

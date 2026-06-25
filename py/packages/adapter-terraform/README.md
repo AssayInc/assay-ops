@@ -47,11 +47,12 @@ reserved `assayops:*` tag, a wrong-shape tag property, a duplicate logical addre
 
 ## Per-type registry
 
-A `BridgeRegistry` maps each supported CloudFormation type to a `TypeBridge` — its tag property, its
-server-computed `readOnlyProperties` to drop, and its order-insensitive set properties to sort. This is
-the codified read-coverage matrix: a type is registered only once a LocalStack `infra-local` smoke proves
-Cloud Control returns the `assayops:address` tag for it. `default_registry()` ships the Phase-1 set
-(`AWS::S3::Bucket`). An unregistered type fails closed.
+A `BridgeRegistry` maps each supported CloudFormation type to a `TypeBridge` — its tag property and its
+server-computed `readOnlyProperties` to drop. This is the codified read-coverage matrix: a type is
+registered only once a LocalStack `infra-local` smoke proves Cloud Control returns the `assayops:address`
+tag for it. `default_registry()` ships the Phase-1 set (`AWS::S3::Bucket`). An unregistered type fails
+closed. (Order-insensitive set normalization for policy/ingress lands with the CDK adapter, which has the
+nested set-bearing types.)
 
 ## The trust boundary (T1)
 

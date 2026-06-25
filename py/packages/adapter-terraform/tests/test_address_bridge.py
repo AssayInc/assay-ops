@@ -57,6 +57,13 @@ def test_reserved_assayops_namespace_tag_fails_closed() -> None:
         _normalize(_s3([tag(ADDRESS_TAG, "primary_bucket"), tag("assayops:secret", "x")]))
 
 
+def test_reserved_namespace_check_is_case_insensitive() -> None:
+    # The assayops: namespace is reserved case-insensitively: a confusingly-cased reserved tag
+    # alongside a valid address must not slip through as a graded user tag.
+    with pytest.raises(AddressBridgeError, match="reserved"):
+        _normalize(_s3([tag(ADDRESS_TAG, "primary_bucket"), tag("ASSAYOPS:SECRET", "leak")]))
+
+
 @pytest.mark.parametrize("bad_properties", _WRONG_SHAPE_TAG_PROPERTIES)
 def test_wrong_shape_tag_property_fails_closed(bad_properties: dict[str, object]) -> None:
     read = DeployedResourceRead(

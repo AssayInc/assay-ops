@@ -8,12 +8,10 @@ moat). Fails closed on any read it cannot vouch for; never silently drops one (v
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Iterable
 
 from assayops_diff_ir import NormalizedResource, NormalizedState, Provenance
-from pydantic import ValidationError
 
 from assayops_adapter_terraform.errors import (
     AdapterError,
@@ -38,11 +36,30 @@ def normalize(
 ) -> NormalizedState:
     """Normalize Cloud Control reads to ``NormalizedState(DEPLOYED_READ)``, or fail closed."""
     bridges = registry if registry is not None else default_registry()
-    resources = [_normalize_one(read, bridges) for read in reads]
+    resources = [_normalize_read(read, bridges) for read in reads]
     _reject_duplicate_addresses(resources)
     # Sort by address so the output is canonical / order-independent (the core sorts too).
     resources.sort(key=lambda resource: resource.address)
     return NormalizedState(provenance=Provenance.DEPLOYED_READ, resources=tuple(resources))
+
+
+def _normalize_read(read: DeployedRead, registry: BridgeRegistry) -> NormalizedResource:
+    """Normalize one read, funneling EVERY failure into the fail-closed ``AdapterError`` family.
+
+    A crafted input (e.g. a deeply nested property -> ``RecursionError``, which Pydantic does not
+    wrap) must never escape as a raw exception: that would break the "every failure is an
+    AdapterError" contract the verifier skeleton (#30) relies on, and could crash the worker.
+    Intentional, typed AdapterErrors pass through unchanged.
+    """
+    try:
+        return _normalize_one(read, registry)
+    except AdapterError:
+        raise
+    except Exception as exc:
+        raise AdapterError(
+            f"failed to normalize the deployed read {read.identifier!r} "
+            f"(type {read.type_name!r}): {exc}"
+        ) from exc
 
 
 def _reject_duplicate_addresses(resources: list[NormalizedResource]) -> None:
@@ -73,14 +90,9 @@ def _normalize_one(read: DeployedRead, registry: BridgeRegistry) -> NormalizedRe
     tags = _parse_tag_list(read.properties.get(bridge.tag_property), bridge.tag_property)
     address = _resolve_address(tags, bridge.tag_property)
     properties = _normalize_properties(read.properties, tags, bridge)
-    try:
-        return NormalizedResource(address=address, type=read.type_name, properties=properties)
-    except ValidationError as exc:
-        # A real read is `json.loads` output, but `properties` is open `object`; a value the diff-ir
-        # validator rejects (non-exact-JSON, NaN/inf, oversized int) fails closed here.
-        raise AdapterError(
-            f"resource {address!r} (type {read.type_name!r}) has a non-normalizable property: {exc}"
-        ) from exc
+    # A diff-ir-invalid value (non-exact-JSON, NaN/inf, oversized int, deep-nested recursion) raises
+    # here; `_normalize_read` funnels it into the AdapterError fail-closed family.
+    return NormalizedResource(address=address, type=read.type_name, properties=properties)
 
 
 def _parse_tag_list(raw: object, tag_property: str) -> list[tuple[str, str]]:
@@ -114,8 +126,10 @@ def _resolve_address(tags: list[tuple[str, str]], tag_property: str) -> str:
 
     Fail closed on a missing/duplicate/malformed value, or a stray reserved ``assayops:*`` tag.
     """
+    # The assayops: namespace is reserved case-insensitively (a confusingly-cased reserved tag must
+    # not slip through as a graded user tag); the bridge-key match below stays exact (founder rule).
     reserved = sorted(
-        {key for key, _ in tags if key.startswith(RESERVED_TAG_PREFIX) and key != ADDRESS_TAG}
+        {k for k, _ in tags if k.lower().startswith(RESERVED_TAG_PREFIX) and k != ADDRESS_TAG}
     )
     if reserved:
         raise AddressBridgeError(
@@ -153,25 +167,9 @@ def _normalize_properties(
         for key, value in properties.items()
         if key != bridge.tag_property and key not in bridge.read_only_paths
     }
-    for path in bridge.set_paths:
-        if path in normalized:
-            normalized[path] = _sort_set(normalized[path])
     user_tags = [{"Key": key, "Value": value} for key, value in tags if key != ADDRESS_TAG]
     if user_tags:
         normalized[bridge.tag_property] = sorted(
             user_tags, key=lambda entry: (entry["Key"], entry["Value"])
         )
     return normalized
-
-
-def _sort_set(value: object) -> object:
-    """Order-normalize a declared set-valued property so a reordered-but-equal collection yields the
-    same IR. The core compares lists by JCS bytes (order matters), so only the adapter sorts a set.
-    Keyed by canonical JSON for a total order.
-    """
-    if not isinstance(value, list):
-        return value
-    try:
-        return sorted(value, key=lambda element: json.dumps(element, sort_keys=True))
-    except TypeError as exc:
-        raise AdapterError(f"a set-valued property has a non-JSON element: {exc}") from exc
