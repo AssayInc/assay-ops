@@ -57,12 +57,14 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   possible #75/#34 follow-up, out of #31's scope. **Wiring:** `verifier` now consumes `diff-ir` by source
   path (mypy_path/pythonpath + an `assayops_diff_ir.*` mypy override mirroring the contracts one); the
   existing cross-hash-seed determinism subprocess got diff-ir added to its PYTHONPATH (re-exporting
-  `grade_deployment` pulls diff-ir into the package import). **TDD (RED→GREEN, +18 tests → 53 total):** AC1 —
+  `grade_deployment` pulls diff-ir into the package import). **TDD (RED→GREEN, +19 tests → 54 total):** AC1 —
   known-pair integration (correct deploy→1; value/missing/extra/type drift→0; a JCS-equal-but-differently-
   encoded deploy — int `90` read back as float `90.0` + reordered keys — still →1, the "*normalized*"
   proof); AC2/#46 — generate→bridge→grade ×K → identical reward + report (in-process + cross-hash-seed
-  subprocess); T1 — deployed slot rejects agent plan/state (fail closed), golden regenerated internally (no
-  caller slot to inject), non-normalizable golden fails closed. **Cross-model review converged** — Claude
+  subprocess; plus a negative control — a nondeterministic golden fails the check via the load-bearing
+  diff-bytes assertion, satisfying #46's "a nondeterministic path fails"); T1 — deployed slot rejects agent
+  plan/state (fail closed), golden regenerated internally (no caller slot to inject), non-normalizable
+  golden fails closed. **Cross-model review converged** — Claude
   (`code-reviewer` subagent: no Critical/High, moat verified — no false-reward-1 path, golden un-injectable)
   **+ Codex gpt-5.5 xhigh**. Findings closed: the `$`-key fail-closed case now tested too (the adjacent case,
   lessons.md); the bridge `except` simplified to `except ValueError` (verified against the pydantic docs that
@@ -71,8 +73,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   reward-core change wouldn't invalidate the verifier's cached tests — now fixed (verifier declares its
   `py-diff-ir`/`py-contracts` workspace deps + a verifier `turbo.json` `dependsOn ^typecheck/^test`;
   empirically a diff-ir content change now flips the verifier task hash). The same gap is repo-wide/pre-existing
-  (ISSUES.md follow-up). **Out of scope** (unchanged): the boto3 read path (#30/#141), the
-  reward-record/ledger handoff (#32). `bun run verify` green **23/23**. (PR #149.)
+  — now tracked as **#152** (Turbo cache-graph), with the #75↔#34 validator divergence as **#153**. Pre-merge,
+  the AC-cited issues (#75/#46/#34 — bodies, comments, state) were re-reviewed: #31 honors all three contracts.
+  **Out of scope** (unchanged): the boto3 read path (#30/#141), the reward-record/ledger handoff (#32).
+  `bun run verify` green **23/23** (54 tests). (PR #149.)
 - **E3-1 (#34): `diff-ir` package — the normalized IR + shared reward core (6A); the first E3 deliverable.**
   New `py/packages/diff-ir`: the tool-agnostic normalized-state IR (`NormalizedResource`/`NormalizedState` —
   the adapter↔core interface) + the **shared, write-isolated reward core** `grade(deployed, golden) ->

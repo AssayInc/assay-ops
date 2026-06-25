@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-06-25 — read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue
+- **Mistake:** On #31 I grounded the issue against DECISIONS/brain/code and read the related issues' *bodies*
+  early, but didn't re-read the **comments / state / closing-PRs** of the issues its AC cites (#75, #46, #34)
+  before claiming merge-ready. The founder asked "did you review those related issues/PRs for context?" —
+  doing so confirmed the cross-issue contracts (#75's AC3 literally scopes #31's grading; #46 is open with no
+  harness to integrate; the #75/#34 closing-PR comments hold the design reconciliations the contract rests on)
+  and prompted a determinism negative-control.
+- **Rule:** When an issue's description / AC / comments **cite other issues or PRs** (`#NN`), read those cited
+  items' **body AND comments AND state/closing-PR** as part of grounding — the load-bearing cross-issue
+  contract (what a dependency guarantees, what a sibling owns, what is still open) often lives in the
+  **comments**, not the body. Do it proactively, before claiming done.
+- **Context:** #31 cited #75 (golden gen, CLOSED via PR #146) + #46 (determinism, OPEN) + #34 (reward core,
+  CLOSED via PR #145). Pairs with [[ground-in-decisions-and-brain-not-the-ai-written-issue]] +
+  [[proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt]].
+
 ## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
 - **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
   JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it

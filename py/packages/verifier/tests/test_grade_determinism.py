@@ -18,7 +18,7 @@ from pathlib import Path
 from assayops_contracts.jcs import canonicalize
 from synthetic import SYNTHETIC_TASK_ID, deployed_from_golden, make_task, s3_bucket_builder
 
-from assayops_verifier import GoldenRegistry, grade_deployment
+from assayops_verifier import GoldenContext, GoldenRegistry, GoldenResource, grade_deployment
 
 
 def _registry() -> GoldenRegistry:
@@ -74,3 +74,29 @@ def test_grade_is_stable_across_python_hash_seeds() -> None:
     assert (
         len(results) == 1
     )  # one (reward, report digest) regardless of the interpreter's hash seed
+
+
+def test_determinism_check_catches_a_nondeterministic_path() -> None:
+    # Negative control for #46 ("a nondeterministic verifier path FAILS the check"): a golden that
+    # varies per regeneration must break the determinism assertions — proving they have teeth, not a
+    # vacuous pass. The *reward* alone can miss it (a varying golden never matches the deploy →
+    # all reward 0); the diff-report canonical bytes are what catch it, so that assertion is
+    # load-bearing, not redundant.
+    def nondeterministic_builder(ctx: GoldenContext) -> list[GoldenResource]:
+        return [
+            GoldenResource(
+                address="b",
+                type="AWS::S3::Bucket",
+                properties={"BucketName": f"bkt-{os.urandom(8).hex()}"},
+            )
+        ]
+
+    registry = GoldenRegistry()
+    registry.register("nondeterministic", nondeterministic_builder)
+    task = make_task(task_id="nondeterministic", seed="s")
+    deployed = deployed_from_golden(registry.generate(task, "s"))
+
+    outcomes = [grade_deployment(registry, task, "s", deployed) for _ in range(5)]
+
+    # The determinism predicate the positive test asserts (one report across K) is VIOLATED here:
+    assert len({canonicalize(o.diff) for o in outcomes}) > 1

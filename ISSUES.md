@@ -26,7 +26,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   (`GoldenNotGradableError`, never a silent reward) — but the two could be **harmonized** (make the generator
   as strict as the grading core, so any golden that generates can always be graded), a future #75/#34 cleanup.
   Not urgent (fail-closed is safe; real builders #76 emit neither); the grading core is deliberately the
-  **stricter trust gate**.
+  **stricter trust gate**. **Tracked as #153.**
 - **Repo-wide: Turbo doesn't model the Python lane's cross-package *source* deps — a cache-invalidation gap
   (surfaced by #31's Codex gpt-5.5 review).** The Python packages consume siblings by source path
   (`pythonpath`/`mypy_path`), but the root `turbo.json` tasks are all `{}` and the package.json files declared
@@ -36,7 +36,7 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   ["^typecheck"]`/`["^test"]`; verified empirically — a diff-ir content change now flips the verifier task
   hash). The **remaining edges are unwired** — notably **diff-ir→contracts** (its own cache won't invalidate
   on a contracts change) plus any TS-lane gaps; a small follow-up infra PR should apply the same pattern
-  lane-wide (or a root transit-node). Pre-existing, not #31-specific.
+  lane-wide (or a root transit-node). Pre-existing, not #31-specific. **Tracked as #152.**
 - **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
   Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
   §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):
