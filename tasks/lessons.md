@@ -44,8 +44,10 @@ Entry format:
   type; JCS-canonical). The broadest rule (all-types-strict) "passes the failing test" but introduces a NEW
   failure class (false negatives), which poisons training just like a false positive — **a fix stricter than
   the ground-truth semantics is itself a bug.** Keep the genuinely bug-preventing hardening; cut the
-  over-reach. Distinguish *defense-in-depth that prevents real future bugs* (keep) from *strictness beyond
-  the correct semantics* (cut).
+  over-reach (defense-in-depth that prevents real bugs vs strictness beyond the correct semantics). And
+  **TDD only catches over-reach you enumerate** — it "passed the failing test" because the *adjacent-correct*
+  case wasn't tested, so a reviewer (not the suite) caught it; when hardening a rule, lock that adjacent case
+  with its own test (`90 == 90.0` is in-sync), not just the failing one.
 - **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The over-strict cut later
   triggered replacing the hand-rolled comparator entirely with JCS delegation
   ([[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]). Pairs with KISS/YAGNI.
