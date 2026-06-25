@@ -6,6 +6,15 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **Spike #60 (IAM eventual consistency) resolved — the measurement probe was NOT committed (removed per
+  review; not core IP).** It measured IAM read-after-create + assume/use propagation (n=20, us-east-1): the
+  verifier read path is sub-second (`cc_get` p99 ~0.76s, 0 bound-exceeded), so its read-after-create 7A budget
+  is small + FAIL-CLOSED; the delay is **provision-then-use** (assume ~7s p50, tail to ~42s) → the E8
+  episode-setup readiness gate is a bounded (~60s) FAIL-CLOSED 7A-budget calibration, isolated from the grade.
+  Recommendation ratified in `DECISIONS.md` §1; consumers updated (#45 7A classifier, #141 read-coverage,
+  #52/#33 cross-account assume). The probe is **not** a `py/packages/*` member (§8 "build only the IP" — a
+  spike's output is the decision, not a package); the reproducible script is preserved in the #60 thread, and
+  the disposition tracker #156 is closed.
 - **E3-1 (#34) diff-ir landed — two non-blocking follow-ups.** The `diff-ir` package (the normalized IR +
   shared reward core) is in. Durable notes for the consumers (adapters #35, golden gen #75, verifier E2/#3):
   - **Schema-description prose vs the implemented split (contracts-doc only).** `diff-ir.schema.json`'s

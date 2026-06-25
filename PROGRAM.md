@@ -42,6 +42,22 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#60 (spike): IAM eventual consistency — resolved (measured against real AWS).** A bounded engineer probe
+  (**not committed** — a spike's output is the recorded decision, not a package; the script is preserved in the
+  #60 thread) measured propagation for a fresh `AWS::IAM::Role` (n=20,
+  us-east-1): **Cloud Control read-after-create is effectively immediate** (p99 < 0.2s, zero variance) — the
+  verifier read path (E2/T1) is largely insulated (cc_get p99 ~0.76s, 0 bound-exceeded), so its
+  read-after-create 7A budget is small + FAIL-CLOSED — while **`AssumeRole`/use propagates at ~7s p50 with a
+  tail to ~42s**, so the real delay is the **E8
+  provision-then-use** path: gate first use of a fresh cross-account role behind a **bounded (~60s) FAIL-CLOSED
+  readiness poll, isolated from the grade**. The "readiness gate" is a **calibration of the locked 7A transient
+  budget**, not a new mechanism (reconciles with #80's read-after-create→7A + #141). The smoke caught a real
+  bug pre-full-run (fresh STS creds are transiently `InvalidAccessKeyId` — folded into the `perm` horizon).
+  Ratified note landed in `DECISIONS.md` §1; consumers updated (#45 the 7A classifier, #141 read-coverage,
+  #52/#33 cross-account role assume). Probe is mypy-strict/ruff-clean (boto3 `BaseClient` boundary). Grounded
+  in `deterministic-verification` (7A) + `aws-iam` + `aws-sdk-python-usage` + brain `retries-and-backoff`.
+  The probe is **not committed** (§8 build-only-the-IP) — a spike resolves into a recorded decision, not a
+  package (#156 closed). `bun run verify` green. (PR #151.)
 - **E2-2 (#31): golden→reward integration — `grade_deployment` (generate→bridge→grade), the verifier's
   grade entry (2A/6A/T1).** The seam between the golden-target generator (#75) and the shared reward core
   (#34) — which had no bridge yet (`verifier` didn't import `diff-ir`). New
