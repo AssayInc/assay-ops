@@ -18,6 +18,16 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     normalized property name (values carry the full nested object, so no information is lost; the binary reward
     is unaffected). Deeper **dotted leaf paths** (e.g. `VersioningConfiguration.Status`) are a future
     report-granularity refinement, most naturally in the adapter's normalization (it knows the resource shape).
+- **E3-2 (#35) Terraform adapter landed — a deploy-tagging convention is now a corpus requirement.** The
+  adapter bridges a Cloud Control **physical** id to the golden's **logical** `address` via a reserved,
+  case-sensitive **`assayops:address`** tag on each deployed resource (read from the schema tag property under
+  a per-type `BridgeRegistry` = the codified #80 matrix; founder-decided — the one floor-unspecified call).
+  **Consequence:** the **private corpus (#76)** + **task-authoring (#13)** must deploy every graded resource
+  tagged `assayops:address = <its logical address>` (the same logical addresses the golden generator #75
+  emits), and a new type becomes supported only after an `infra-local` smoke proves Cloud Control returns its
+  tag (proven for `AWS::S3::Bucket`; the founder's per-type gate). The **CDK adapter (#66)** inherits the same
+  bridge + IR shape. The closed-world `deployed set ≡ golden set` check + the boto3 read stay with #30/#141/#53
+  — the adapter is **pure normalization, never a read** (T1).
 - **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
   Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
   §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):

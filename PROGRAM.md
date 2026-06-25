@@ -30,17 +30,38 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
 - **Next ready work:** **E2 verifier core started** — the golden-target generator (**#75**,
   `py/packages/verifier`) landed (account-B-pure; needs no cloud substrate). Next E2: the deployed-state
-  read path / skeleton (**#30**) + reward core (**#32**), with E3's diff-IR + Terraform adapter (**#34**/**#35**).
+  read path / skeleton (**#30**) + reward core (**#32**); **E3's diff-IR (#34) + Terraform adapter (#35) have landed** (the adapter in PR #150).
   Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
   create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
   cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO); and
-  the **E3 diff-ir core (#34) has now landed** — the shared reward core + normalized IR, so the Terraform
-  adapter (#35), golden-target generator (#75), and verifier core (E2/#3) build on it.
+  the **E3 diff-ir core (#34) + Terraform adapter (#35) have landed** — the shared reward core + normalized
+  IR + the deployed-state adapter, so the verifier core (E2/#3 — read path #30, reward wiring #32) is next.
   **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
 
 ## Recently Landed
 
+- **E3-2 (#35): `adapter-terraform` package — the Terraform deployed-state → diff-IR adapter (6A/T2, the
+  A-spike engine).** New **`py/packages/adapter-terraform`** (`assayops_adapter_terraform`):
+  `normalize(reads, registry)` turns already-enumerated **Cloud Control deployed-state reads** into the
+  diff-ir `NormalizedState(DEPLOYED_READ)` (#34) the shared reward core grades against the golden (#75).
+  **Pure** — no boto3, no `terraform`/provider/`.tfstate`/plan read (T1, the moat); the boto3 read +
+  closed-world enumeration stay with the read harness (#30/#141/#53). **Address bridge (the one
+  floor-unspecified call, founder-decided):** Cloud Control returns a physical id but the core diffs by
+  logical `address`, so the deploy tags each resource with a reserved case-sensitive **`assayops:address`**
+  tag, read from the schema tag property under a per-type **`BridgeRegistry`** (the codified #80 matrix; an
+  unregistered type → fail closed). The untrusted tag value is validated as a logical address; only that tag
+  is stripped (user tags kept, sorted); server-computed `readOnlyProperties` dropped; declared set properties
+  sorted. **Fail-closed, never a silent reward** (vector #15): a missing/duplicate/malformed/case-wrong/
+  reserved/wrong-shape tag, an unsupported or unreadable record, a duplicate address, a non-JSON property.
+  **Stale-issue reconciliation (flagged on #35):** the body's `+ CFN drift` read path is dropped —
+  DECISIONS.md §1 (#80) locks Terraform = Cloud Control only (no CFN stack ⇒ drift = the CDK/T3 path #66).
+  **Empirical proof:** a new `infra-local` LocalStack smoke proves Cloud Control `GetResource` surfaces the
+  `assayops:address` tag for `AWS::S3::Bucket` (the founder's per-type gate; **ran green on local LocalStack**
+  + in CI; kept out of the hermetic gate as a `smoke` script). TDD: **40 hermetic tests** (all 4 ACs
+  end-to-end through the real `grade` + every fail-closed case). `bun run verify` green **26/26** (forced);
+  both lockfiles frozen-clean. Establishes the **corpus deploy-tagging convention** (#76/#13 must tag
+  resources `assayops:address`). (PR #150.)
 - **E3-1 (#34): `diff-ir` package — the normalized IR + shared reward core (6A); the first E3 deliverable.**
   New `py/packages/diff-ir`: the tool-agnostic normalized-state IR (`NormalizedResource`/`NormalizedState` —
   the adapter↔core interface) + the **shared, write-isolated reward core** `grade(deployed, golden) ->
