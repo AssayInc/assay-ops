@@ -39,6 +39,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   the **E3 diff-ir core (#34) + Terraform adapter (#35) have landed** — the shared reward core + normalized
   IR + the deployed-state adapter, so the verifier core (E2/#3 — read path #30, reward wiring #32) is next.
   **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
+- **E6 determinism (#7): verifier-determinism check status clarified; #46 re-scoped → E13.** The
+  compute-level check — **golden ×K → identical reward; a nondeterministic path fails** — is **already
+  built + negative-controlled by #31** (`verifier/tests/test_grade_determinism.py`), reinforced by the
+  diff-ir (#34) order-independent core + the byte-identical golden generator (#75). The one
+  genuinely-unbuilt slice — the **§6 eval-rigor determinism gate over the real corpus inside the Inspect-AI
+  `Scorer`** — needs the **E13 harness (#14, Phase 2→3)** + the **#45 quarantine policy** (7A/T8), neither
+  built; so **#46** (was `E6-3`/Phase-1/lane:A) is **re-scoped → E13 / Phase 2/3 / lane:D, blocked by #14 +
+  #45** — not Phase-1-ready. E6 (#7) retains **#44** (deterministic replay) + **#45** (transient/genuine
+  classifier + quarantine).
 
 ## Recently Landed
 

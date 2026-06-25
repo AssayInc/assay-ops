@@ -15,6 +15,21 @@ Entry format:
 
 ---
 
+## 2026-06-25 — verify-an-issues-build-state-not-just-its-requirements
+- **Mistake:** Started designing a new `py/packages/replay` package for #46 (a P1 "ready" `(S)` Phase-1 issue)
+  before checking its build-state: the check was **already done + negative-controlled by #31**
+  (`verifier/tests/test_grade_determinism.py`), and its one unbuilt slice (the §6 eval gate in the Inspect-AI
+  `Scorer`) was **blocked** on an unbuilt harness (#14) + policy (#45) — a premature abstraction coding around a block.
+- **Rule:** Before building an AI-written issue — *even a P1 "ready" `(S)mall` one* — verify its **build-state**,
+  not just its requirements: is it already satisfied by a sibling PR (grep the exact behavior the AC names)? does
+  the harness/policy its genuine slice needs exist? If the only unbuilt slice depends on unbuilt deps it's
+  **blocked → rescope-and-defer + comment, don't build a speculative package** (§8 "build only the IP"). The
+  issue's own milestone/label/epic can be stale; the floor + code win.
+- **Context:** #46 re-scoped `E6-3`/Phase-1 → **E13/Phase 2-3**, blocked by #14 + #45, done-by #31. Native
+  blocked-by: `gh api --method POST repos/{o}/{r}/issues/{n}/dependencies/blocked_by -F issue_id=<blocker DB id>`.
+  Pairs with [[ground-in-decisions-and-brain-not-the-ai-written-issue]] +
+  [[spike-output-is-a-decision-not-a-committed-package]].
+
 ## 2026-06-25 — spike-output-is-a-decision-not-a-committed-package
 - **Mistake:** Resolving the #60 IAM-eventual-consistency spike, I committed the throwaway measurement probe as
   a new permanent `py/packages/iam-readiness-probe` workspace member (pyproject + package.json + README + nested
