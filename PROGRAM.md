@@ -58,10 +58,15 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   DECISIONS.md §1 (#80) locks Terraform = Cloud Control only (no CFN stack ⇒ drift = the CDK/T3 path #66).
   **Empirical proof:** a new `infra-local` LocalStack smoke proves Cloud Control `GetResource` surfaces the
   `assayops:address` tag for `AWS::S3::Bucket` (the founder's per-type gate; **ran green on local LocalStack**
-  + in CI; kept out of the hermetic gate as a `smoke` script). TDD: **40 hermetic tests** (all 4 ACs
-  end-to-end through the real `grade` + every fail-closed case). `bun run verify` green **26/26** (forced);
-  both lockfiles frozen-clean. Establishes the **corpus deploy-tagging convention** (#76/#13 must tag
-  resources `assayops:address`). (PR #150.)
+  + in CI; kept out of the hermetic gate as a `smoke` script). TDD: **41 hermetic tests** (all 4 ACs
+  end-to-end through the real `grade` + every fail-closed case). **Cross-model `/review`** (Claude
+  adversarial + correctness + Codex `gpt-5.5` xhigh, re-reviewed to convergence) hardened it: funnel any
+  unexpected exception (a deep-nested `RecursionError`) into the fail-closed `AdapterError` family;
+  case-insensitive reserved-`assayops:*` check; dropped the unused/`json.dumps`-divergent set-sort seam
+  (real set normalization → #66, JCS-aligned). `bun run verify` green **26/26**; both lockfiles
+  frozen-clean. Establishes the **corpus deploy-tagging convention** (#76/#13 must tag resources
+  `assayops:address`; goldens must also declare server-defaulted posture, e.g. S3 encryption/BPA, for a
+  real-cloud read). (PR #150.)
 - **E3-1 (#34): `diff-ir` package — the normalized IR + shared reward core (6A); the first E3 deliverable.**
   New `py/packages/diff-ir`: the tool-agnostic normalized-state IR (`NormalizedResource`/`NormalizedState` —
   the adapter↔core interface) + the **shared, write-isolated reward core** `grade(deployed, golden) ->

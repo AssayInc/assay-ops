@@ -28,6 +28,17 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   tag (proven for `AWS::S3::Bucket`; the founder's per-type gate). The **CDK adapter (#66)** inherits the same
   bridge + IR shape. The closed-world `deployed set ≡ golden set` check + the boto3 read stay with #30/#141/#53
   — the adapter is **pure normalization, never a read** (T1).
+- **E3-2 (#35) `/review` surfaced two follow-ups in sibling components (not adapter bugs).** (1)
+  **Reward-core empty-golden guard (#32 / diff-ir):** `reward_core.grade` does not itself reject an empty
+  golden `NormalizedState` — `grade(empty, empty)` returns reward 1 (vacuous; vector #15). Unreachable via
+  the blessed path today (`GoldenTarget` forbids empty; the `GoldenTarget→NormalizedState` conversion is #32,
+  unbuilt), but the trust gate should enforce it as defense-in-depth — add an empty-golden fail-closed to
+  `_require_trusted_inputs`. Flagged on #32. (2) **Goldens must declare server-defaulted posture (#76 corpus +
+  the real-cloud read path):** a real `AWS::S3::Bucket` Cloud Control read returns server-defaulted blocks the
+  minimal synthetic golden omits (`BucketEncryption` since 2023, likely `OwnershipControls`/
+  `PublicAccessBlockConfiguration`) → a correct deploy grades reward 0 against real cloud (safe direction, but
+  breaks the signal). Needs a LocalStack round-trip test + a `NORMALIZATION.md` note that S3 goldens make
+  encryption/BPA/ownership explicit. Forward-looking (no real-cloud reads until #30/#141 land).
 - **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
   Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
   §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):
