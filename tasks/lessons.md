@@ -15,6 +15,57 @@ Entry format:
 
 ---
 
+## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
+- **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
+  JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it
+  canonicalize?" was not. A Codex xhigh re-review found `rfc8785.dumps` canonicalizes a builtin **subclass** by
+  calling `int()`/`list()`/… on it (USER code), so `LyingInt(9)` (== 9) with `__int__→1` canonicalizes 9 to
+  `b"1"` — a false reward 1, nondeterministic. A canonicalizer **coerces** adversarial input, doesn't reject it.
+- **Rule:** Delegate the *equality semantics* to the system's canonical/signed form (no hand-rolled comparator;
+  `90==90.0`, `True≠1` fall out free, grade ↔ digest agree by construction). But guard the *input domain* to
+  exact types (`type(x) is T`, never `isinstance`) **before** canonicalizing — restrict to the library's
+  documented domain; never pass an open `object` and rely on undocumented coercion. Still less code, and safe.
+- **Context:** #34 / PR #145; `_require_exact_json`/`_canonical_bytes`/`_values_equal`. rfc8785's subclass
+  coercion is **undocumented** (verified vs its docs) → guard, don't rely. Caught only by the xhigh re-review of
+  the *fixed* code ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]); companion to
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]].
+
+## 2026-06-24 — harden-to-the-precise-domain-semantics-not-an-over-general-rule
+- **Mistake:** Fixing the value-type-collapse false-reward-1 in the diff-ir reward core (#34), the real bug
+  was Python `==` collapsing `True == 1` (a JSON **boolean** graded equal to a **number**). I
+  over-generalized the fix to **full type-strictness** (`type(a) is not type(b)`), which also made `int`
+  ≠ `float` — so `90` vs `90.0` graded as a **drift**. But JSON has one number type and RFC 8785 JCS
+  canonicalizes `90` and `90.0` identically, so that's a **false-negative** (a correct deploy scored 0),
+  not a real divergence. The founder caught it ("no over-engineering, right? fix only what's not right") —
+  I'd flagged it myself once asked, but shipped it over-strict first.
+- **Rule:** When hardening a correctness/trust check, match the **precise domain semantics** — don't reach
+  for the broadest rule that happens to cover the failing case. For JSON-value equality: `bool` is distinct
+  from numbers (a boolean is not `1`), but `int`/`float` of the same value are **equal** (one JSON number
+  type; JCS-canonical). The broadest rule (all-types-strict) "passes the failing test" but introduces a NEW
+  failure class (false negatives), which poisons training just like a false positive — **a fix stricter than
+  the ground-truth semantics is itself a bug.** Keep the genuinely bug-preventing hardening; cut the
+  over-reach. Distinguish *defense-in-depth that prevents real future bugs* (keep) from *strictness beyond
+  the correct semantics* (cut).
+- **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The over-strict cut later
+  triggered replacing the hand-rolled comparator entirely with JCS delegation
+  ([[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]). Pairs with KISS/YAGNI.
+
+## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
+- **Mistake:** Presented the #34 reward core as done after grounding against the **skills** + TDD + 6 review
+  passes — but had NOT (a) opened the **primary** Pydantic docs myself for the load-bearing behaviors
+  (after-mode `field_validator` returns-and-stores the value; `frozen` doesn't deep-freeze a dict), nor (b)
+  validated against two applicable craft skills (`python-error-handling`, `python-design-patterns`). The
+  founder asked the standing three questions; closing the gaps surfaced real refinements
+  (`UntrustedInputError(ValueError)`; explicit `mode="after"`).
+- **Rule (recurring founder directive):** The grounding pass is **part of "done," done proactively** — not when
+  asked. Before claiming a build complete: open the **primary docs yourself** for each load-bearing library
+  behavior (a skill / green test / Codex pass are all **secondary**), and **validate against every applicable
+  craft skill**, stating which are N/A and why. Cross-model review hardens correctness; it does **not**
+  substitute for either. Pairs with [[ground-in-official-docs-first]] +
+  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]].
+- **Context:** E3-1 (#34) / PR #145; primary Pydantic v2 docs (validators "return the validated value"; "Faux
+  immutability" Caution; `exclude_none`).
+
 ## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
 - **Mistake:** On #75 (the golden generator — a proof-critical content-addressed verifier) I first **piled on**
   validations chasing every Codex adversarial finding, then, when the founder asked "are you over-fixing?",

@@ -6,6 +6,18 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **E3-1 (#34) diff-ir landed — two non-blocking follow-ups.** The `diff-ir` package (the normalized IR +
+  shared reward core) is in. Durable notes for the consumers (adapters #35, golden gen #75, verifier E2/#3):
+  - **Schema-description prose vs the implemented split (contracts-doc only).** `diff-ir.schema.json`'s
+    *description* reads "a per-tool adapter produces this IR; the reward core reads it." The implemented split
+    has the **shared core** produce the `DiffIR` from two `NormalizedState`s (deployed + golden) — what AC2
+    requires and what keeps the determinism-critical diff DRY/in one place (the brain left the diff-owner open).
+    The schema *type* is unchanged. A future **contracts fixture-change** could align the description prose to
+    the implemented split; not urgent (prose, not contract).
+  - **Property-path granularity = top-level keys.** The core emits `propertyDiffs` keyed by **top-level**
+    normalized property name (values carry the full nested object, so no information is lost; the binary reward
+    is unaffected). Deeper **dotted leaf paths** (e.g. `VersioningConfiguration.Status`) are a future
+    report-granularity refinement, most naturally in the adapter's normalization (it knows the resource shape).
 - **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
   Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
   §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):
@@ -174,6 +186,10 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     canonical path drop omitted optionals (`exclude_none`) so the materialized form matches a sparse wire
     form. #28 keeps the corpus to **valid records** (the schema-invalid `propertyDiffs:null` vector was
     reverted) and **locks the schema-valid materialized parity, both sides** (`diff-ir/optional-property-sides`).
+    **E3-1 (#34) adopts the `exclude_none` path** for the read side: the shared reward core serializes its
+    `DiffIR` diff report with `model_dump(mode="json", exclude_none=True)` → the schema-valid sparse form (no
+    `propertyDiffs:null`; tested in the diff-ir package). The reward ledger (E4) must digest the report with the
+    same recipe (`RewardRecord.reportDigest` = sha256 of the diff report).
   - **Out-of-domain values.** Numbers must be IEEE-754-representable + strings valid Unicode; the signer
     (`rfc8785`) **fails closed**, a JS consumer rounds/escapes. **For E4:** the verify side must reject
     out-of-domain values, or verify over the stored payload bytes (never re-canonicalize a sparse object).

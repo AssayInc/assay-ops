@@ -1,55 +1,80 @@
 # Tasks — todo
 
 Plan-first scratchpad for the current piece of work (see `CLAUDE.md`/`AGENTS.md` → **Agent Operating
-Loop**). Ephemeral per-session; durable outputs → PR / PROGRAM.md / issues.
+Loop**). Write checkable items here before touching code; mark them as you go; add a short **Review**
+when done. Ephemeral per-session — durable records go to GitHub/PROGRAM.md/DECISIONS.md, not here.
 
 ---
 
-## #75 E2-5 — Golden-target generator (reproducible ephemeral target, 2A) — IN PROGRESS (branch `feat/e2-5-golden-target`)
+## E3-1 (#34) — `diff-ir` package (normalized IR + shared reward core) — DONE, awaiting review (branch `e3-1-diff-ir-package`)
 
-**Goal (AC).** `generate(task, seed)` → deterministic, content-addressed **golden target** (the expected
-normalized resource set the account-B verifier grades deployed state against). **Engine, NOT corpus**
-(#76 owns the private per-task golden definitions). Gates #31.
-1. `generate(task, seed)` byte-identical across K runs (feeds the #46 determinism check).
-2. Runs in account B / verifier domain — never consumes the agent's synth/plan/state.
-3. (#31's integration test grades deployed state vs this output — separate issue; #75 must produce a
-   diffable golden.)
-4. Golden artifacts content-addressed (hash reproducible from the record).
+**Goal (3 ACs):** the first `py/packages/diff-ir` — the tool-agnostic normalized IR + the shared reward core [6A].
+1. IR tool-agnostic (Terraform now, CDK later) + **round-trips** through the reward core.
+2. Reward core consumes **only** {deployed-state read, golden target}; feeding agent `plan`/state is **rejected**.
+3. Normalization rules (ordering/defaults/computed fields) **documented** so "no diff" is deterministic.
 
-**Grounding (issue is an AI-written input, reconciled vs floor + brain — done):**
-- DECISIONS.md **2A** (reproducible ephemeral target, code+seed; reward = zero normalized diff),
-  **T1 / sec1 / sec8** (account B; never runs agent synth/plan; reads state only), **I3** (JCS canonical bytes).
-- Brain (eng-architecture, deterministic-verification): golden = declarative/programmatic regeneration
-  (NOT running reference IaC); an expected resource set + intent-bearing properties; feeds the 6A diff IR;
-  **engine (#75) vs private corpus (#76)** is explicit.
+**Validation (issue vs DECISIONS + brain + skills):** 6A/2A/T1 + `deterministic-verification` +
+`write-isolated-verifier` — per-tool adapters do tool-specific normalization of one side; the shared core owns
+the determinism-critical diff (won in one place) → `reward∈{0,1}`. DRY: **reuse** the codegen'd
+`DiffIR`/`Resource`/`PropertyDiffs`/`Change`/`Reward` from `assayops_contracts`. **Flagged reconciliation:** the
+schema *description* says "adapter produces this IR"; AC2 says the **core** consumes {deployed, golden}. The
+brain leaves the diff-owner open ("design space; ground in DECISIONS"). Chose: the core produces the `DiffIR`
+from two `NormalizedState`s — satisfies AC2 literally, keeps the diff DRY/deterministic in one place, unifies
+with `RewardRecord.reportDigest`. Honors 6A. → noted on the issue.
 
-**Design decisions:**
-- New package **`py/packages/verifier`** (`assayops_verifier`) — account-B verifier core; #30/#32 extend it.
-- Golden **not a contract schema** (verifier-internal): hand-written Pydantic `GoldenTarget`/`GoldenResource`
-  (`address`/`type`/`properties`), diff-IR-compatible vocabulary.
-- `generate(task: TaskSpec, seed: str) -> GoldenTarget`: resolves a per-task **GoldenBuilder** (the "code")
-  via a `GoldenRegistry` (corpus seam); **fail-closed** on unknown task (vector #15: never silently reward);
-  engine sorts resources by address (canonical) + rejects dup addresses.
-- **Seed** → deterministic hash-based ephemeral tokens (no clock/RNG) via `GoldenContext.token(...)`. The
-  separate `seed` param lets the verifier regenerate a per-episode ephemeral variant (anti-memorization,
-  vector #14) or the canonical golden (`seed = task.seed`). Intent-bearing names (not the AWS-assigned
-  suffixes that #34 normalization strips).
-- **Content address** `golden_digest(target) -> str`: reuse `assayops_contracts.jcs.canonical_digest`
-  (DRY, single-sourced) → lowercase 64-hex. Byte-identical regen ⇒ identical address.
-- **Cross-package wiring (first in repo):** consume `assayops_contracts` by source path
-  (`pythonpath`/`mypy_path` + `follow_imports=silent`) — extends the virtual-member convention; contracts
-  untouched. Escalate to packaging contracts only if `verify` proves it fragile.
+**Design:** `Provenance` (DEPLOYED_READ/GOLDEN_TARGET gradeable; AGENT_PLAN/AGENT_STATE named only to be
+rejected) · `NormalizedResource`/`NormalizedState` (frozen Pydantic; unique-address + JSON-domain value
+validators) · `grade(deployed, golden) -> GradeOutcome(reward, diff)` — the **only** public reward entry, so
+consumption is exactly {deployed, golden}; T1 guard **fails closed** + **re-validates** inputs · tool-agnostic
+deterministic diff with **JCS canonical-byte** value equality (sort by address + path; golden=expected,
+deployed=actual; type-mismatch → reserved `$type` propertyDiff) · `NORMALIZATION.md` (the adapter↔core split +
+the determinism + value-representability contract). Report serializes with `exclude_none` (schema-valid sparse).
 
-**Flags (surface on PR/issue; don't code around):**
-1. AC4 "hash recorded in the trajectory/reward record": the locked reward-record schema has **no**
-   golden-digest field (`additionalProperties:false`; editing it = a #28 fixture-change). Satisfied instead
-   by **regenerability** (trajectory_id→task_id→`task.seed`) + `graderVersion`; #75 ships the `golden_digest`
-   primitive. A dedicated record field would be a separate flagged contract change.
-2. #75 establishes `py/packages/verifier` ahead of E2-1/#30 (skeleton); golden is verifier-core, #30 adds
-   the deployed-state read path to the same package.
+**Wiring:** first intra-workspace import — diff-ir `pyproject` extends `pythonpath`/`mypy_path` to
+`../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
+plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
 
-**Steps (TDD — each AC → failing test → minimal green):**
-- [ ] Scaffold `py/packages/verifier` (pyproject, package.json, src, tests) mirroring siblings.
-- [ ] RED→GREEN: determinism / ephemeral-seed / content-address / fail-closed / normalization / account-B purity.
-- [ ] `bun install` + `uv lock`/`uv sync`; verify `bun install --frozen-lockfile` (the CI gotcha).
-- [ ] `bun run verify` green; update PROGRAM.md; focused PR `Closes #75`; `/review` (Claude + Codex xhigh).
+**Steps:** [x] all — TDD (50 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
+green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
+`/review`; issue comment.
+
+### Review (`bun run verify` green 20/20 forced; 50 tests)
+
+- **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
+  dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
+  order-independence + K-run determinism + `NORMALIZATION.md`. Each behavior RED-first.
+- **Trust boundary (in scope per `write-isolated-verifier`):** the core's only public entry consumes exactly
+  {deployed, golden}, fails closed (`UntrustedInputError`) on any other provenance, and **re-validates** its
+  inputs — the code-level T1, a complement to (not a replacement for) account-B isolation.
+- **Grounded:** DECISIONS 6A/2A/T1; `deterministic-verification`; `write-isolated-verifier`; `pydantic-v2`
+  (plugin `Any`-gotcha + `exclude_none`); `uv`; `python-type-safety` (`object` not `Any`);
+  `python-testing-patterns`. Brain recall confirmed the diff-owner is open design space → chose the core.
+- **Cross-model `/review` (Claude adversarial + test-audit subagents + Codex `gpt-5.5` xhigh, 6 passes to
+  convergence) caught real reward holes — the value of running both.** Each fixed TDD (RED-first): (1) **false
+  reward 1 via value-type collapse** (`True==1`) → comparison where **`bool` ≠ a number** but `int`/`float`
+  compare by value (`90==90.0`; the founder corrected an over-strict first cut that flagged `90`≠`90.0` — a
+  false-negative); (2) **non-string nested dict keys** (`{1:…}`/`{True:…}` collide) → **recursive JSON-domain
+  validation**; (3) **scalar *subclasses*** (overloaded `__eq__` pass `isinstance`) → **exact `type(...) is`
+  gate**; (4) **shallow `frozen` + `model_dump`/`copy.deepcopy` laundering** (a `__deepcopy__`/serializer
+  transforms a non-JSON value into JSON *before* validation) → a single **validate-and-copy** (exact-type
+  identity gate, node-by-node, no transform step) at construction + `grade` re-validation; (5) NaN /
+  present-`None` / `$type` / report-aliasing guards. +21 hardening tests. **Pass 6 converged: Findings: None**
+  — the only residuals require trusted account-B code to inject pathological objects post-construction
+  (`model_construct`/monkeypatch), outside the agent threat model.
+- **Grounded against PRIMARY docs (not just the skills) + the Python craft skills.** Verified the
+  load-bearing Pydantic v2 behaviors on `docs.pydantic.dev` myself: an after-mode `field_validator`
+  **returns-and-stores** the (transformed) value — "important to return the validated value" + the
+  mutating-value example — so the validate-and-copy snapshot is documented-correct; **`frozen` does NOT
+  deep-freeze** — the "Faux immutability" Caution + `foobar.b['apple']='grape'` example — the documented
+  basis for the `grade` re-validation; `exclude_none` = "Exclude all fields whose value is None";
+  `model_validator(after)` returns `self`. Validated against `python-error-handling` (→ `UntrustedInputError`
+  now subclasses **`ValueError`**, Pattern 4 invalid-input + consistent with the validators; +1 test) and
+  `python-design-patterns` (KISS/SRP/composition/small-functions confirmed, no change). `mode="after"` made
+  explicit per the doc examples.
+
+**Final state (supersedes the hand-rolled design above).** Value equality + validity now use **RFC 8785 JCS
+canonicalization** (`rfc8785.dumps`, the same form the record is signed with) behind a thin **exact-type input
+guard** (`type(x) is T`) + a **cycle guard** (stdlib-`json`-style `id()` detection) — replacing the hand-rolled
+comparator + validate-and-copy. 3 more Codex `gpt-5.5` xhigh passes (subclass-coercion forge → cycle crash →
+SHIP) + a **complete** review (SHIP, no blockers). rfc8785/JCS re-grounded vs RFC 8785 + the library docs (its
+subclass coercion is undocumented → guard, don't rely). **50 tests; `bun run verify` 20/20; merged `main`.**
