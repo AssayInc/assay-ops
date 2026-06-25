@@ -121,3 +121,39 @@ def test_cloud_control_get_resource_missing_is_resource_not_found(
     """
     with pytest.raises(cloud_control.exceptions.ResourceNotFoundException):
         cloud_control.get_resource(TypeName=_BUCKET_TYPE, Identifier=_MISSING)
+
+
+# --- Terraform-adapter tag bridge (#35 / #80): Cloud Control must surface `assayops:address` ---
+
+_ADDRESS_TAG = "assayops:address"
+_ADDRESS_VALUE = "primary_bucket"
+_TAGGED_BUCKET = "assayops-read-smoke-tagged"
+
+
+@pytest.fixture(scope="module")
+def tagged_bucket() -> str:
+    """Deploy an S3 bucket tagged with `assayops:address` via the S3 API (the Terraform path)."""
+    s3 = _client("s3")
+    try:
+        s3.create_bucket(Bucket=_TAGGED_BUCKET)
+    except (s3.exceptions.BucketAlreadyOwnedByYou, s3.exceptions.BucketAlreadyExists):
+        pass  # already deployed -- fine
+    s3.put_bucket_tagging(
+        Bucket=_TAGGED_BUCKET,
+        Tagging={"TagSet": [{"Key": _ADDRESS_TAG, "Value": _ADDRESS_VALUE}]},
+    )
+    return _TAGGED_BUCKET
+
+
+def test_cloud_control_get_resource_returns_the_assayops_address_tag(
+    cloud_control: BaseClient, tagged_bucket: str
+) -> None:
+    """The #35 adapter bridge proof: Cloud Control GetResource exposes `assayops:address` at the
+    AWS::S3::Bucket schema tagProperty (`Tags`) -- what the adapter's S3 registration relies on."""
+    description = cloud_control.get_resource(TypeName=_BUCKET_TYPE, Identifier=tagged_bucket)[
+        "ResourceDescription"
+    ]
+    properties = json.loads(description["Properties"])
+    assert isinstance(properties, dict)
+    tags = properties.get("Tags", [])
+    assert {"Key": _ADDRESS_TAG, "Value": _ADDRESS_VALUE} in tags
