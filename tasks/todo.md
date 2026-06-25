@@ -1,80 +1,64 @@
 # Tasks — todo
 
 Plan-first scratchpad for the current piece of work (see `CLAUDE.md`/`AGENTS.md` → **Agent Operating
-Loop**). Write checkable items here before touching code; mark them as you go; add a short **Review**
-when done. Ephemeral per-session — durable records go to GitHub/PROGRAM.md/DECISIONS.md, not here.
+Loop**). Ephemeral per-session — durable records go to GitHub/PROGRAM.md/DECISIONS.md, not here.
 
 ---
 
-## E3-1 (#34) — `diff-ir` package (normalized IR + shared reward core) — DONE, awaiting review (branch `e3-1-diff-ir-package`)
+## E3-2 (#35) — Terraform adapter → diff-IR (T2, the A-spike engine) — DONE, awaiting `/review` (branch `e3-2-terraform-adapter`)
 
-**Goal (3 ACs):** the first `py/packages/diff-ir` — the tool-agnostic normalized IR + the shared reward core [6A].
-1. IR tool-agnostic (Terraform now, CDK later) + **round-trips** through the reward core.
-2. Reward core consumes **only** {deployed-state read, golden target}; feeding agent `plan`/state is **rejected**.
-3. Normalization rules (ordering/defaults/computed fields) **documented** so "no diff" is deterministic.
+**Result:** `py/packages/adapter-terraform` built TDD (40 hermetic tests, all ACs + every founder-required
+fail-closed case); `infra-local` tag-bridge smoke proves Cloud Control returns `assayops:address` for
+`AWS::S3::Bucket` (ran green on local LocalStack). `bun run verify` green **26/26** (forced, 0-cached);
+both lockfiles frozen-clean. Stale-issue `+ CFN drift` dropped (floor §1 wins). Remaining: PR + `/review`.
 
-**Validation (issue vs DECISIONS + brain + skills):** 6A/2A/T1 + `deterministic-verification` +
-`write-isolated-verifier` — per-tool adapters do tool-specific normalization of one side; the shared core owns
-the determinism-critical diff (won in one place) → `reward∈{0,1}`. DRY: **reuse** the codegen'd
-`DiffIR`/`Resource`/`PropertyDiffs`/`Change`/`Reward` from `assayops_contracts`. **Flagged reconciliation:** the
-schema *description* says "adapter produces this IR"; AC2 says the **core** consumes {deployed, golden}. The
-brain leaves the diff-owner open ("design space; ground in DECISIONS"). Chose: the core produces the `DiffIR`
-from two `NormalizedState`s — satisfies AC2 literally, keeps the diff DRY/deterministic in one place, unifies
-with `RewardRecord.reportDigest`. Honors 6A. → noted on the issue.
+**Goal:** a new **pure** `py/packages/adapter-terraform` (`assayops_adapter_terraform`) that normalizes
+already-enumerated **B-side Cloud Control deployed-state reads** into the landed diff-ir
+`NormalizedState(DEPLOYED_READ)` (#34), which `grade()` diffs against the golden (#75). No boto3, no
+plan/state/provider, no discovery — fail closed, deterministic.
 
-**Design:** `Provenance` (DEPLOYED_READ/GOLDEN_TARGET gradeable; AGENT_PLAN/AGENT_STATE named only to be
-rejected) · `NormalizedResource`/`NormalizedState` (frozen Pydantic; unique-address + JSON-domain value
-validators) · `grade(deployed, golden) -> GradeOutcome(reward, diff)` — the **only** public reward entry, so
-consumption is exactly {deployed, golden}; T1 guard **fails closed** + **re-validates** inputs · tool-agnostic
-deterministic diff with **JCS canonical-byte** value equality (sort by address + path; golden=expected,
-deployed=actual; type-mismatch → reserved `$type` propertyDiff) · `NORMALIZATION.md` (the adapter↔core split +
-the determinism + value-representability contract). Report serializes with `exclude_none` (schema-valid sparse).
+**Grounding / reconciliation (issue vs DECISIONS + brain + founder spec):**
+- Issue body "Cloud Control + **CFN drift**" is **STALE** → DECISIONS.md §1 (E3-4 / #80) locks **Terraform =
+  Cloud Control `GetResource`/`ListResources` ONLY** (Terraform creates no CFN stack ⇒ drift has nothing to
+  target; CFN drift = the CDK/T3 path, #66). Frozen floor wins → comment on #35.
+- #35 = **pure normalization**. The boto3 read + closed-world enumeration = **#30/#141/#53**; reward→ledger
+  wiring = **#32**; the malicious-provider/poisoned-state fixtures = **#56** (which "feeds #35" — not built, so
+  #35 proves the property with its own representative fixture).
+- Address bridge (founder decision): reserved **`assayops:address`** tag, under a **per-type support registry**
+  (the #80 matrix), fail-closed. Untrusted tag value, validated as a logical address.
 
-**Wiring:** first intra-workspace import — diff-ir `pyproject` extends `pythonpath`/`mypy_path` to
-`../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
-plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
+**Design:**
+- Input: `Iterable[DeployedResourceRead | UnreadableResource]` (settled, already-enumerated) + a
+  `BridgeRegistry`. Output: `NormalizedState(DEPLOYED_READ)` or a fail-closed `AdapterError`.
+- Per supported type: read **exactly one** case-sensitive `assayops:address` from the schema-declared
+  `tagging.tagProperty` (default `Tags`); value untrusted → validate as logical address → `address`; drop
+  **only** that bridge tag; keep user tags sorted; drop schema `readOnlyProperties`; sort set-valued props.
+- Fail closed: missing/duplicate/malformed/case-wrong/reserved-`assayops:*`/wrong-shape tag, unknown/
+  unsupported type, unreadable record, duplicate logical address. Extra resources → emitted (grade→`added`),
+  never filtered away. Cloud Control `Identifier` / natural keys are **never** the address.
+- NEVER run terraform / load providers / read `.tfstate` / read plan JSON / discover by tag.
 
-**Steps:** [x] all — TDD (50 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
-green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
-`/review`; issue comment.
+**TDD checklist (each → a failing test FIRST):**
+- [ ] happy: tagged read → `NormalizedResource(address=<tag>)`; `grade` vs matching golden → reward 1 (AC1 / NSYNC)
+- [ ] drop server-filled `readOnlyProperties` (Arn/DomainName/…); keep intent (VersioningConfiguration)
+- [ ] address tag: missing / duplicate / malformed-value / case-wrong → fail closed
+- [ ] reserved `assayops:*` (non-address) tag → fail closed
+- [ ] wrong-shape `tagProperty` (not a list of `{Key,Value}` strings) → fail closed
+- [ ] unsupported/unknown type → fail closed (AC4); `UnreadableResource` record → fail closed
+- [ ] non-default `tagProperty` (registry-configurable) read correctly
+- [ ] user tags preserved + sorted; only the bridge tag stripped; no-user-tags drops the tag property
+- [ ] AC2: deployed matches golden, a differing "plan" is never an input → reward 1 (state-only, no plan dep)
+- [ ] AC3: a poisoned `.tfstate` / malicious-provider fixture is never an input → reward unaffected
+- [ ] determinism: shuffled reads/tags → identical `NormalizedState`; two reads of one correct deploy → same IR
+- [ ] duplicate logical address across reads → fail closed
+- [ ] extra deployed resource → `grade` → `added` (never filtered)
+- [ ] infra-local smoke: real Cloud Control `GetResource` returns `assayops:address` at `tagProperty` for
+      `AWS::S3::Bucket` (#80; runs in `localstack-smoke.yml` CI — no local `LOCALSTACK_AUTH_TOKEN`)
 
-### Review (`bun run verify` green 20/20 forced; 50 tests)
+**Wiring:** new uv + bun workspace member (mirror diff-ir `pyproject`/`package.json`; resolve diff-ir +
+contracts via `mypy_path`/`pythonpath`). `uv lock` + `bun install` (**both** lockfiles — the bun-lock lesson),
+verify with `bun install --frozen-lockfile`. `bun run verify` green.
 
-- **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
-  dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
-  order-independence + K-run determinism + `NORMALIZATION.md`. Each behavior RED-first.
-- **Trust boundary (in scope per `write-isolated-verifier`):** the core's only public entry consumes exactly
-  {deployed, golden}, fails closed (`UntrustedInputError`) on any other provenance, and **re-validates** its
-  inputs — the code-level T1, a complement to (not a replacement for) account-B isolation.
-- **Grounded:** DECISIONS 6A/2A/T1; `deterministic-verification`; `write-isolated-verifier`; `pydantic-v2`
-  (plugin `Any`-gotcha + `exclude_none`); `uv`; `python-type-safety` (`object` not `Any`);
-  `python-testing-patterns`. Brain recall confirmed the diff-owner is open design space → chose the core.
-- **Cross-model `/review` (Claude adversarial + test-audit subagents + Codex `gpt-5.5` xhigh, 6 passes to
-  convergence) caught real reward holes — the value of running both.** Each fixed TDD (RED-first): (1) **false
-  reward 1 via value-type collapse** (`True==1`) → comparison where **`bool` ≠ a number** but `int`/`float`
-  compare by value (`90==90.0`; the founder corrected an over-strict first cut that flagged `90`≠`90.0` — a
-  false-negative); (2) **non-string nested dict keys** (`{1:…}`/`{True:…}` collide) → **recursive JSON-domain
-  validation**; (3) **scalar *subclasses*** (overloaded `__eq__` pass `isinstance`) → **exact `type(...) is`
-  gate**; (4) **shallow `frozen` + `model_dump`/`copy.deepcopy` laundering** (a `__deepcopy__`/serializer
-  transforms a non-JSON value into JSON *before* validation) → a single **validate-and-copy** (exact-type
-  identity gate, node-by-node, no transform step) at construction + `grade` re-validation; (5) NaN /
-  present-`None` / `$type` / report-aliasing guards. +21 hardening tests. **Pass 6 converged: Findings: None**
-  — the only residuals require trusted account-B code to inject pathological objects post-construction
-  (`model_construct`/monkeypatch), outside the agent threat model.
-- **Grounded against PRIMARY docs (not just the skills) + the Python craft skills.** Verified the
-  load-bearing Pydantic v2 behaviors on `docs.pydantic.dev` myself: an after-mode `field_validator`
-  **returns-and-stores** the (transformed) value — "important to return the validated value" + the
-  mutating-value example — so the validate-and-copy snapshot is documented-correct; **`frozen` does NOT
-  deep-freeze** — the "Faux immutability" Caution + `foobar.b['apple']='grape'` example — the documented
-  basis for the `grade` re-validation; `exclude_none` = "Exclude all fields whose value is None";
-  `model_validator(after)` returns `self`. Validated against `python-error-handling` (→ `UntrustedInputError`
-  now subclasses **`ValueError`**, Pattern 4 invalid-input + consistent with the validators; +1 test) and
-  `python-design-patterns` (KISS/SRP/composition/small-functions confirmed, no change). `mode="after"` made
-  explicit per the doc examples.
-
-**Final state (supersedes the hand-rolled design above).** Value equality + validity now use **RFC 8785 JCS
-canonicalization** (`rfc8785.dumps`, the same form the record is signed with) behind a thin **exact-type input
-guard** (`type(x) is T`) + a **cycle guard** (stdlib-`json`-style `id()` detection) — replacing the hand-rolled
-comparator + validate-and-copy. 3 more Codex `gpt-5.5` xhigh passes (subclass-coercion forge → cycle crash →
-SHIP) + a **complete** review (SHIP, no blockers). rfc8785/JCS re-grounded vs RFC 8785 + the library docs (its
-subclass coercion is undocumented → guard, don't rely). **50 tests; `bun run verify` 20/20; merged `main`.**
+**Close-out:** README + docstrings (flag the bridge convention); comment #35 (CFN-drift staleness + the
+`assayops:address` bridge + a corpus deploy-tagging note for #76/#13); update `PROGRAM.md`/`ISSUES.md`;
+cross-model `/review` (Claude + Codex `gpt-5.5` xhigh); focused PR `Closes #35` (leaf — E3 epic #4 stays open).
