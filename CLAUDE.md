@@ -198,3 +198,53 @@ boundary) against the matching skill too, not just the API/library skill.
 | Python lane (language-level) | `python-type-safety` · `python-testing-patterns` · `async-python-patterns` · `python-design-patterns` · `ruff` · `uv` | the `Any`/typing policy + `mypy --strict`; pytest + TDD; the asyncio env-server + concurrent sessions; composition/factories; lint+format; the uv workspace. (`python-performance-optimization` is situational — the verifier is I/O-bound on cloud reads, not CPU-bound.) |
 | Python lane (runtime robustness) | `python-resilience` · `python-error-handling` · `python-configuration` · `python-observability` | the verifier's transient-vs-genuine-failure rule (`deterministic-verification`) + boto3 adaptive retries; parsing untrusted IaC/boto3 responses at the verifier/adapter boundary; typed settings + secrets (`pydantic-settings`) for the ledger/account creds; the **structlog** logging decision + eval/verifier metrics. |
 | Pydantic v2 (contract spine) | `pydantic-v2` | the contract models — validation/serialization, **`model_dump(mode='json')` → JCS canonicalize before signing** (`model_dump_json` isn't canonical), `frozen`/`extra='forbid'`/`strict` hardening, the `pydantic.mypy` `disallow_any_explicit` gotcha. Homegrown (no official core-modeling skill). |
+
+## GBrain Search Guidance (configured by /sync-gbrain)
+<!-- gstack-gbrain-search-guidance:start -->
+
+GBrain is set up and synced on this machine. The agent should prefer gbrain
+over Grep when the question is semantic or when you don't know the exact
+identifier yet.
+
+**This worktree is pinned to a worktree-scoped code source** via the
+`.gbrain-source` file in the repo root (kubectl-style context).
+`gbrain code-def`, `code-refs`, `code-callers`, `code-callees`, `search`, and
+`query` from anywhere under this worktree route to that source by default —
+no `--source` flag needed (gbrain >= 0.41.38.0; on older gbrain the call-graph
+commands need `--source "$(cat .gbrain-source)"`). Conductor sibling worktrees
+of the same repo each have their own pin and their own indexed pages, so
+semantic results match the code on disk here.
+
+Call-graph queries (`code-callers`/`code-callees`) also need the graph to be
+built first — run `/sync-gbrain --dream` (or `--full`) if they return
+`count: 0`. This only works if this source's gbrain schema pack extracts code
+symbols; on a non-code-aware pack `--dream` completes but the graph stays empty
+and reports a WARN. `code-def`/`code-refs` need the same extraction.
+
+Two indexed corpora available via the `gbrain` CLI:
+- This worktree's code (auto-pinned via `.gbrain-source`).
+- `~/.gstack/` curated memory (registered as `gstack-brain-<user>` source via
+  the existing federation pipeline).
+
+Prefer gbrain when:
+- "Where is X handled?" / semantic intent, no exact string yet:
+    `gbrain search "<terms>"` or `gbrain query "<question>"`
+- "Where is symbol Y defined?" / symbol-based code questions:
+    `gbrain code-def <symbol>` or `gbrain code-refs <symbol>`
+- "What calls Y?" / "What does Y depend on?":
+    `gbrain code-callers <symbol>` / `gbrain code-callees <symbol>`
+- "What did we decide last time?" / past plans, retros, learnings:
+    `gbrain search "<terms>" --source gstack-brain-<user>`
+
+Grep is still right for known exact strings, regex, multiline patterns, and
+file globs. Run `/sync-gbrain` after meaningful code changes; for ongoing
+auto-sync across all worktrees, run `gbrain autopilot --install` once per
+machine — gbrain's daemon handles incremental refresh on a schedule.
+
+Safety: don't run `/sync-gbrain` while `gbrain autopilot` is active — the
+orchestrator refuses destructive source ops when it detects a running autopilot
+to avoid racing it (#1734). Prefer registering user repos with `gbrain sources
+add --path <dir>` (no `--url`): URL-managed sources can auto-reclone, and the
+sync code walk for them requires an explicit `--allow-reclone` opt-in.
+
+<!-- gstack-gbrain-search-guidance:end -->
