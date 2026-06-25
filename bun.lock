@@ -36,6 +36,14 @@
       "name": "@assayops/py-logger",
       "version": "0.0.0",
     },
+    "py/packages/replay": {
+      "name": "@assayops/py-replay",
+      "version": "0.0.0",
+      "dependencies": {
+        "@assayops/py-contracts": "workspace:*",
+        "@assayops/py-diff-ir": "workspace:*",
+      },
+    },
     "py/packages/verifier": {
       "name": "@assayops/py-verifier",
       "version": "0.0.0",
@@ -99,6 +107,8 @@
     "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
 
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
+
+    "@assayops/py-replay": ["@assayops/py-replay@workspace:py/packages/replay"],
 
     "@assayops/py-verifier": ["@assayops/py-verifier@workspace:py/packages/verifier"],
 

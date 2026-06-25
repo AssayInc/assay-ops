@@ -24,6 +24,7 @@ members = [
     "assayops-env-server",
     "assayops-infra-local",
     "assayops-logger",
+    "assayops-replay",
     "assayops-verifier",
 ]
 
@@ -159,6 +160,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "structlog", specifier = ">=25" }]
+
+[[package]]
+name = "assayops-replay"
+version = "0.0.0"
+source = { virtual = "py/packages/replay" }
 
 [[package]]
 name = "assayops-verifier"

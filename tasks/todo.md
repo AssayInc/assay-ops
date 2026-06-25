@@ -1,24 +1,21 @@
-# todo — E2-1 follow-up (#163): correct cross-account read mechanism + harden read path
+# todo — #45 E6-2: Transient/genuine classifier + K-run reproduce + quarantine [locked 7A]
 
-> Ephemeral per-session scratchpad (durable records → PROGRAM.md / the PR / issues).
+> Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md (Recently Landed) + the PR + GitHub #45.
 
-**Context:** A post-merge diverse-lens review of #160 (the E2-1 read skeleton) — a security/reward-forge
-red-team + an edge-case/crash sweep + a design/SOTA lens, across Codex gpt-5.5 xhigh + Claude — found three
-defects in the merged moat code. The moat holds (no reward-forge); these are a trust-claim correction + two
-fail-closed hardenings. Tracked as #163.
+## Status — DONE (committed; PR #159 open, `Closes #45`); awaiting founder go to merge
+- [x] Grounded: DECISIONS.md §1/7A + brain + deterministic-verification / write-isolated-verifier / python-resilience / error-handling / type-safety skills + **#141's scope read directly** (not via a stale subagent summary).
+- [x] TDD RED→GREEN, 27 tests; `bun run verify` green 29/29; both lockfiles frozen-checked.
+- [x] Cross-model review (Claude + Codex gpt-5.5 **xhigh**, re-reviewed to convergence) + a founder-prompted primary-source re-validation that **caught a real false-negative bug** (see below).
+- [ ] **Merge** — waits for explicit founder go (never merge without approval).
 
-**Fixes (TDD, RED→GREEN):**
-- [x] **`RoleArn` is not a cross-account hook.** Verified vs the AWS Cloud Control user guide: `RoleArn` is a
-  SAME-account CFN service role; the target account is set by the signing creds; cross-account = STS
-  `AssumeRole` → account-A creds → client. Removed the `role_arn` field/threading + the test + the fake
-  plumbing; corrected the docstrings to STS AssumeRole (#33/E8). Restores DECISIONS §1.
-- [x] **`RecursionError` DoS.** `_properties_of` caught only `ValueError`; `json.loads` raises
-  `RecursionError` on deeply-nested JSON → raw crash. Now `except (ValueError, RecursionError)`.
-- [x] **Empty-page false-crash.** An absent `ResourceDescriptions` is the AWS empty-result shape → treat as
-  empty (matches `infra-local`); a present-non-list still fails closed; truncation = #141.
-- [ ] **Ship:** `bun run verify` green; PROGRAM.md + lessons.md + the #160 entry's stale `RoleArn` claims
-  fixed; PR `Closes #163`; Codex `gpt-5.5` xhigh re-review to convergence.
+## What landed (new `py/packages/replay`, the E6/T8 home — ARCHITECTURE.md:69; shared with #44 replay; #46 is the E13 eval-gate that CONSUMES this policy)
+- `classifier.py` — the **7A transient policy**: **transiently unreadable** (throttle / 5xx / read-after-create eventual consistency) = TRANSIENT (retry within the small read budget, then FAIL-CLOSED). A throttle is NOT a wrong answer — scoring it 0 is a false-negative (deterministic-verification skill; #141 scope 1 routes a surfaced throttle through the 7A classifier + K-run). **Policy vs mechanism:** boto3 adaptive owns the SDK throttle/5xx RETRY; #45 owns the POLICY + the K-run gate #141 routes a surfaced transient into. AccessDenied (isolation alarm, never masked) / Validation / bug = GENUINE. boto3-free (error code + a `TransientGradeError` marker for any routed transient).
+- `reproduce.py` — `reproduce(grade_fn, *, runs=3, …) -> Reproducible | Quarantined`: drive K times, absorb transients via a bounded deterministic backed-off retry (injectable `sleep`, no jitter), quarantine a non-reproducing (flaky) task. `Quarantined` has **no reward attribute**; a genuine failure / exhausted transient budget → fail closed (raise). `Reproducible` carries the verified `GradeOutcome` so the ledger signs what the gate certified. Signature = `(reward, JCS canonical diff bytes)`.
+- Generic over the grade callable → depends on diff-ir + contracts only (NOT verifier) → cycle-free when #141 reuses the classifier. K is an unlocked parameter (default 3; flagged).
 
-**Flagged (out of scope — separate fix):** the `write-isolated-verifier` skill + its brain source carry the
-same wrong `RoleArn`-as-cross-account claim (the root cause that misled the #160 build). Correct at
-AssayInc/skills + the brain so future agents aren't re-misled.
+## The bug the founder's questions surfaced (lesson logged)
+- An over-narrowing during botocore grounding had made a **surfaced throttle GENUINE → fail-closed → reward 0** — the false-negative the deterministic-verification skill explicitly names. Both code reviews accepted the wrong premise; only re-reading the **skill + #141 scope 1** (primary sources) caught it. Reverted: throttle is a TRANSIENT; boto3 owns the retry *mechanism*, #45 owns the *policy*.
+
+## Handoff (durable home: the PR)
+- **#141 read path:** configure boto3 **adaptive** retry (the throttle/5xx retry mechanism); route a surfaced transient through this classifier + K-run; map a settled-absent NotFound → reward 0, a sustained infra transient (throttle) → quarantine/episode-retry (never reward 0 — a false-negative). `TransientBudgetExhausted` carries the cause.
+- **Corpus/eval owner (#46, E13):** the eval-gate runs `reproduce` golden×K over the corpus and excludes Quarantined tasks; tune **K** for the production scored set (3 is a dev default).
