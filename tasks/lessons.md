@@ -15,6 +15,24 @@ Entry format:
 
 ---
 
+## 2026-06-25 — a-github-issue-isnt-filed-until-its-on-the-project-board-under-its-epic
+- **Mistake:** Created the two #31 follow-ups (#152, #153) with `gh issue create` + labels only. The founder
+  asked "did you assign them to the right Project + Epic?" — they were on **neither**: `gh issue create` sets
+  labels/milestone but does **not** add to the org Project (#1 "AssayOps"), does not set its Epic/Lane/Status
+  fields, and does not link the issue as a **native sub-issue** of its parent epic.
+- **Rule:** An issue is **not filed until it's on the board, categorized, and parented.** After
+  `gh issue create`: (1) `gh project item-add 1 --owner AssayInc --url <url>`; (2) set the **Epic / Lane /
+  Status** single-selects via `gh project item-edit` by **mirroring a sibling issue** (read one with
+  `gh project item-list`, don't guess option ids); (3) where the parent epic is open, add it as a **native
+  sub-issue** (`gh api --method POST repos/AssayInc/assay-ops/issues/<epic>/sub_issues -F sub_issue_id=<child
+  db id>`). The **project `Epic` field is the source of truth** for categorization — it has **no E16/E17
+  option**, so **toolchain/infra follow-ups file under `E0 Infra`** (like #116/#135; the E0 epic issue #1 is
+  closed, so those get the field but no native parent). Verify with `gh project item-list` + the epic's
+  `sub_issues`; don't leave a wrong milestone (infra ≠ a phase milestone).
+- **Context:** #152 → E0 Infra (no native parent, milestone cleared); #153 → E2 Verifier + native sub-issue
+  of #3 + Phase 1. Project #1 = `PVT_kwDOEYppDc4BbCzj`. Pairs with
+  [[read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue]].
+
 ## 2026-06-25 — read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue
 - **Mistake:** On #31 I grounded the issue against DECISIONS/brain/code and read the related issues' *bodies*
   early, but didn't re-read the **comments / state / closing-PRs** of the issues its AC cites (#75, #46, #34)
