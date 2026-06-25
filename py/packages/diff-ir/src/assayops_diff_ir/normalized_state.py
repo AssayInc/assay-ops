@@ -32,29 +32,67 @@ class Provenance(StrEnum):
     AGENT_STATE = "agent_state"
 
 
-def _canonical_bytes(value: object) -> bytes:
-    """RFC 8785 (JCS) canonical bytes of an open JSON value -- the single bridge to the signed form.
+def _require_exact_json(value: object, _seen: frozenset[int] | None = None) -> None:
+    """Reject anything but EXACT JSON builtins (recursively) -- the guard that makes JCS safe.
 
-    A property value's *validity* (does it canonicalize?) and its *equality* (same bytes?) are both
-    defined here -- the form ``assayops_contracts.jcs`` signs the reward record with -- so the grade
-    and the signed ``reportDigest`` agree by construction. ``rfc8785.dumps`` is itself the runtime
-    validator: it raises ``CanonicalizationError`` (a ``ValueError``) on any non-JSON value.
+    ``rfc8785.dumps`` accepts a builtin SUBCLASS and canonicalizes it by calling
+    ``int()``/``float()``/``list()``/``dict()`` on it -- USER code. So a subclass can
+    forge or flip its own bytes (``LyingInt(9).__int__()`` returns 1, canonicalizing the
+    value 9 to ``b"1"``): a false reward 1, and nondeterministic. The grade must not depend
+    on user code, so ``dumps`` may only ever see exact builtins. We check ``type(x) is T``
+    (NOT ``isinstance``), so a subclass is rejected -- ``bool`` is an ``int`` subclass, and
+    exact-type keeps the two distinct. ``dumps`` still catches NaN/Infinity/oversized ints.
+    A reference CYCLE is not JSON either, so it fails closed (``ValueError``) rather than
+    recursing forever -- ``_seen`` holds the container ids on the current path.
     """
-    # `value` is our open JSON payload, correctly typed `object` (no-`Any` policy). `dumps` is the
-    # runtime validator (it raises on non-JSON), so passing `object` past its narrower `_Value`
-    # parameter is a boundary cast behind a runtime check -- not a hand-rolled JSON-domain narrow.
+    if value is None or type(value) is bool or type(value) is int or type(value) is float:
+        return
+    if type(value) is str:
+        return
+    seen = _seen if _seen is not None else frozenset()
+    if type(value) is list:
+        if id(value) in seen:
+            raise ValueError("value is not exact JSON: it has a reference cycle")
+        nested = seen | {id(value)}
+        for item in value:
+            _require_exact_json(item, nested)
+        return
+    if type(value) is dict:
+        if id(value) in seen:
+            raise ValueError("value is not exact JSON: it has a reference cycle")
+        nested = seen | {id(value)}
+        for key, item in value.items():
+            if type(key) is not str:
+                raise ValueError(f"JSON object key {key!r} must be a string")
+            _require_exact_json(item, nested)
+        return
+    raise ValueError(f"value of type {type(value).__name__!r} is not an exact JSON type")
+
+
+def _canonical_bytes(value: object) -> bytes:
+    """RFC 8785 (JCS) canonical bytes of an exact JSON value -- the bridge to the signed form.
+
+    A value's *equality* (same bytes?) is defined here -- the form ``assayops_contracts.jcs``
+    signs the reward record with -- so the grade and the signed ``reportDigest`` agree by
+    construction. ``_require_exact_json`` runs FIRST, so ``dumps`` only ever sees exact builtins
+    (never a subclass whose coercion runs user code); ``dumps`` then enforces the number domain
+    (NaN/Infinity/oversized int raise ``CanonicalizationError``, a ``ValueError``).
+    """
+    _require_exact_json(value)
+    # `value` is now a verified exact JSON value, so `object` IS a true rfc8785 `_Value` here:
+    # the cast is sound -- the guard above (not dumps) rejects the subclass/non-JSON domain.
     return rfc8785.dumps(value)  # type: ignore[arg-type]
 
 
 def _canonical_json(value: object) -> object:
     """Validate + canonicalize + independently snapshot a property value via RFC 8785 JCS.
 
-    ``_canonical_bytes`` fails closed on anything non-canonicalizable -- NaN/Infinity, non-string
-    object keys, and non-JSON types (set/bytes/dataclass/arbitrary objects, including a
-    ``__deepcopy__`` launderer, which it never invokes) -- subsuming the hand-rolled value guards.
-    Re-parsing the canonical bytes yields a normalized, plain-JSON, independent snapshot: numbers
-    canonicalized (``90.0`` -> ``90``), a scalar subclass reduced to its base value (an overloaded
-    ``__eq__`` is never consulted), the report decoupled from the caller's input.
+    ``_canonical_bytes`` fails closed on anything outside the exact JSON domain -- a subclass
+    (whose coercion could forge its bytes), a non-JSON type (set/bytes/dataclass/arbitrary
+    object, including a ``__deepcopy__`` launderer it never invokes), a non-string object key,
+    NaN/Infinity, or an oversized int. Re-parsing the canonical bytes (``json.loads``) yields a
+    normalized, plain-JSON, independent snapshot of exact builtins: numbers canonicalized
+    (``90.0`` -> ``90``), object keys sorted, the report decoupled from the caller's input.
     """
     try:
         canonical_bytes = _canonical_bytes(value)

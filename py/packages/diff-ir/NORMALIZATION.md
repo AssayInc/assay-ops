@@ -43,19 +43,23 @@ the `deterministic-verification` skill's checklist; that skill and DECISIONS.md 
   can't forge a reward 1), **one number type** means `90 == 90.0` (treating them distinct would be a
   false-negative drift), object keys are **sorted** (mappings compare key-order-independently), and **lists
   stay order-sensitive** (the adapter sorts order-insensitive collections).
-- **Value representability (fail closed): valid iff it canonicalizes.** A property value is valid **iff it
-  canonicalizes under RFC 8785 JCS** — iff it can be signed. `NormalizedResource` canonicalizes each value
-  at construction, so JCS itself fails closed on what would forge a reward or break the digest: a
-  **non-string object key** (`{1: …}`/`{True: …}` → "object keys must be strings"), a **non-finite** number
-  (NaN/Infinity — not representable in JCS), and any **non-JSON type** (set/bytes/object/dataclass). Two
-  rules layer on top, because JCS *accepts* both: a present top-level **`None`** (absent = omit the key;
-  `exclude_none` can't tell `None` from absent) and a **`$`-prefixed key** (reserved — see below) are
-  rejected by AssayOps. Validation stores the **canonical snapshot** (re-parsed from the JCS bytes), so a
-  scalar **subclass** is reduced to its base value — an overloaded `__eq__` is never consulted, comparison
-  is on bytes — and the report is decoupled from the caller's objects. `grade` **re-validates** its inputs
-  from the raw object graph (never `copy.deepcopy`/`model_dump`, whose user dunders could launder a non-JSON
-  value past the gate), so a post-construction in-place mutation of a properties dict — which `frozen` does
-  not prevent — is caught at the trust boundary.
+- **Value representability (fail closed): an exact JSON builtin that canonicalizes.** A property value is
+  valid **iff it is an exact JSON builtin (recursively) AND canonicalizes under RFC 8785 JCS**;
+  `NormalizedResource` guards both at construction. The **exact-type guard comes first and is load-bearing**:
+  `rfc8785.dumps` canonicalizes a builtin **subclass** by calling `int()`/`float()`/`list()`/`dict()` on it —
+  **user code** — so a subclass could **forge** its canonical bytes (`LyingInt(9).__int__() → 1`
+  canonicalizes the value 9 to `b"1"`, a false reward 1) or make them **nondeterministic**. So only exact
+  `str`/`int`/`float`/`bool`/`None`/`list`/`dict` (checked `type(x) is T`, never `isinstance`) reach `dumps`;
+  a subclass, a **non-JSON type** (set/bytes/object/dataclass), a **non-string object key**, or a
+  **reference cycle** (not JSON, and would recurse forever) fails closed. `dumps` then enforces the
+  **number domain** — a **non-finite** (NaN/Infinity) or **oversized** (beyond
+  JS-safe ±2⁵³) number is not representable in JCS and fails closed. Two AssayOps rules layer on top (JCS
+  accepts both): a present top-level **`None`** (absent = omit the key; `exclude_none` can't tell `None` from
+  absent) and a **`$`-prefixed key** (reserved — see below). Validation stores the **canonical snapshot**
+  (re-parsed from the JCS bytes, so plain exact builtins), decoupling the report from the caller's objects.
+  `grade` **re-validates** its inputs from the raw object graph (never `copy.deepcopy`/`model_dump`, whose
+  user dunders could launder a non-JSON value past the gate), so a post-construction in-place mutation of a
+  properties dict — which `frozen` does not prevent — is caught at the trust boundary.
 - **Unique addresses.** A `NormalizedState` rejects duplicate addresses at construction — a duplicate
   would silently collapse in the address map and lose data (a wrong grade). Fail closed.
 - **Reserved paths.** `$`-prefixed property paths are reserved by the IR for structural markers. A

@@ -1,11 +1,11 @@
 """E3-1 (#34) — value guards + canonical-JSON comparison (review-hardening).
 
 The reward core must never grade a real divergence as in-sync. Python `==` collapses `True == 1`,
-and a property value of `None` is ambiguous with "absent" under the sparse serialization. So a value
-is valid iff it canonicalizes (RFC 8785 / JCS — the form the reward record is signed with), and two
-values are equal iff their canonical bytes match: `bool` stays distinct from a number (`True` !=
-`1`), one number type means `90 == 90.0`, and NaN/Inf/`None`/non-JSON/`$`-keys fail closed. Grading
-on the signed canonical form means the diff and the `reportDigest` can never disagree.
+and a property value of `None` is ambiguous with "absent" under the sparse serialization. So values
+are compared by their RFC 8785 (JCS) canonical bytes — the form the record is signed with, so the
+grade and the `reportDigest` can't disagree: `bool` != a number, `90 == 90.0`, keys sorted. Validity
+is "an EXACT JSON builtin that canonicalizes" — a builtin subclass is rejected (rfc8785 would coerce
+it via user code and forge its bytes), as are NaN/Inf/non-JSON/non-string-key/`None`/`$`-keys.
 """
 
 from __future__ import annotations
@@ -82,28 +82,44 @@ def test_normalized_resource_rejects_non_string_nested_object_key() -> None:
         res("r", cfg={1: "x"})
 
 
-def test_normalized_resource_rejects_a_non_json_property_value() -> None:
-    # A non-JSON type (here a bare object) can't be canonicalized/signed -> fail closed. (A tuple is
-    # NOT a counterexample: JCS accepts it as an array, matching json -- so it is a valid value.)
+@pytest.mark.parametrize("bad", [object(), {1, 2}, (1, 2), b"bytes"])
+def test_normalized_resource_rejects_a_non_exact_json_property_value(bad: object) -> None:
+    # Only EXACT JSON builtins pass (str/int/float/bool/None/list/dict). A bare object, set, tuple,
+    # or bytes is not an exact JSON type -> can't be safely canonicalized/signed -> fail closed. (A
+    # tuple is rejected too: rfc8785 would take it as an array, but only the exact `list` type is
+    # admitted -- a tuple/list SUBCLASS could forge its bytes via __iter__.)
     with pytest.raises(ValueError, match="JSON"):
-        res("r", bad=object())
+        res("r", bad=bad)
 
 
-def test_a_scalar_subclass_is_graded_by_canonical_value_not_its_overloaded_eq() -> None:
-    # A bool/int/float/str SUBCLASS can overload __eq__ to always return True to forge a reward 1.
-    # JCS neutralizes that by comparing canonical BYTES, never `==`: _Sneaky(1) canonicalizes to its
-    # base value `1` (the __eq__ is never consulted), so it is in-sync with a golden 1 -- but a
-    # DIFFERENT value (_Sneaky(2) -> b"2") still diffs against golden 1. The forge dies either way.
-    class _Sneaky(int):
-        def __eq__(self, other: object) -> bool:
-            return True
+def test_normalized_resource_rejects_a_scalar_subclass_user_code_could_forge() -> None:
+    # rfc8785 canonicalizes a builtin SUBCLASS by calling int()/float()/list()/dict() on it -- USER
+    # code -- so a subclass can forge or flip its own canonical bytes: _LyingInt(9) (which == 9)
+    # overrides __int__ to return 1, canonicalizing the value 9 to b"1". Unguarded that forges a
+    # reward 1 (deployed 9 in-sync with golden 1) and is nondeterministic. The validator rejects
+    # every non-exact-type BEFORE canonicalizing, so dumps only ever sees exact builtins; the grade
+    # never depends on user code.
+    class _LyingInt(int):
+        def __int__(self) -> int:
+            return 1
 
-        __hash__ = int.__hash__
+    assert _LyingInt(9) == 9  # its real JSON value is 9...
+    with pytest.raises(ValueError, match="JSON"):
+        res("r", v=_LyingInt(9))  # ...but it is rejected before its __int__ can forge b"1"
 
-    in_sync = grade(deployed(res("r", v=_Sneaky(1))), golden(res("r", v=1)))
-    assert in_sync.reward is Reward.number_1
-    drift = grade(deployed(res("r", v=_Sneaky(2))), golden(res("r", v=1)))
-    assert drift.reward is Reward.number_0
+
+def test_normalized_resource_rejects_a_reference_cycle() -> None:
+    # A reference cycle is not JSON (json.loads can't build one), and the guard would otherwise
+    # recurse forever -- so it fails closed with a clean ValueError, not a RecursionError, honoring
+    # the "reject non-exact-JSON" contract. (Not agent-reachable; a fail-closed robustness guard.)
+    cyclic_list: list[object] = []
+    cyclic_list.append(cyclic_list)
+    with pytest.raises(ValueError, match="cycle"):
+        res("r", v=cyclic_list)
+    cyclic_dict: dict[str, object] = {}
+    cyclic_dict["self"] = cyclic_dict
+    with pytest.raises(ValueError, match="cycle"):
+        res("r", v=cyclic_dict)
 
 
 def test_grade_revalidates_inputs_and_rejects_post_construction_tampering() -> None:
@@ -139,6 +155,17 @@ def test_grade_rejects_a_deepcopy_laundering_object_mutation() -> None:
     tampered.properties["cfg"] = _Launder()
     with pytest.raises(ValueError):
         grade(deployed(tampered), golden(res("r", cfg="ok")))
+
+
+def test_grade_revalidation_rejects_a_cycle_injected_post_construction() -> None:
+    # grade re-validates, so a cycle mutated into a properties dict after construction also fails
+    # closed with a ValueError (not a RecursionError) at the trust boundary.
+    cyclic_list: list[object] = []
+    cyclic_list.append(cyclic_list)
+    tampered = res("r", cfg="seed")
+    tampered.properties["cfg"] = cyclic_list
+    with pytest.raises(ValueError, match="cycle"):
+        grade(deployed(tampered), golden(res("r", cfg="seed")))
 
 
 def test_grade_report_is_an_independent_snapshot_of_the_inputs() -> None:
