@@ -165,11 +165,15 @@ name = "assayops-verifier"
 version = "0.0.0"
 source = { virtual = "py/packages/verifier" }
 dependencies = [
+    { name = "boto3" },
     { name = "pydantic" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.40" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
 
 [[package]]
 name = "ast-serialize"

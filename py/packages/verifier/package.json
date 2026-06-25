@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
+    "@assayops/py-adapter-terraform": "workspace:*",
     "@assayops/py-diff-ir": "workspace:*",
     "@assayops/py-contracts": "workspace:*"
   },

@@ -40,6 +40,7 @@
       "name": "@assayops/py-verifier",
       "version": "0.0.0",
       "dependencies": {
+        "@assayops/py-adapter-terraform": "workspace:*",
         "@assayops/py-contracts": "workspace:*",
         "@assayops/py-diff-ir": "workspace:*",
       },
