@@ -15,6 +15,123 @@ Entry format:
 
 ---
 
+## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
+- **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
+  JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it
+  canonicalize?" was not. A Codex xhigh re-review found `rfc8785.dumps` canonicalizes a builtin **subclass** by
+  calling `int()`/`list()`/… on it (USER code), so `LyingInt(9)` (== 9) with `__int__→1` canonicalizes 9 to
+  `b"1"` — a false reward 1, nondeterministic. A canonicalizer **coerces** adversarial input, doesn't reject it.
+- **Rule:** Delegate the *equality semantics* to the system's canonical/signed form (no hand-rolled comparator;
+  `90==90.0`, `True≠1` fall out free, grade ↔ digest agree by construction). But guard the *input domain* to
+  exact types (`type(x) is T`, never `isinstance`) **before** canonicalizing — restrict to the library's
+  documented domain; never pass an open `object` and rely on undocumented coercion. Still less code, and safe.
+- **Context:** #34 / PR #145; `_require_exact_json`/`_canonical_bytes`/`_values_equal`. rfc8785's subclass
+  coercion is **undocumented** (verified vs its docs) → guard, don't rely. Caught only by the xhigh re-review of
+  the *fixed* code ([[re-review-fixed-code-with-codex-xhigh-and-recheck-the-finding-scope]]); companion to
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]].
+
+## 2026-06-24 — harden-to-the-precise-domain-semantics-not-an-over-general-rule
+- **Mistake:** Fixing the value-type-collapse false-reward-1 in the diff-ir reward core (#34), the real bug
+  was Python `==` collapsing `True == 1` (a JSON **boolean** graded equal to a **number**). I
+  over-generalized the fix to **full type-strictness** (`type(a) is not type(b)`), which also made `int`
+  ≠ `float` — so `90` vs `90.0` graded as a **drift**. But JSON has one number type and RFC 8785 JCS
+  canonicalizes `90` and `90.0` identically, so that's a **false-negative** (a correct deploy scored 0),
+  not a real divergence. The founder caught it ("no over-engineering, right? fix only what's not right") —
+  I'd flagged it myself once asked, but shipped it over-strict first.
+- **Rule:** When hardening a correctness/trust check, match the **precise domain semantics** — don't reach
+  for the broadest rule that happens to cover the failing case. For JSON-value equality: `bool` is distinct
+  from numbers (a boolean is not `1`), but `int`/`float` of the same value are **equal** (one JSON number
+  type; JCS-canonical). The broadest rule (all-types-strict) "passes the failing test" but introduces a NEW
+  failure class (false negatives), which poisons training just like a false positive — **a fix stricter than
+  the ground-truth semantics is itself a bug.** Keep the genuinely bug-preventing hardening; cut the
+  over-reach (defense-in-depth that prevents real bugs vs strictness beyond the correct semantics). And
+  **TDD only catches over-reach you enumerate** — it "passed the failing test" because the *adjacent-correct*
+  case wasn't tested, so a reviewer (not the suite) caught it; when hardening a rule, lock that adjacent case
+  with its own test (`90 == 90.0` is in-sync), not just the failing one.
+- **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The over-strict cut later
+  triggered replacing the hand-rolled comparator entirely with JCS delegation
+  ([[delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain]]). Pairs with KISS/YAGNI.
+
+## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
+- **Mistake:** Presented the #34 reward core as done after grounding against the **skills** + TDD + 6 review
+  passes — but had NOT (a) opened the **primary** Pydantic docs myself for the load-bearing behaviors
+  (after-mode `field_validator` returns-and-stores the value; `frozen` doesn't deep-freeze a dict), nor (b)
+  validated against two applicable craft skills (`python-error-handling`, `python-design-patterns`). The
+  founder asked the standing three questions; closing the gaps surfaced real refinements
+  (`UntrustedInputError(ValueError)`; explicit `mode="after"`).
+- **Rule (recurring founder directive):** The grounding pass is **part of "done," done proactively** — not when
+  asked. Before claiming a build complete: open the **primary docs yourself** for each load-bearing library
+  behavior (a skill / green test / Codex pass are all **secondary**), and **validate against every applicable
+  craft skill**, stating which are N/A and why. Cross-model review hardens correctness; it does **not**
+  substitute for either. Pairs with [[ground-in-official-docs-first]] +
+  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]].
+- **Context:** E3-1 (#34) / PR #145; primary Pydantic v2 docs (validators "return the validated value"; "Faux
+  immutability" Caution; `exclude_none`).
+
+## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
+- **Mistake:** On #75 (the golden generator — a proof-critical content-addressed verifier) I first **piled on**
+  validations chasing every Codex adversarial finding, then, when the founder asked "are you over-fixing?",
+  started **removing working validations + their tests** because a proportionality reviewer (Opus) framed them
+  as disproportionate. The founder caught it: "if the tests and the validations are important, keep them — why
+  did you remove them?" Both moves were the same error in opposite directions — letting a reviewer's verdict
+  drive me instead of holding judgment. The validations (reject a `set`/subclass/surrogate/non-finite float in
+  a property; re-check after construction) are **cheap, fail-closed, runtime-free, and protect the load-bearing
+  invariant** (a deterministic content-address) — they belong, even though each defends a low-probability or
+  trusted-corpus input.
+- **Rule:** For the proof-critical core, a **cheap fail-closed validation protecting a load-bearing invariant
+  STAYS** — "a plausible-but-wrong verifier is worse than none" (DECISIONS.md stance). Do **not** delete a
+  working safety check + its test to lower a test count or win a "proportionality" argument; a check that can
+  only reject *pathological* input (never a legitimate golden) costs ~nothing and is pure insurance. Reviewer
+  verdicts are **inputs, not directives** — don't let an adversarial reviewer ping-pong you to "add everything"
+  and a proportionality reviewer ping-pong you to "cut everything"; weigh each finding's cost vs. what it
+  protects yourself. The legitimate answer to "over-fixing" is: keep the protective checks, **clarify intent**
+  so they aren't silently weakened later, and cut only genuine speculative abstraction / true redundancy — not
+  safety. Where two strong reviewers disagree on a real tradeoff, surface it as the user's call; never
+  unilaterally strip safety.
+- **Context:** #75 / PR #146 — founder flagged removing validations/tests after an over-fixing question.
+  Reverted; kept all 35 tests + validations. Pairs with
+  [[ground-and-validate-craft-skills-before-claiming-done-not-when-asked]] (don't over-defer to reviews).
+
+## 2026-06-24 — negative-control-restore-with-a-file-backup-never-git-checkout
+- **Mistake:** Running a negative control on #75 (temporarily break code → prove the test fails → restore),
+  I restored with `git checkout -- src/assayops_verifier/models.py src/assayops_verifier/golden.py`. That
+  reverts to **HEAD (the last commit)**, not to my working tree — so it silently wiped **all the uncommitted
+  fixes** from that turn (two rounds of adversarial-review fixes), not just the one-line negative-control
+  patch. I only caught it because the harness flagged the files as reverted, then had to reconstruct both
+  files from memory and re-`Write` them.
+- **Rule:** A negative control mutates **uncommitted** code in place; restore it from a **file backup**, never
+  from git. Before the patch: `cp <file> /tmp/<file>.bak`; after: `cp /tmp/<file>.bak <file>` (or keep the
+  original text in the patch script and write it back). **Never `git checkout -- <file>` / `git restore` while
+  there are uncommitted changes you want to keep** — it discards them to HEAD. (If you must use git to revert
+  a negative-control patch, commit the good state first so HEAD *is* the good state.) Pairs with the
+  negative-control discipline ([[no-any-ban-targets-our-data...]] and the structlog/redaction negative
+  controls) — the control is only safe if the restore is non-destructive.
+- **Context:** #75 / PR #146, the Opus-4.8-max + Codex-xhigh adversarial-review fixes; the `git checkout`
+  reverted models.py/golden.py to `d35cf3c`, dropping that turn's fixes. Recovered by re-`Write`-ing the final
+  files. Forward fix: every subsequent negative control used `cp`-backup restore.
+
+## 2026-06-24 — ground-and-validate-craft-skills-before-claiming-done-not-when-asked
+- **Mistake:** Presented #75 (the golden generator) as merge-ready after grounding only against the
+  **API/feature skills** (`pydantic-v2`, `uv`) + the empirical gate + the cross-model `/review`. I had **not**
+  proactively (a) validated the implementation against the applicable **Python craft skills** the repo vendors
+  (`python-type-safety` / `python-error-handling` / `python-testing-patterns` / `python-design-patterns`), nor
+  (b) opened the **primary docs** for the load-bearing library behaviors (pydantic's `model_dump(mode="json")`
+  inf/nan→`null` default, strict `list`→`tuple` rejection, the rfc8785 integer domain). The founder had to ask
+  "did you ground on official docs and skills? did you use the python skills available?" — only then did I. It
+  paid off (confirmed the design is skill-aligned, surfaced a `parametrize` test improvement, and proved my JCS
+  int bound is **exactly** rfc8785's `_INT_MAX = 2**53−1`), but it should have come **before** I claimed done.
+- **Rule:** Validating against **all applicable vendored craft skills** + grounding **load-bearing library
+  behavior against primary docs (or an empirical probe of the pinned lib)** is a **pre-completion / pre-PR
+  checklist item — proactive, not a reaction to being asked**. The API skill is necessary, not sufficient: for
+  Python in a domain with craft skills, load + validate against the applicable ones and **state which apply vs
+  N/A** (here N/A with reasons: resilience/async/configuration/observability — pure sync compute, no
+  I/O/secrets/logging yet). A green gate + a skill's doc-citation are **secondary** — for the bytes a
+  content-address covers / what serializes to `null` / a coercion rule, open the primary source yourself or
+  probe the pinned library and cite it. "I ran the cross-model review" is not a substitute for that pass.
+- **Context:** #75 / PR #146 — founder's three grounding questions after the PR was presented ready. Sharpens
+  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]] + [[ground-in-official-docs-first]] +
+  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]] with the proactive/pre-PR trigger.
+
 ## 2026-06-24 — act-decisively-on-airtight-code-evidence-dont-bounce-it-back
 - **Mistake:** Grounding #140 against `origin/main`, I proved **three ways** that quicktype is already globbed
   (`git show origin/main:justfile` → `contracts/schemas/*.schema.json`; PR #139's squash `e641784` diff =

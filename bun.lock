@@ -16,6 +16,10 @@
       "name": "@assayops/py-contracts",
       "version": "0.0.0",
     },
+    "py/packages/diff-ir": {
+      "name": "@assayops/py-diff-ir",
+      "version": "0.0.0",
+    },
     "py/packages/env-server": {
       "name": "@assayops/py-env-server",
       "version": "0.0.0",
@@ -30,6 +34,10 @@
     },
     "py/packages/logger": {
       "name": "@assayops/py-logger",
+      "version": "0.0.0",
+    },
+    "py/packages/verifier": {
+      "name": "@assayops/py-verifier",
       "version": "0.0.0",
     },
     "ts/packages/biome-config": {
@@ -81,9 +89,13 @@
 
     "@assayops/py-contracts": ["@assayops/py-contracts@workspace:py/packages/contracts"],
 
+    "@assayops/py-diff-ir": ["@assayops/py-diff-ir@workspace:py/packages/diff-ir"],
+
     "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
 
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
+
+    "@assayops/py-verifier": ["@assayops/py-verifier@workspace:py/packages/verifier"],
 
     "@assayops/typescript-config": ["@assayops/typescript-config@workspace:ts/packages/typescript-config"],
 

@@ -19,10 +19,12 @@ resolution-markers = [
 [manifest]
 members = [
     "assayops-contracts",
+    "assayops-diff-ir",
     "assayops-env-server",
     "assayops-iam-readiness-probe",
     "assayops-infra-local",
     "assayops-logger",
+    "assayops-verifier",
 ]
 
 [manifest.dependency-groups]
@@ -106,6 +108,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "assayops-diff-ir"
+version = "0.0.0"
+source = { virtual = "py/packages/diff-ir" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "rfc8785" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "rfc8785", specifier = ">=0.1.4" },
+]
+
+[[package]]
 name = "assayops-env-server"
 version = "0.0.0"
 source = { virtual = "py/packages/env-server" }
@@ -136,6 +153,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "structlog", specifier = ">=25" }]
+
+[[package]]
+name = "assayops-verifier"
+version = "0.0.0"
+source = { virtual = "py/packages/verifier" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.10" }]
 
 [[package]]
 name = "ast-serialize"
