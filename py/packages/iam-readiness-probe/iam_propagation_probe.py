@@ -191,13 +191,13 @@ def probe_once(
             iam.delete_role_policy(RoleName=role_name, PolicyName=_INLINE_POLICY_NAME)
         except iam.exceptions.NoSuchEntityException:
             pass
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             print(f"teardown warning, delete_role_policy {role_name}: {exc}", file=sys.stderr)
         try:
             iam.delete_role(RoleName=role_name)
         except iam.exceptions.NoSuchEntityException:
             pass
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             print(f"teardown warning, delete_role {role_name}: {exc}", file=sys.stderr)
 
 
