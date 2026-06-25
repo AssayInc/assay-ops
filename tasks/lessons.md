@@ -15,6 +15,37 @@ Entry format:
 
 ---
 
+## 2026-06-24 — derive-equality-and-validity-from-the-signed-canonical-form-not-a-hand-roll
+- **Mistake:** The diff-ir reward core (#34) decided property-value **equality** with a hand-rolled
+  comparator (`_values_equal` + `_is_json_number` + exact-type gates + a recursive walk) and **validity**
+  with hand-rolled guards (finite-float, non-string-key, non-JSON-type, scalar-subclass). Re-deriving JSON
+  value semantics by hand is exactly where the bugs lived: it took **6 cross-model review passes** to close
+  false-reward-1 holes (`True == 1`, non-string keys, `__eq__`-overloading subclasses,
+  `model_dump`/`deepcopy` laundering) and STILL shipped an over-strict cut (`90 ≠ 90.0` —
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]]). Yet the reward record is **already
+  signed over its RFC 8785 (JCS) canonical bytes** (`assayops_contracts.jcs`): that form is *the*
+  authoritative definition of "are these two JSON values the same," and I was re-implementing it by hand,
+  with subtle disagreements, right next to it.
+- **Rule:** When a check (equality / validity / identity) is **already defined by a canonical, authoritative
+  form the system depends on elsewhere — especially at a trust boundary** (here, the JCS bytes the reward
+  record is signed with), compute the check by **delegating to that exact form**; do not hand-roll a parallel
+  re-derivation. `_values_equal` became `rfc8785.dumps(a) == rfc8785.dumps(b)` and validity became "does it
+  canonicalize" — which **deleted** `_is_json_number`, the type gates, and the recursive walk, and made the
+  grade and the signed `reportDigest` **agree by construction** (the diff can't call equal two values the
+  digest distinguishes). A hand-rolled re-derivation can both **drift** from the authoritative form (grade vs
+  digest disagree) and get the domain semantics subtly wrong — both of which the canonical form gets right for
+  free (`90 == 90.0`, `True ≠ 1`, subclass-reduced-to-base-value, keys sorted). Crucially this is the
+  **anti-over-fix**: the fix was *less* code anchored to the source of truth, not *more* hand-rolled
+  strictness — so reach for the canonical form BEFORE hand-rolling a value-semantics check, not after six
+  passes of patching one. (Scope guard: the trigger is "an authoritative canonical form already exists and is
+  load-bearing elsewhere," not "always call a library instead of comparing.")
+- **Context:** E3-1 (#34) / PR #145; `_values_equal`/`_canonical_bytes` (`reward_core.py`/`normalized_state.py`)
+  + NORMALIZATION.md; the canonical form is the `rfc8785` JCS recipe from E1-3 (#28). Root-cause companion to
+  [[harden-to-the-precise-domain-semantics-not-an-over-general-rule]] (that lesson fixes a hand-rolled rule's
+  semantics; this one says don't hand-roll it when the signed form already defines it). Sharpens
+  [[use-the-librarys-official-mechanism-not-a-hand-roll]] — here the "mechanism" is the system's **own** signing
+  form, so the derived check and the trust boundary can't diverge.
+
 ## 2026-06-24 — harden-to-the-precise-domain-semantics-not-an-over-general-rule
 - **Mistake:** Fixing the value-type-collapse false-reward-1 in the diff-ir reward core (#34), the real bug
   was Python `==` collapsing `True == 1` (a JSON **boolean** graded equal to a **number**). I
@@ -31,8 +62,11 @@ Entry format:
   the ground-truth semantics is itself a bug.** Keep the genuinely bug-preventing hardening; cut the
   over-reach. Distinguish *defense-in-depth that prevents real future bugs* (keep) from *strictness beyond
   the correct semantics* (cut).
-- **Context:** E3-1 (#34) / PR #145; `_values_equal` in `reward_core.py` (now `bool` != number, numbers by
-  value) + NORMALIZATION.md. Pairs with the KISS/YAGNI bar and "smallest change that meets the AC."
+- **Context:** E3-1 (#34) / PR #145; the value comparison + NORMALIZATION.md. The semantic rule stands, but
+  the over-strict cut was the trigger to stop hand-rolling it: `_values_equal` was then replaced entirely by
+  JCS canonical-byte delegation (`90 == 90.0` and `bool` != number now fall out for free) — the deeper
+  root-cause fix in [[derive-equality-and-validity-from-the-signed-canonical-form-not-a-hand-roll]]. Pairs
+  with the KISS/YAGNI bar and "smallest change that meets the AC."
 
 ## 2026-06-24 — proactive-primary-docs-and-all-craft-skills-are-part-of-done-not-a-founder-prompt
 - **Mistake:** Built the E3-1 `diff-ir` reward core (#34) grounded against the domain + craft **skills**
