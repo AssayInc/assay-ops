@@ -56,9 +56,14 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   states is what AC2 requires and keeps the determinism-critical diff in one place (the brain leaves the
   diff-owner open). **Wiring:** the first intra-workspace import (diff-ir → contracts via `pythonpath`/`mypy_path`;
   the `pydantic.mypy` plugin — first hand-written plain-`BaseModel` package under the `Any` ban —
-  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. TDD: 45 tests; a
-  cross-model `/review` (Claude + Codex `gpt-5.5` xhigh, 6 passes to convergence) hardened the diff against
-  value-type-collapse / laundering false-reward-1 paths. `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
+  + `follow_imports=silent` for the sibling spine); `uv.lock` + `bun.lock` both updated. **Value equality +
+  validity are defined by RFC 8785 JCS canonicalization** (the form `RewardRecord.reportDigest` is signed with,
+  so the grade and the digest agree by construction), behind a thin **exact-type input guard** (`type(x) is T`):
+  `rfc8785.dumps` coerces a builtin subclass via user code, so a subclass / reference cycle is rejected before
+  it can forge or flip its canonical bytes. TDD: 50 tests; cross-model `/review` (Claude + Codex `gpt-5.5`
+  xhigh, **9 passes to convergence** — 6 on the original diff + 3 on the JCS refactor that caught the
+  subclass-coercion forge then the cycle crash) hardened the reward against false-reward-1 / laundering paths.
+  `bun run verify` green **20/20** (forced, 0-cached). (PR #145.)
 - **E1-5 (#140): codegen hardening — align the hand-maintained lists with the whole schema set.** The
   #29-review tail: three spots that wouldn't follow a newly added schema. (1) `schemas.test.ts` now
   **disk-enumerates** `contracts/schemas/*.schema.json` for the Draft-2020-12 + ajv-compile coverage (a new
