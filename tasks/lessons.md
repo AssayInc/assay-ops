@@ -15,6 +15,28 @@ Entry format:
 
 ---
 
+## 2026-06-25 — spike-output-is-a-decision-not-a-committed-package
+- **Mistake:** Resolving the #60 IAM-eventual-consistency spike, I committed the throwaway measurement probe as
+  a new permanent `py/packages/iam-readiness-probe` workspace member (pyproject + package.json + README + nested
+  CLAUDE.md + lockfile churn + a forever CI lint/typecheck surface), bundling "commit the probe" into a
+  recommendation. The founder challenged it — was this in the plan, does it help the goal? It wasn't: a spike's
+  deliverable is the **recorded decision + numbers** (DECISIONS §1 + the issue), not a new package. Root cause:
+  pattern-matching the repo's "reusable thing → workspace package" convention (`infra-local`); conflating
+  "preserve the methodology" (→ the issue comment) with "commit a package"; and speculative YAGNI ("re-measure
+  when E8 lands" — which is **cross-account**, not what the same-account probe even does).
+- **Rule:** A spike's output is the recorded decision + numbers (DECISIONS.md on ratification + the issue
+  comment as reproducible methodology), **NOT a new committed package**. Apply the **"build only the IP /
+  smallest change / don't create files the task doesn't need"** filter AT THE DECISION POINT, before reaching
+  for a package. `DECISIONS.md` §8's build-list is the test: if the artifact isn't on it (verifier core,
+  diff/reward, adapters, ledger, replay, env-server, red-team, eval, corpus, account infra), it is not core IP —
+  measurement/scratch tooling stays in the scratchpad, its method preserved in the issue. Committing such a tool
+  is justified only when it has genuinely-recurring value (the bar `infra-local` clears: a recurring CI canary)
+  and is a **deliberate, flagged call with an explicit tracked removal/graduation issue** — never a silent
+  default bundled into "open the PR."
+- **Context:** #60 / PR #151; kept the probe per the founder's call but added the disposition tracker #156 + an
+  ISSUES.md note + a provisional marker in the package. Pairs with
+  [[ground-in-decisions-and-brain-not-the-ai-written-issue]] (§8's build-list is part of the frozen floor).
+
 ## 2026-06-24 — delegate-equality-to-the-signed-canonical-form-but-guard-its-input-domain
 - **Mistake:** Refactored the diff-ir reward core (#34) to define value **equality and validity** by RFC 8785
   JCS (`rfc8785.dumps` — the form the record is signed with). Equality was right; validity-as-"does it

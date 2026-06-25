@@ -2,6 +2,9 @@
 
 A **Python** (uv) measurement tool. What it is + why + the baseline result → [`README.md`](./README.md).
 
+- **Provisional, not core IP.** A spike measurement tool kept committed for plausible future value; its
+  removal/graduation is tracked in `ISSUES.md`. Don't build on it as if it were load-bearing.
+
 - **MUTATES real AWS.** It creates/deletes IAM roles + inline policies and assumes them in the target
   account. Run only against a **throwaway/dev** account (`--profile`), never prod or an Orgs-pool account.
 - **Never add a `test` script.** Like `infra-local`, this exposes its run as `probe`, **not** `test`, so

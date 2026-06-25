@@ -55,7 +55,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   Ratified note landed in `DECISIONS.md` §1; consumers updated (#45 the 7A classifier, #141 read-coverage,
   #52/#33 cross-account role assume). Probe is mypy-strict/ruff-clean (boto3 `BaseClient` boundary). Grounded
   in `deterministic-verification` (7A) + `aws-iam` + `aws-sdk-python-usage` + brain `retries-and-backoff`.
-  `bun run verify` green 19/19. (PR #151.)
+  The probe is **provisional, not core IP** (§8 build-only-the-IP) — kept for plausible future value, with
+  removal/graduation tracked in **#156**. `bun run verify` green 19/19. (PR #151.)
 - **E3-2 (#35): `adapter-terraform` package — the Terraform deployed-state → diff-IR adapter (6A/T2, the
   A-spike engine).** New **`py/packages/adapter-terraform`** (`assayops_adapter_terraform`):
   `normalize(reads, registry)` turns already-enumerated **Cloud Control deployed-state reads** into the
