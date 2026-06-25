@@ -45,6 +45,9 @@ def test_digest_is_stable_across_python_hash_seeds() -> None:
     tests_dir = Path(__file__).resolve().parent
     pkg_src = tests_dir.parent / "src"
     contracts_src = tests_dir.parents[1] / "contracts" / "src"
+    # `assayops_verifier.__init__` now re-exports grade_deployment (E2-2/#31), which pulls in the
+    # diff-ir reward core — so a fresh interpreter importing the package needs diff-ir on the path.
+    diff_ir_src = tests_dir.parents[1] / "diff-ir" / "src"
     script = (
         "from synthetic import SYNTHETIC_TASK_ID, make_task, s3_bucket_builder\n"
         "from assayops_verifier.golden import GoldenRegistry, golden_digest\n"
@@ -52,7 +55,9 @@ def test_digest_is_stable_across_python_hash_seeds() -> None:
         "registry.register(SYNTHETIC_TASK_ID, s3_bucket_builder)\n"
         "print(golden_digest(registry.generate(make_task(), 'episode-42')))\n"
     )
-    pythonpath = os.pathsep.join(str(path) for path in (tests_dir, pkg_src, contracts_src))
+    pythonpath = os.pathsep.join(
+        str(path) for path in (tests_dir, pkg_src, contracts_src, diff_ir_src)
+    )
     digests = set()
     for hash_seed in ("0", "1", "12345"):
         result = subprocess.run(

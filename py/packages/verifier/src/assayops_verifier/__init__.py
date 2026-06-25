@@ -1,9 +1,10 @@
 """AssayOps account-B verifier core (DECISIONS.md §1/§8, T1).
 
-E2-5 (#75): the golden-target generator. The grading path (deployed-state read, diff IR, reward
-core) is E2-1/#30 + E2-3/#32. The per-task golden builders are the private corpus (#76); this
-package is the engine that runs them: ``GoldenRegistry.generate(task, seed)`` → a content-addressed
-``GoldenTarget``.
+E2-5 (#75): the golden-target generator (``GoldenRegistry.generate(task, seed)`` → a
+content-addressed ``GoldenTarget``; the per-task builders are the private corpus #76, this package
+is the engine). E2-2 (#31): the grade entry ``grade_deployment`` — regenerate the golden, bridge it
+into the reward core's IR, and grade a B-side deployed-state read against it → ``reward ∈ {0, 1}``.
+The deployed-state read path is E2-1/#30 + #141; the reward-record/ledger handoff is E2-3/#32.
 """
 
 from __future__ import annotations
@@ -16,15 +17,23 @@ from assayops_verifier.golden import (
     UnknownTaskError,
     golden_digest,
 )
+from assayops_verifier.grading import (
+    GoldenNotGradableError,
+    golden_as_normalized_state,
+    grade_deployment,
+)
 from assayops_verifier.models import GoldenResource, GoldenTarget
 
 __all__ = [
     "GoldenBuilder",
     "GoldenContext",
     "GoldenError",
+    "GoldenNotGradableError",
     "GoldenRegistry",
     "GoldenResource",
     "GoldenTarget",
     "UnknownTaskError",
+    "golden_as_normalized_state",
     "golden_digest",
+    "grade_deployment",
 ]

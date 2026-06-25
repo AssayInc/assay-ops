@@ -6,75 +6,56 @@ when done. Ephemeral per-session — durable records go to GitHub/PROGRAM.md/DEC
 
 ---
 
-## E3-1 (#34) — `diff-ir` package (normalized IR + shared reward core) — DONE, awaiting review (branch `e3-1-diff-ir-package`)
+## #31 (E2-2): Golden-target regeneration → zero normalized diff = reward 1
 
-**Goal (3 ACs):** the first `py/packages/diff-ir` — the tool-agnostic normalized IR + the shared reward core [6A].
-1. IR tool-agnostic (Terraform now, CDK later) + **round-trips** through the reward core.
-2. Reward core consumes **only** {deployed-state read, golden target}; feeding agent `plan`/state is **rejected**.
-3. Normalization rules (ordering/defaults/computed fields) **documented** so "no diff" is deterministic.
+**Issue:** E2-2 (M), lane:A, P1, area:verifier, Phase-1 milestone.
+**ACs:** (1) Grades real deployed state vs the #75 golden target: zero **normalized** diff = reward 1,
+else 0 (integration test on a known pair). (2) Same input ×K → identical reward (#46).
 
-**Validation (issue vs DECISIONS + brain + skills):** 6A/2A/T1 + `deterministic-verification` +
-`write-isolated-verifier` — per-tool adapters do tool-specific normalization of one side; the shared core owns
-the determinism-critical diff (won in one place) → `reward∈{0,1}`. DRY: **reuse** the codegen'd
-`DiffIR`/`Resource`/`PropertyDiffs`/`Change`/`Reward` from `assayops_contracts`. **Flagged reconciliation:** the
-schema *description* says "adapter produces this IR"; AC2 says the **core** consumes {deployed, golden}. The
-brain leaves the diff-owner open ("design space; ground in DECISIONS"). Chose: the core produces the `DiffIR`
-from two `NormalizedState`s — satisfies AC2 literally, keeps the diff DRY/deterministic in one place, unifies
-with `RewardRecord.reportDigest`. Honors 6A. → noted on the issue.
+### Grounding (DECISIONS.md + brain + issue — reconciled)
+- 2A/6A/T1: verifier **regenerates** the golden (code+seed), grades **deployed state read-only** vs it,
+  reward = zero **normalized** diff; per-tool adapters → one normalized IR → shared reward core; never
+  runs agent code. Brain eng-architecture confirms "regenerates the AssayOps golden target [2A]" +
+  the determinism check golden ×K → identical reward.
+- Gates **#34** (CLOSED — `grade(deployed, golden) → GradeOutcome`) + **#75** (CLOSED — `generate(task,
+  seed) → GoldenTarget`) are landed. **The seam between them does not exist yet — #31 is exactly it.**
+- "real deployed state" is forward-looking (read path #30 unbuilt; real-AWS blocked on T7/#53). The
+  *testable* AC is "known pair" → satisfied by a synthetic `NormalizedState(DEPLOYED_READ)`.
 
-**Design:** `Provenance` (DEPLOYED_READ/GOLDEN_TARGET gradeable; AGENT_PLAN/AGENT_STATE named only to be
-rejected) · `NormalizedResource`/`NormalizedState` (frozen Pydantic; unique-address + JSON-domain value
-validators) · `grade(deployed, golden) -> GradeOutcome(reward, diff)` — the **only** public reward entry, so
-consumption is exactly {deployed, golden}; T1 guard **fails closed** + **re-validates** inputs · tool-agnostic
-deterministic diff with **JCS canonical-byte** value equality (sort by address + path; golden=expected,
-deployed=actual; type-mismatch → reserved `$type` propertyDiff) · `NORMALIZATION.md` (the adapter↔core split +
-the determinism + value-representability contract). Report serializes with `exclude_none` (schema-valid sparse).
+### Design (smallest change meeting the AC)
+New `py/packages/verifier/src/assayops_verifier/grading.py`:
+- `golden_as_normalized_state(target: GoldenTarget) -> NormalizedState` — the bridge: reconstruct each
+  `GoldenResource` as a `NormalizedResource` (re-validate + canonicalize via diff-ir's stricter
+  validator → fail-closed), tag `Provenance.GOLDEN_TARGET`.
+- `GoldenNotGradableError(ValueError)` — a regenerated golden that can't be normalized for grading
+  (fail-closed; the grading core is intentionally stricter than the generator — flag the divergence).
+- `grade_deployment(registry, task, seed, deployed) -> GradeOutcome` — **regenerate** the golden
+  internally (2A/T1; never accept it from the caller), bridge, `grade(deployed, golden_state)`.
+- Re-export the three from `assayops_verifier.__init__`; refresh its module docstring.
+Wire the diff-ir dep in `verifier/pyproject.toml` (mypy_path + pytest pythonpath + an
+`assayops_diff_ir.*` mypy override mirroring the contracts one).
 
-**Wiring:** first intra-workspace import — diff-ir `pyproject` extends `pythonpath`/`mypy_path` to
-`../contracts/src` (all members virtual; in-convention); the `pydantic.mypy` plugin (first hand-written
-plain-`BaseModel` under the `Any` ban) + `follow_imports=silent` for the spine. `uv.lock` + `bun.lock` updated.
+### Tasks (TDD: RED → GREEN per AC)
+- [ ] Wire diff-ir into verifier pyproject (paths + mypy override).
+- [ ] Extend `tests/synthetic.py` — `deployed_from_golden(target)` + a `none_property` builder.
+- [ ] RED: `tests/test_grade_integration.py` — match→1; drifts (changed value / missing / extra / type)→0;
+      normalization-equivalent deploy (diff JSON representation)→1.
+- [ ] RED: `tests/test_grade_determinism.py` — `grade_deployment` ×K → identical reward + diff;
+      cross-hash-seed subprocess determinism (match existing pattern).
+- [ ] RED: `tests/test_grade_trust_boundary.py` — deployed AGENT_PLAN/AGENT_STATE/GOLDEN_TARGET →
+      UntrustedInputError; golden regenerated internally (no golden param); non-normalizable golden →
+      GoldenNotGradableError (fail-closed, never silent reward 1).
+- [ ] GREEN: implement `grading.py`; re-export.
+- [ ] `bun run verify` green (paste evidence). `/review`. Update PROGRAM.md/ISSUES.md. PR `Closes #31`.
 
-**Steps:** [x] all — TDD (50 tests, RED→GREEN per behavior); `NORMALIZATION.md` + `README.md`; `bun run verify`
-green **20/20** (forced, 0-cached); PROGRAM.md/ISSUES.md updated; focused PR #145 `Closes #34`; cross-model
-`/review`; issue comment.
+### Out of scope (don't build here)
+- The boto3/Cloud-Control deployed-state read path (#30/#141) — `grade_deployment` takes the deployed
+  `NormalizedState` as input (what the read path will produce).
+- The reward-record/WORM-ledger handoff (#32 → E4). #31 returns reward+diff only.
+- The full #46 determinism harness — #31 ships the determinism *test* its AC requires.
 
-### Review (`bun run verify` green 20/20 forced; 50 tests)
-
-- **Done + proven (3 ACs).** AC1: tool-agnostic (TF + CFN naming) + `DiffIR` round-trip + schema-valid sparse
-  dump. AC2: the trust guard (accept {deployed, golden}; reject agent-plan/state/swapped — parametrized). AC3:
-  order-independence + K-run determinism + `NORMALIZATION.md`. Each behavior RED-first.
-- **Trust boundary (in scope per `write-isolated-verifier`):** the core's only public entry consumes exactly
-  {deployed, golden}, fails closed (`UntrustedInputError`) on any other provenance, and **re-validates** its
-  inputs — the code-level T1, a complement to (not a replacement for) account-B isolation.
-- **Grounded:** DECISIONS 6A/2A/T1; `deterministic-verification`; `write-isolated-verifier`; `pydantic-v2`
-  (plugin `Any`-gotcha + `exclude_none`); `uv`; `python-type-safety` (`object` not `Any`);
-  `python-testing-patterns`. Brain recall confirmed the diff-owner is open design space → chose the core.
-- **Cross-model `/review` (Claude adversarial + test-audit subagents + Codex `gpt-5.5` xhigh, 6 passes to
-  convergence) caught real reward holes — the value of running both.** Each fixed TDD (RED-first): (1) **false
-  reward 1 via value-type collapse** (`True==1`) → comparison where **`bool` ≠ a number** but `int`/`float`
-  compare by value (`90==90.0`; the founder corrected an over-strict first cut that flagged `90`≠`90.0` — a
-  false-negative); (2) **non-string nested dict keys** (`{1:…}`/`{True:…}` collide) → **recursive JSON-domain
-  validation**; (3) **scalar *subclasses*** (overloaded `__eq__` pass `isinstance`) → **exact `type(...) is`
-  gate**; (4) **shallow `frozen` + `model_dump`/`copy.deepcopy` laundering** (a `__deepcopy__`/serializer
-  transforms a non-JSON value into JSON *before* validation) → a single **validate-and-copy** (exact-type
-  identity gate, node-by-node, no transform step) at construction + `grade` re-validation; (5) NaN /
-  present-`None` / `$type` / report-aliasing guards. +21 hardening tests. **Pass 6 converged: Findings: None**
-  — the only residuals require trusted account-B code to inject pathological objects post-construction
-  (`model_construct`/monkeypatch), outside the agent threat model.
-- **Grounded against PRIMARY docs (not just the skills) + the Python craft skills.** Verified the
-  load-bearing Pydantic v2 behaviors on `docs.pydantic.dev` myself: an after-mode `field_validator`
-  **returns-and-stores** the (transformed) value — "important to return the validated value" + the
-  mutating-value example — so the validate-and-copy snapshot is documented-correct; **`frozen` does NOT
-  deep-freeze** — the "Faux immutability" Caution + `foobar.b['apple']='grape'` example — the documented
-  basis for the `grade` re-validation; `exclude_none` = "Exclude all fields whose value is None";
-  `model_validator(after)` returns `self`. Validated against `python-error-handling` (→ `UntrustedInputError`
-  now subclasses **`ValueError`**, Pattern 4 invalid-input + consistent with the validators; +1 test) and
-  `python-design-patterns` (KISS/SRP/composition/small-functions confirmed, no change). `mode="after"` made
-  explicit per the doc examples.
-
-**Final state (supersedes the hand-rolled design above).** Value equality + validity now use **RFC 8785 JCS
-canonicalization** (`rfc8785.dumps`, the same form the record is signed with) behind a thin **exact-type input
-guard** (`type(x) is T`) + a **cycle guard** (stdlib-`json`-style `id()` detection) — replacing the hand-rolled
-comparator + validate-and-copy. 3 more Codex `gpt-5.5` xhigh passes (subclass-coercion forge → cycle crash →
-SHIP) + a **complete** review (SHIP, no blockers). rfc8785/JCS re-grounded vs RFC 8785 + the library docs (its
-subclass coercion is undocumented → guard, don't rely). **50 tests; `bun run verify` 20/20; merged `main`.**
+### Flag (divergence to note on the PR, not fix here)
+The golden generator's value validator (#75) accepts a `None` value and a `$`-prefixed key; diff-ir's
+grading validator (#34) rejects both. The bridge therefore fails closed (`GoldenNotGradableError`) on
+such a golden. Correct/safe (the grading core is the stricter trust gate); harmonizing the two
+validators is a possible follow-up, out of #31's scope.
