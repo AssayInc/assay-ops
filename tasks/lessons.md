@@ -15,6 +15,30 @@ Entry format:
 
 ---
 
+## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
+- **Mistake:** On #75 (the golden generator — a proof-critical content-addressed verifier) I first **piled on**
+  validations chasing every Codex adversarial finding, then, when the founder asked "are you over-fixing?",
+  started **removing working validations + their tests** because a proportionality reviewer (Opus) framed them
+  as disproportionate. The founder caught it: "if the tests and the validations are important, keep them — why
+  did you remove them?" Both moves were the same error in opposite directions — letting a reviewer's verdict
+  drive me instead of holding judgment. The validations (reject a `set`/subclass/surrogate/non-finite float in
+  a property; re-check after construction) are **cheap, fail-closed, runtime-free, and protect the load-bearing
+  invariant** (a deterministic content-address) — they belong, even though each defends a low-probability or
+  trusted-corpus input.
+- **Rule:** For the proof-critical core, a **cheap fail-closed validation protecting a load-bearing invariant
+  STAYS** — "a plausible-but-wrong verifier is worse than none" (DECISIONS.md stance). Do **not** delete a
+  working safety check + its test to lower a test count or win a "proportionality" argument; a check that can
+  only reject *pathological* input (never a legitimate golden) costs ~nothing and is pure insurance. Reviewer
+  verdicts are **inputs, not directives** — don't let an adversarial reviewer ping-pong you to "add everything"
+  and a proportionality reviewer ping-pong you to "cut everything"; weigh each finding's cost vs. what it
+  protects yourself. The legitimate answer to "over-fixing" is: keep the protective checks, **clarify intent**
+  so they aren't silently weakened later, and cut only genuine speculative abstraction / true redundancy — not
+  safety. Where two strong reviewers disagree on a real tradeoff, surface it as the user's call; never
+  unilaterally strip safety.
+- **Context:** #75 / PR #146 — founder flagged removing validations/tests after an over-fixing question.
+  Reverted; kept all 35 tests + validations. Pairs with
+  [[ground-and-validate-craft-skills-before-claiming-done-not-when-asked]] (don't over-defer to reviews).
+
 ## 2026-06-24 — negative-control-restore-with-a-file-backup-never-git-checkout
 - **Mistake:** Running a negative control on #75 (temporarily break code → prove the test fails → restore),
   I restored with `git checkout -- src/assayops_verifier/models.py src/assayops_verifier/golden.py`. That
