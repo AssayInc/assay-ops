@@ -123,6 +123,29 @@ def test_a_persistent_infra_transient_is_quarantined() -> None:
     assert isinstance(verdict, Quarantined)
 
 
+def test_verify_touches_read_operations_only() -> None:
+    # The moat end-to-end through the closed-world K-run verify (DECISIONS.md section 1/8, T1):
+    # across all K grade runs and every Region's reader, ONLY Cloud Control read ops are invoked --
+    # so vector #1 (write to grader) and vector #10 (A->B assume) fail by construction. The fake
+    # raises on any non-read op, so this asserts the harness's ACTUAL behavior, not the fake's.
+    east = FakeCloudControlClient({(S3, PHYSICAL_ID): _read_back(_golden_bucket())})
+    west = FakeCloudControlClient()
+    verify(
+        {"us-east-1": DeployedStateReader(east), "eu-west-1": DeployedStateReader(west)},
+        _registry(),
+        make_task(seed=SEED),
+        SEED,
+        ReadScope(
+            coverages=(TypeCoverage(S3, RegionScope.REGIONAL, Listability.DIRECTLY_LISTABLE),),
+            allowed_regions=("us-east-1", "eu-west-1"),
+        ),
+    )
+
+    read_only = {"get_resource", "get_paginator", "list_resources"}
+    assert east.invoked_operations <= read_only
+    assert west.invoked_operations <= read_only
+
+
 def test_grade_is_reproducible_across_k_runs() -> None:
     # The determinism gate: a clean deploy graded K=5 times agrees -> Reproducible with the runs.
     verdict = _verify(
