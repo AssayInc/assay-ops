@@ -90,12 +90,26 @@ class TypeCoverage:
     type_name: str
     region_scope: RegionScope
     listability: Listability
-    # Properties Cloud Control ``GetResource`` does NOT return (the schema
-    # ``writeOnlyProperties``). A golden asserting one is ungradable -- a correct deploy reads back
-    # without it and scores a false 0 -- so the per-property gate (``assert_golden_readable``)
-    # quarantines such a task. Top-level names; nested write-only paths are added when a corpus
-    # type needs them (YAGNI for now).
+    # Top-level property names GetResource does not fully return. A property write-only at ANY depth
+    # (the schema ``writeOnlyProperties``, e.g. the pointer ``/Auth/Password``) collapses to its
+    # TOP-LEVEL name: the reward core diffs at top-level granularity, so if any sub-field is omitted
+    # the whole top-level property reads back differently. A golden asserting such a property is
+    # ungradable (a correct deploy scores a false 0), so ``assert_golden_readable`` quarantines it.
+    # A raw JSON Pointer would silently miss the nested case, so ``__post_init__`` rejects one.
     write_only_paths: frozenset[str] = field(default_factory=frozenset)
+
+    def __post_init__(self) -> None:
+        # Fail closed on a write-only path the gate cannot read as a top-level name: empty, or a raw
+        # JSON Pointer (a "/", e.g. "/Auth/Password") the top-level gate would silently skip (a
+        # false-0 hole). The source must collapse each pointer to its top-level property name.
+        not_top_level = sorted(path for path in self.write_only_paths if not path or "/" in path)
+        if not_top_level:
+            raise ValueError(
+                f"write_only_paths must be top-level property names, not raw JSON Pointers: "
+                f"{not_top_level}; collapse each write-only pointer to its top-level property name "
+                "(nested gating is not built -- a nested write-only field makes the top-level "
+                "property ungradable, so the top-level name is the correct collapse)"
+            )
 
 
 @dataclass(frozen=True)

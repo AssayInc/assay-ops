@@ -82,3 +82,28 @@ def test_a_scope_rejects_duplicate_type_coverages() -> None:
             ),
             allowed_regions=("us-east-1",),
         )
+
+
+def test_type_coverage_rejects_a_raw_json_pointer_write_only_path() -> None:
+    # A nested write-only path (a JSON Pointer like "/Auth/Password") would silently miss the gate's
+    # top-level check -- a false-0 hole. It fails closed at construction; the coverage-matrix source
+    # must collapse each pointer to its top-level property name.
+    with pytest.raises(ValueError, match="top-level property names"):
+        TypeCoverage(
+            S3,
+            RegionScope.REGIONAL,
+            Listability.DIRECTLY_LISTABLE,
+            write_only_paths=frozenset({"/Auth/Password"}),
+        )
+
+
+def test_type_coverage_accepts_a_top_level_write_only_name() -> None:
+    # The adjacent-correct case (lessons.md): a plain top-level name (collapsed form) is accepted.
+    coverage = TypeCoverage(
+        S3,
+        RegionScope.REGIONAL,
+        Listability.DIRECTLY_LISTABLE,
+        write_only_paths=frozenset({"Password"}),
+    )
+
+    assert coverage.write_only_paths == frozenset({"Password"})
