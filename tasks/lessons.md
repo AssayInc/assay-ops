@@ -22,7 +22,8 @@ compressed rule.
 
 ## 2026-06-26 — review-the-diff-itself-not-just-the-validated-claim
 - **Mistake:** Shipped the #165 fix after two reviewers confirmed the *claim* — but neither had seen my edits,
-  and the PR's wording re-seeded the original ambiguity about which creds sign the cross-account read.
+  and the PR's wording re-seeded the original ambiguity about which creds sign the cross-account read (the
+  assumed account-A creds, not B's).
 - **Rule:** Adversarial review must see the actual **diff**, not just the underlying claim/facts — a correct
   claim can ship with wording that re-introduces the bug.
 - **Context:** #165 / AssayInc/skills#10.
@@ -147,17 +148,15 @@ compressed rule.
 
 ## 2026-06-24 — grounding-is-part-of-done-do-it-before-being-asked
 - **Mistake:** Twice (#34, #75) presented a build as done after grounding only against **skills** + TDD + the
-  cross-model review — without proactively opening the **primary docs** for the load-bearing library behaviors
-  or validating against the applicable **craft skills**. Each time the founder had to ask the standing grounding
-  questions; doing the pass then surfaced real refinements.
-- **Rule:** The grounding pass is **part of "done," done proactively** — not when asked. Before claiming a build
-  complete, complete it yourself: open the **primary docs** for each load-bearing library behavior and validate
-  against **every applicable craft skill** (stating which are N/A and why). A skill cite / green test / Codex
-  pass are all **secondary** and do not substitute.
-- **Context:** #34 / PR #145 (Pydantic validator + `frozen` semantics) + #75 / PR #146 (`model_dump(mode="json")`
-  inf/nan→null, rfc8785 int bound). Pairs with
-  [[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]] +
-  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]] + [[ground-in-official-docs-first]].
+  cross-model review — then the founder had to ask the standing grounding questions, and doing the pass *then*
+  surfaced real refinements that should have landed before "done."
+- **Rule:** The full grounding pass is **part of "done," done proactively** — run it before claiming complete,
+  not in reaction to being asked. A skill cite / green test / Codex pass are **secondary** and do not substitute.
+  *What* the pass is lives in its canonicals: open the primary docs yourself
+  ([[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]] + [[ground-in-official-docs-first]];
+  an empirical probe of the pinned lib counts where docs don't cover a behavior) and validate against every
+  applicable craft skill, N/A stated ([[validate-against-all-relevant-vendored-skills-not-just-the-api-skill]]).
+- **Context:** #34 / PR #145 + #75 / PR #146 — the founder's standing grounding questions, asked post-"done."
 
 ## 2026-06-24 — dont-strip-cheap-fail-closed-validations-to-win-an-over-fixing-argument
 - **Mistake:** On #75 (the golden generator), asked "are you over-fixing?", I started **removing working
@@ -187,7 +186,8 @@ compressed rule.
   `git checkout -- <files>` — which reverts to HEAD, silently wiping all the **uncommitted** fixes from that
   turn, not just the one-line negative-control patch.
 - **Rule:** A negative control mutates **uncommitted** code in place; restore it from a **file backup**, never
-  from git. Before the patch `cp <file> <file>.bak`; after, copy it back. **Never `git checkout -- <file>` /
+  from git. Before the patch `cp <file> /tmp/<file>.bak` (out of the repo tree); after, copy it back, or keep
+  the original text in the patch script and write it back. **Never `git checkout -- <file>` /
   `git restore` while there are uncommitted changes you want to keep** — it discards them to HEAD. (If you must
   use git, commit the good state first so HEAD *is* the good state.)
 - **Context:** #75 / PR #146; recovered by re-`Write`-ing the files. Every later negative control used a
@@ -390,7 +390,8 @@ compressed rule.
 - **Rule:** For the AssayOps verifier (real or mocked), the grade input MUST come from **ground truth the agent
   cannot forge**: read from an independent channel (deployed resources via boto3, or a substrate keyed by
   `trajectory_id`), **never** the agent-reachable observation / trajectory / `step()` output — the independent
-  read *is* the moat. A passing suite can still encode a tautological boundary; run the cross-model `/review` on
+  read *is* the moat (`DECISIONS.md` §1/§8, vector #15). A passing suite can still encode a tautological
+  boundary; run the cross-model `/review` on
   any verifier/boundary code.
 - **Context:** #114 / PR #121; fix is `cloud_state.CLOUD`. Pairs with
   [[ground-in-decisions-and-brain-not-the-ai-written-issue]].
@@ -428,9 +429,11 @@ compressed rule.
   `gh issue edit` has no parent flag); (3) **set the board single-selects** (Status/Lane/Epic) via `gh project
   item-edit` by **mirroring a sibling** (read option ids with `gh project item-list`, don't guess). The project
   **Epic field is the source of truth** for categorization and has **no E16/E17 option** → toolchain/infra
-  follow-ups file under **E0 Infra** (field set, no native parent where that epic is closed). Verify with a
-  `subIssues` / `projectItems` read. Project #1 = `PVT_kwDOEYppDc4BbCzj`.
-- **Context:** #114–#117; #152 → E0 Infra, #153 → E2 + sub-issue of #3. Extends the CLAUDE.md task-loop —
+  follow-ups file under **E0 Infra** (field set, no native parent where that epic is closed); don't leave a
+  stale **milestone** — infra ≠ a phase milestone (clear it). Verify with a `subIssues` / `projectItems` read.
+  Project #1 = `PVT_kwDOEYppDc4BbCzj`.
+- **Context:** #114–#117; #152 → E0 Infra (milestone cleared), #153 → E2 + sub-issue of #3 (Phase 1). Extends
+  the CLAUDE.md task-loop —
   "create the issue" is not done at `gh issue create`.
 
 ## 2026-06-22 — use-the-librarys-official-mechanism-not-a-hand-roll
@@ -476,7 +479,8 @@ compressed rule.
   — GitHub's supported-patterns data carries a per-type `hasPushProtection` flag. To prove push protection, plant
   a fabricated secret of a **supported** type (Stripe `sk_live_…`, SendGrid `SG.…`, Slack `xoxb-…`) and capture
   the `GH013 … Push cannot contain secrets` rejection. An **alert being created means the secret landed** — that
-  is detection, the opposite of a blocked push.
+  is detection, the opposite of a blocked push. Don't misread GitHub's free-user account-rollout "week or two"
+  note as repo-level enforcement lag.
 - **Context:** #21 secret-scanning AC. Reinforces [[verify-against-official-docs-and-skills-before-acting]] +
   [[diagnose-unfamiliar-api-errors-before-theorizing]].
 
@@ -516,7 +520,7 @@ compressed rule.
 - **Mistake:** Added a fork-PR `if:` gate (public-repo boilerplate) to a **private, fork-less** repo where forks
   can't occur. The user cut it.
 - **Rule:** Tailor borrowed patterns to THIS environment — don't paste a public-repo idiom into a private repo or
-  guard a case that can't occur (YAGNI). Default to shipping less; verify and minimize before adding.
+  guard a case that can't occur (YAGNI). Default to shipping less; verify and minimize before adding or asserting.
 - **Context:** `.github/workflows/localstack-smoke.yml` (E0-3). Pairs with the YAGNI bar in `CLAUDE.md` +
   [[no-comments-explaining-the-absence-of-something]].
 
@@ -579,7 +583,8 @@ compressed rule.
 - **Rule:** Add skills with the **default agent targeting** (omit `-a`): it extends the repo's existing
   `.agents/skills/` + `.claude/` + `.hermes/`. **Never `-a '*'`.** After **every** `skills add`, run `git status
   --porcelain` and confirm ONLY `.agents/`, `.claude/`, `.hermes/`, `skills-lock.json` changed; back out any other
-  new dir. Preview multi-skill repos with `--list` and install only the needed `--skill <name>`.
+  new dir (`npx skills remove <name> -a '*' -y`, then `rm -rf` stragglers) and re-add without `-a '*'`. Preview
+  multi-skill repos with `--list` and install only the needed `--skill <name>`.
 - **Context:** #85, `npx skills add`. Pairs with [[skills-sync-hygiene]].
 
 ## 2026-06-19 — eval-is-part-of-the-skill
