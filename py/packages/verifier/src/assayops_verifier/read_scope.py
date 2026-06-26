@@ -88,6 +88,12 @@ class TypeCoverage:
     """The verifier's read-coverage for one in-scope CloudFormation type."""
 
     type_name: str
+    # MOAT-LOAD-BEARING: a REGIONAL type mis-declared GLOBAL fails OPEN -- it is enumerated
+    # only at the control Region, so an extra of it in another allowed Region is never listed/graded
+    # `added` (a silent false 1). This is the one matrix field whose error is invisible rather than
+    # self-failing (a listability mis-declaration fails CLOSED -- list_resources rejects it). The
+    # deferred describe-type tool MUST derive region_scope (never hand-author it); T7 backstops it
+    # (DECISIONS.md s1: an extra in an unscanned Region is closed primarily by the SCP).
     region_scope: RegionScope
     listability: Listability
     # Top-level property names GetResource does not fully return. A property write-only at ANY depth
