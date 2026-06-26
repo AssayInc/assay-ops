@@ -20,6 +20,20 @@ compressed rule.
 
 ---
 
+## 2026-06-26 — ground-an-issues-relationships-and-sibling-comments-not-just-its-own
+- **Mistake:** Grounding #44 I reported "0 comments, no blockers" from `gh issue view --comments` + a
+  comments-only graphql — but #44 had a `blocked_by` (#25) and a cross-ref (#159) in its **timeline**, and the
+  decisive scoping precedent lived in **sibling** issues' comments (#141, #46), none of which #44 cites. The
+  founder had to prompt "did you load the comments?".
+- **Rule:** An issue's grounding context lives in its **timeline relationships** (`blocked_by`,
+  cross-references, sub-issues — `gh api .../issues/N/timeline` + `.../dependencies/blocked_by`) and in
+  **sibling issues in the same epic/area**, not only its own comments. A zero-comment target is not a
+  context-free target — check the relationships + a recent founder scoping comment on a sibling before
+  concluding "ready / nothing here."
+- **Context:** #44 (closed/reconciled, PR #170). Sharpens
+  [[re-read-the-target-issues-own-comments-before-finalizing]] +
+  [[read-the-related-issues-and-prs-an-issue-cites-not-just-the-issue]].
+
 ## 2026-06-26 — review-the-diff-itself-not-just-the-validated-claim
 - **Mistake:** Shipped the #165 fix after two reviewers confirmed the *claim* — but neither had seen my edits,
   and the PR's wording re-seeded the original ambiguity about which creds sign the cross-account read (the
