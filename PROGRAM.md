@@ -53,6 +53,20 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#165: corrected the `RoleArn`-as-cross-account knowledge-source error (skill + brain) + re-vendored.**
+  The `write-isolated-verifier` skill + brain claimed Cloud Control's `RoleArn` is the B→A cross-account
+  read hook — but it is a **same-account** CloudFormation service role (assumed by `cloudformation.amazonaws.com`,
+  scopes downstream perms, 24h→36h); the **target account is set by the signing credentials**, and the
+  cross-account read is **STS `AssumeRole` into a read-only role in A → account-A creds → Cloud Control
+  client**. This is the knowledge-source root that misled #160 (the verifier-read **code** was already
+  corrected in #164). Validated by **2 adversarial reviewers** (Claude Opus 4.8 + Codex `gpt-5.5` xhigh, both
+  CONFIRM) + **firsthand official-AWS-docs grounding** (Cloud Control "Specifying credentials" user guide +
+  STS `AssumeRole`). Fixed at source — **AssayInc/skills#10** (SKILL.md + grading-primitives.md; reframed the
+  anti-pattern row so the *sanctioned* B→A read-only assume isn't branded the A→B vector; +regression eval
+  case 4) — then **re-vendored + re-pinned** here (`skills-lock.json` `a268afb9`→`bf027adc`). An adversarial
+  **diff** re-review (Codex FIX→SHIP; Claude SHIP) caught a signing-credentials ambiguity in the PR text
+  pre-merge. Brain pages corrected (working tree, for wiki-ingest). (#165.)
+
 - **E2-1 follow-up (#163): corrected the cross-account read mechanism + hardened the read path.** A
   post-merge diverse-lens review of #160 (security-forge + edge-case + design/SOTA, across Codex `gpt-5.5`
   xhigh + Claude) found three defects; the moat holds (no reward-forge). **(1) Trust-claim fix:** #160 used

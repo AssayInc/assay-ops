@@ -15,6 +15,15 @@ Entry format:
 
 ---
 
+## 2026-06-26 — review-the-diff-itself-not-just-the-validated-claim
+- **Mistake:** Opened AssayInc/skills#10 (the #165 fix) after 2 reviewers CONFIRMED the *claim* — but neither
+  saw my actual edits; the PR text's "read under account-B credentials" was ambiguous about which creds sign
+  the cross-account read (account-A temp creds from `AssumeRole`, not B's).
+- **Rule:** Review the actual **diff/wording**, not just the underlying claim — a correct claim can ship with
+  text that re-seeds the bug. Ground load-bearing facts **firsthand** from primary docs (e.g. `/browse`), not
+  only via a delegated reviewer. review → fix → **re-review to convergence**.
+- **Context:** #165 / AssayInc/skills#10 (Codex `gpt-5.5` xhigh FIX→SHIP on re-review; Claude Opus 4.8 SHIP).
+
 ## 2026-06-25 — verify-a-trust-mechanisms-exact-semantics-in-the-conceptual-docs
 - **Mistake:** #160 used Cloud Control `RoleArn` as the B→A cross-account read hook, but `RoleArn` is a
   SAME-account CFN service role (cross-account = STS `AssumeRole`; the target account is set by the signing
@@ -23,7 +32,8 @@ Entry format:
 - **Rule:** Verify a security/trust mechanism's EXACT semantics against the primary CONCEPTUAL docs (the
   service user guide), not a one-line API-param ref or a brain/skill framing. For moat code, run diverse-lens
   review (forge + crash + design), not just correctness, BEFORE merge.
-- **Context:** #160 → #163. The skill/brain carry the same wrong claim — fix at the source.
+- **Context:** #160 → #163. The skill/brain carried the same wrong claim — fixed at the source in #165
+  (AssayInc/skills#10 + brain pages; re-vendored).
 
 ## 2026-06-25 — re-read-the-target-issues-own-comments-before-finalizing
 - **Mistake:** Built #30 from the body alone — my initial `gh issue view 30 --json comments` returned `[]`, but
