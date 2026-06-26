@@ -129,6 +129,13 @@ class ReadScope:
         duplicates = sorted({name for name in type_names if type_names.count(name) > 1})
         if duplicates:
             raise ValueError(f"duplicate type coverages in the read scope: {duplicates}")
+        region_duplicates = sorted(
+            {region for region in self.allowed_regions if self.allowed_regions.count(region) > 1}
+        )
+        if region_duplicates:
+            # A region enumerated twice reads every REGIONAL resource twice -> they collide on the
+            # same address (a confusing adapter-level DuplicateAddressError). Fail loud here.
+            raise ValueError(f"duplicate allowed_regions in the read scope: {region_duplicates}")
 
     def coverage(self, type_name: str) -> TypeCoverage:
         """The coverage entry for ``type_name``, or fail closed (``UnknownReadCoverageError``)."""

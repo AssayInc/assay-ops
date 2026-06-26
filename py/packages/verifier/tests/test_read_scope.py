@@ -84,6 +84,16 @@ def test_a_scope_rejects_duplicate_type_coverages() -> None:
         )
 
 
+def test_a_scope_rejects_duplicate_allowed_regions() -> None:
+    # A region listed twice would read every REGIONAL resource twice -> a confusing adapter-level
+    # DuplicateAddressError. Fail loud at the scope (mirrors the duplicate-type guard).
+    with pytest.raises(ValueError, match="duplicate allowed_regions"):
+        ReadScope(
+            coverages=(TypeCoverage(S3, RegionScope.REGIONAL, Listability.DIRECTLY_LISTABLE),),
+            allowed_regions=("us-east-1", "us-east-1"),
+        )
+
+
 def test_type_coverage_rejects_a_raw_json_pointer_write_only_path() -> None:
     # A nested write-only path (a JSON Pointer like "/Auth/Password") would silently miss the gate's
     # top-level check -- a false-0 hole. It fails closed at construction; the coverage-matrix source
