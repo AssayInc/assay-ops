@@ -1,25 +1,32 @@
-"""E2-1 (#30): the account-B deployed-state read harness -- the verifier skeleton's read path.
+"""E2-1 (#30) + E2-6 (#141): the account-B deployed-state read harness + closed-world read coverage.
 
 DECISIONS.md section 1/8, T1/1C. The write-isolated verifier runs in account B and reads DEPLOYED
 resource state read-only via Cloud Control (``get_resource`` / ``list_resources``) through the
-injected client's credentials, which determine the target account. A B->A cross-account read obtains
-account-A credentials by STS ``AssumeRole`` into a READ-ONLY role in account A and builds the client
-with them (#33/E8) -- never an A->B path (vector #10). It NEVER runs the agent's
+injected client's credentials, which determine the target account. A B->A cross-account read
+obtains account-A credentials by STS ``AssumeRole`` into a READ-ONLY role in account A and builds
+the client with them (#33/E8) -- never an A->B path (vector #10). It NEVER runs the agent's
 ``terraform plan`` / ``cdk synth`` or reads a ``.tfstate`` / plan file (vectors #1/#4/#5): the only
 injected Cloud Control client -- ground truth the agent cannot forge.
 
 The read surface is exactly Cloud Control ``get_resource`` + ``list_resources`` (IAM
 ``cloudformation:GetResource`` / ``cloudformation:ListResources``; #141 scopes least-privilege to
-these). A throttle / un-propagated read is transient (the injected client's ``Config(retries=...)``
-handles it, never a hand-rolled loop -- DECISIONS.md 7A); a genuine read failure fails CLOSED to an
-``UnreadableResource``, so the adapter never rewards a blind spot (vector #15).
+these). The injected client's ``Config(retries=...)`` absorbs SDK-level throttles/5xx WITHIN a read
+(boto3 adaptive, never a hand-rolled loop). A failure that surfaces past that is **classified**
+(7A;
+# 141 scope 1): a transient (throttle / 5xx / timeout / list-get race) raises
+# ``TransientGradeError``
+so the K-run re-attempts it (never scored 0 on the spot -- the false-negative); a genuine failure
+fails CLOSED to ``UnreadableResource`` (the adapter then raises -- never a silent reward, #15).
 
-Scope: the read-and-grade skeleton. Deferred: the closed-world ``deployed set == golden set``
-enumeration (exhaustive / paginated / Region-aware, fail-closed on truncation), the per-property
-coverage gate, and the 7A transient/genuine classifier are #141; the cross-account read-only role
-assumption is #33 (its SCP allow-list #53, the E8 role infra #52); CloudFormation drift is the CDK
-path (#66); the reward-record / ledger handoff is #32. Terraform is graded via Cloud Control only
-(#80, section 1).
+This module owns the read path: the per-resource read (``read_resource``), the per-type enumeration
+in one Region (``read_type``), and the **closed-world** ``deployed set == golden set`` walk over
+the in-scope type x Region matrix (``read_closed_world``, #141 scope 2 -- exhaustive / paginated /
+fail-closed). The per-property coverage gate is ``read_scope.assert_golden_readable`` (#141 scope
+3); the K-run verdict that drives ``reproduce`` over this read is ``verify.verify`` (#141 scope 1).
+Deferred (real-AWS / a live account): the cross-account read-only role assumption is #33 (its SCP
+allow-list #53, the E8 role infra #52); the real-AWS coverage-matrix regeneration tool +
+``describe-type`` IAM derivation is T7-gated; CloudFormation drift is the CDK path (#66); the
+reward-record / ledger handoff is #32. Terraform is graded via Cloud Control only (#80, section 1).
 """
 
 from __future__ import annotations
@@ -37,6 +44,7 @@ from assayops_adapter_terraform import (
 from assayops_adapter_terraform.models import DeployedRead  # union alias (not re-exported)
 from assayops_contracts import TaskSpec
 from assayops_diff_ir import GradeOutcome
+from assayops_replay import TransientGradeError, TransientKind, transient_kind
 from botocore.client import BaseClient
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -49,9 +57,9 @@ class DeployedStateReader:
     """A read-only wrapper over an account-B boto3 Cloud Control client.
 
     The injected ``client`` carries the credentials that decide which account is read. For a single
-    account / LocalStack that is account-B's own; a B->A cross-account read uses account-A read-only
-    credentials obtained by STS ``AssumeRole`` into a read-only role in A (#33/E8) -- never an A->B
-    path (vector #10). The reader holds no credentials of its own.
+    account / LocalStack that is account-B's own; a B->A cross-account read uses account-A
+    read-only credentials obtained by STS ``AssumeRole`` into a read-only role in A (#33/E8) --
+    never an A->B path (vector #10). The reader holds no credentials of its own.
     """
 
     client: BaseClient
@@ -59,19 +67,26 @@ class DeployedStateReader:
     def read_resource(
         self, type_name: str, identifier: str
     ) -> DeployedResourceRead | UnreadableResource | None:
-        """Read one resource's deployed state.
+        """Read one resource's deployed state, classifying a read failure (7A; #141 scope 1).
 
-        ``None`` if absent (``ResourceNotFoundException``): an absent golden resource is a drift,
-        not a coverage gap. An ``UnreadableResource`` if the read fails closed -- any post-retry
-        ``ClientError`` or ``BotoCoreError`` (throttle / access-denied / network / timeout), or an
-        unparseable response. Which failures are transient-retryable vs genuine -- the 7A classifier
-        -- is #141; boto3's ``Config(retries=...)`` retries the transient ones first.
+        ``None`` if absent (``ResourceNotFoundException``) -- at the single-read level "not in the
+        deployed set". (The list/get RACE -- an enumerated id that reads back absent -- is the
+        EVENTUAL_CONSISTENCY case ``read_type`` raises, where the "it was listed" context lives.) A
+        post-(boto3-adaptive)-retry ``ClientError`` / ``BotoCoreError`` is routed by the 7A
+        classifier: a **transient** (throttle / 5xx / timeout) raises ``TransientGradeError`` so
+        the K-run re-attempts it -- never scored 0 on the spot (the false-negative the
+        deterministic-verification skill names). A **genuine** failure (AccessDenied / validation),
+        or an unparseable response, fails closed to ``UnreadableResource`` (the adapter then
+        raises; AccessDenied is an isolation alarm, never masked into a retry).
         """
         try:
             response: object = self.client.get_resource(TypeName=type_name, Identifier=identifier)
         except self.client.exceptions.ResourceNotFoundException:
             return None
         except (ClientError, BotoCoreError) as error:
+            kind = transient_kind(error)
+            if kind is not None:
+                raise TransientGradeError(kind, _failure_reason(error)) from error
             return UnreadableResource(
                 type_name=type_name, identifier=identifier, reason=_failure_reason(error)
             )
@@ -89,35 +104,47 @@ class DeployedStateReader:
     def list_resource_identifiers(self, type_name: str) -> list[str]:
         """Enumerate a type's identifiers via the Cloud Control ``list_resources`` paginator.
 
-        Basic single-Region discovery. The closed-world ``deployed set == golden set`` completeness
-        -- exhaustive / Region-aware enumeration, and failing closed on a truncated or errored list
-        -- is #141; a list-phase API error here propagates (fail-closed: no reward).
+        The paginator follows every ``NextToken`` to exhaustion -- so a normal return is the
+        COMPLETE identifier set, never a truncated page (no ``MaxItems`` cap that would silently
+        stop). A throttle / 5xx DURING enumeration is a **transient** -- routed through the 7A
+        K-run (``TransientGradeError``), never read as "no extra resources" (a truncated
+        enumeration must never fail OPEN, vector #15; #141 scope 2). A **genuine** list error (an
+        unlistable type, an invalid request) FAILS CLOSED -- it propagates, never a partial/empty
+        enumeration. A malformed page raises in ``_identifiers_in_page`` (also fail-closed).
         """
         paginator = self.client.get_paginator("list_resources")
         identifiers: list[str] = []
-        for page in paginator.paginate(TypeName=type_name):
-            identifiers.extend(_identifiers_in_page(page))
+        try:
+            for page in paginator.paginate(TypeName=type_name):
+                identifiers.extend(_identifiers_in_page(page))
+        except (ClientError, BotoCoreError) as error:
+            kind = transient_kind(error)
+            if kind is not None:
+                raise TransientGradeError(kind, _failure_reason(error)) from error
+            raise
         return identifiers
 
-    def read_types(self, type_names: Iterable[str]) -> list[DeployedRead]:
-        """Read each in-scope type's deployed resources: list, then get each (fail-closed per read).
+    def read_type(self, type_name: str) -> list[DeployedRead]:
+        """Read one type's deployed resources in this reader's Region: list, then get each.
 
         Every enumerated resource is surfaced -- a successful read, or an ``UnreadableResource`` so
-        the adapter fails closed. A resource ``list_resources`` returned but ``get_resource`` then
-        reports absent (a list/get race) is a coverage gap, NOT "absent": dropping it could hide an
-        extra resource (vector #15), so it too fails closed.
+        the adapter fails closed (never dropped, which would hide a blind spot -- vector #15). A
+        resource ``list_resources`` returned but ``get_resource`` then reads back absent (a race)
+        is NOT "absent": dropping it could hide an extra resource, so it is routed through the 7A
+        determinism layer as an ``EVENTUAL_CONSISTENCY`` transient (the K-run re-attempts it)
+        rather than settled here. The closed-world walk across types and Regions is
+        ``read_closed_world``.
         """
         reads: list[DeployedRead] = []
-        for type_name in type_names:
-            for identifier in self.list_resource_identifiers(type_name):
-                read = self.read_resource(type_name, identifier)
-                if read is None:
-                    read = UnreadableResource(
-                        type_name=type_name,
-                        identifier=identifier,
-                        reason="listed but absent on read (list/get inconsistency)",
-                    )
-                reads.append(read)
+        for identifier in self.list_resource_identifiers(type_name):
+            read = self.read_resource(type_name, identifier)
+            if read is None:
+                raise TransientGradeError(
+                    TransientKind.EVENTUAL_CONSISTENCY,
+                    f"{identifier!r} (type {type_name!r}) was listed but read back absent "
+                    "(list/get race)",
+                )
+            reads.append(read)
         return reads
 
 
@@ -133,11 +160,14 @@ def verify_deployment(
 
     The verifier skeleton's end-to-end path (DECISIONS.md section 1, T1): boto3 Cloud Control read
     (#30) -> ``normalize`` to the DEPLOYED_READ IR (#35) -> ``grade_deployment`` regenerates the
-    golden from (task, seed) and grades it (#31) -> reward in {0, 1}. ``type_names`` is the in-scope
-    set to read; the closed-world ``deployed set == golden set`` completeness over it is #141. Fails
-    closed (never a silent reward) on an unreadable or unsupported deployed resource (vector #15).
+    golden from (task, seed) and grades it (#31) -> reward in {0, 1}. ``type_names`` is the
+    in-scope set to read in this reader's single Region. Fails closed (never a silent reward) on an
+    unreadable or unsupported deployed resource (vector #15).
+
+    This is the single-Region #30 path. The sound closed-world entry -- exhaustive type x Region
+    enumeration + the 7A K-run + the per-property gate -- is ``assayops_verifier.verify.verify``.
     """
-    reads = reader.read_types(type_names)
+    reads = [read for type_name in type_names for read in reader.read_type(type_name)]
     deployed = normalize(reads, bridge_registry)
     return grade_deployment(registry, task, seed, deployed)
 
@@ -157,8 +187,8 @@ def _failure_reason(error: BaseException) -> str:
 def _properties_of(response: object) -> dict[str, object] | None:
     """Narrow an untyped ``get_resource`` response to its parsed ``Properties`` dict.
 
-    Returns ``None`` (fail closed) on any unexpected shape: the boto3 response is open data narrowed
-    to ``dict[str, object]`` at the boundary, never trusted as-is.
+    Returns ``None`` (fail closed) on any unexpected shape: the boto3 response is open data
+    narrowed to ``dict[str, object]`` at the boundary, never trusted as-is.
     """
     if not isinstance(response, dict):
         return None

@@ -4,7 +4,8 @@
 ``grade_deployment`` (#31): a clean deploy grades reward 1, a drifted/missing one grades 0 -- all
 from state read independently of the agent (DECISIONS.md section 1, T1). A read that cannot be
 vouched for fails CLOSED (vector #15). The deployed state the read path produces is always
-DEPLOYED_READ provenance, so the grade can never be handed agent-reported state (vectors #1/#7/#10).
+DEPLOYED_READ provenance, so the grade can never be handed agent-reported state (vectors
+#1/#7/#10).
 
 The deployed resource a CORRECT deploy reads back is the golden's resources, carrying the
 ``assayops:address`` tag bridge (#35) and a server-computed readOnly ``Arn`` the adapter drops.
@@ -85,12 +86,14 @@ def test_missing_deployed_resource_grades_reward_0() -> None:
     assert outcome.reward is Reward.number_0
 
 
-def test_an_unreadable_deployed_resource_fails_closed() -> None:
-    # A resource the read harness cannot settle is surfaced as UnreadableResource; the adapter fails
-    # closed (UnreadableResourceError) rather than silently grading the rest (vector #15).
+def test_a_genuinely_unreadable_deployed_resource_fails_closed() -> None:
+    # A GENUINELY-unreadable resource (AccessDenied -- not a transient) is surfaced as
+    # UnreadableResource; the adapter fails closed (UnreadableResourceError) rather than silently
+    # grading the rest (vector #15). (A throttle would instead route through the 7A K-run -- see
+    # test_read / test_verify_closed_world.)
     registry = _registry()
     task = make_task(seed=SEED)
-    client = FakeCloudControlClient(unreadable={(S3, PHYSICAL_ID)})
+    client = FakeCloudControlClient(access_denied={(S3, PHYSICAL_ID)})
 
     with pytest.raises(UnreadableResourceError):
         verify_deployment(DeployedStateReader(client), registry, task, SEED, [S3])
@@ -113,14 +116,14 @@ def test_the_graded_state_is_deployed_read_provenance_never_agent_reported() -> 
     bucket = registry.generate(make_task(seed=SEED), SEED).resources[0]
     client = FakeCloudControlClient({(S3, PHYSICAL_ID): _read_back(bucket)})
 
-    deployed = normalize(DeployedStateReader(client).read_types([S3]))
+    deployed = normalize(DeployedStateReader(client).read_type(S3))
 
     assert deployed.provenance is Provenance.DEPLOYED_READ
 
 
 def test_verify_deployment_touches_read_operations_only() -> None:
-    # The moat end-to-end through the grade (DECISIONS.md section 1/8, T1): vectors #1 (write to the
-    # grader) and #10 (A->B assume) fail by construction -- the harness only ever reads.
+    # The moat end-to-end through the grade (DECISIONS.md section 1/8, T1): vectors #1 (write to
+    # the grader) and #10 (A->B assume) fail by construction -- the harness only ever reads.
     registry = _registry()
     task = make_task(seed=SEED)
     bucket = registry.generate(task, SEED).resources[0]

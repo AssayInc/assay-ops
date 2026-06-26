@@ -1,10 +1,10 @@
 """E2-6 (#141) scope 3: the per-asserted-property coverage gate (DECISIONS.md section 1).
 
-Cloud Control ``GetResource`` omits a type's **write-only** properties (passwords, policy bodies). A
-golden that asserts one is **ungradable**: a CORRECT deploy reads back WITHOUT that property, so the
-reward core scores it a false 0. ``assert_golden_readable`` is the authoring-time gate that catches this
-and quarantines the task (the issue's "quarantine or add a service-specific fallback"), rather than
-shipping a task that can never score 1.
+Cloud Control ``GetResource`` omits a type's **write-only** properties (passwords, policy bodies).
+A golden that asserts one is **ungradable**: a CORRECT deploy reads back WITHOUT that property, so
+the reward core scores it a false 0. ``assert_golden_readable`` is the authoring-time gate that
+catches this and quarantines the task (the issue's "quarantine or add a service-specific
+fallback"), rather than shipping a task that can never score 1.
 """
 
 from __future__ import annotations
@@ -53,8 +53,9 @@ def test_a_fully_readable_golden_passes() -> None:
 
 
 def test_a_golden_asserting_a_write_only_property_is_quarantined() -> None:
-    # GetResource never returns `SecretBody`, so a correct deploy reads back without it -> a false 0.
-    # The gate must reject this golden at authoring time (vector #15 -- never a silently-ungradable task).
+    # GetResource never returns `SecretBody`, so a correct deploy reads back without it -> a false
+    # 0. The gate must reject this golden at authoring time (vector #15 -- never a
+    # silently-ungradable task).
     with pytest.raises(UnreadableGoldenPropertyError, match="SecretBody"):
         assert_golden_readable(_golden(SECRETIVE, {"SecretBody": "hunter2"}), _scope())
 
@@ -66,7 +67,7 @@ def test_a_readable_property_on_a_type_that_has_write_only_props_passes() -> Non
 
 
 def test_a_golden_whose_type_is_out_of_scope_fails_closed() -> None:
-    # A golden type with no read-coverage entry cannot be graded soundly -> fail closed (never assume
-    # readable). Reuses the scope's fail-closed lookup.
+    # A golden type with no read-coverage entry cannot be graded soundly -> fail closed (never
+    # assume readable). Reuses the scope's fail-closed lookup.
     with pytest.raises(UnknownReadCoverageError):
         assert_golden_readable(_golden("AWS::SQS::Queue", {"QueueName": "q"}), _scope())

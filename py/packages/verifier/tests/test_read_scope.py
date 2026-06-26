@@ -1,10 +1,10 @@
 """E2-6 (#141): the verifier-side read-coverage matrix -- the closed-world enumeration's scope.
 
-A ``ReadScope`` is the in-scope ``{type -> (region scope, listability, write-only props)}`` matrix the
-closed-world enumeration walks (DECISIONS.md section 1 "E3-4 read coverage"; the #80 spike). It fails
-closed on an unregistered in-scope type and resolves each type's enumeration Regions per its scope
-(GLOBAL services at their control Region; REGIONAL services at every allowed Region) -- the per-type
-Region matrix, never a blanket rule.
+A ``ReadScope`` is the in-scope ``{type -> (region scope, listability, write-only props)}`` matrix
+the closed-world enumeration walks (DECISIONS.md section 1 "E3-4 read coverage"; the #80 spike). It
+fails closed on an unregistered in-scope type and resolves each type's enumeration Regions per its
+scope (GLOBAL services at their control Region; REGIONAL services at every allowed Region) -- the
+per-type Region matrix, never a blanket rule.
 """
 
 from __future__ import annotations
@@ -42,7 +42,8 @@ def test_coverage_resolves_a_registered_type() -> None:
 
 def test_coverage_fails_closed_on_an_unregistered_type() -> None:
     # An in-scope type with no coverage entry cannot be enumerated soundly -> fail closed (the read
-    # path can never prove `deployed set == golden set` for a type it has no coverage for, vector #15).
+    # path can never prove `deployed set == golden set` for a type it has no coverage for, vector
+    # #15).
     with pytest.raises(UnknownReadCoverageError):
         _scope().coverage("AWS::SQS::Queue")
 
@@ -56,8 +57,9 @@ def test_a_regional_type_enumerates_every_allowed_region() -> None:
 
 
 def test_a_global_type_enumerates_only_its_control_region() -> None:
-    # A GLOBAL service (IAM/Route53/CloudFront) lives at one control Region; enumerating it per-Region
-    # would double-count. The matrix is per-type, not a blanket "every Region" rule (DECISIONS.md s1).
+    # A GLOBAL service (IAM/Route53/CloudFront) lives at one control Region; enumerating it
+    # per-Region would double-count. The matrix is per-type, not a blanket "every Region" rule
+    # (DECISIONS.md s1).
     regions = _scope().regions_for(_scope().coverage(IAM_ROLE))
 
     assert regions == ("us-east-1",)
