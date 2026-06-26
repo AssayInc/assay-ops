@@ -16,7 +16,8 @@ failure (AccessDenied / validation / unparseable) fails closed to ``UnreadableRe
 from __future__ import annotations
 
 import pytest
-from assayops_adapter_terraform import DeployedResourceRead, UnreadableResource
+from assayops_adapter_terraform import DeployedResourceRead, UnreadableResource, normalize
+from assayops_diff_ir import Provenance
 from assayops_replay import TransientGradeError, TransientKind
 from botocore.exceptions import ClientError
 from cloud_control_fakes import FakeCloudControlClient
@@ -169,6 +170,23 @@ def test_read_type_routes_a_list_get_race_to_eventual_consistency() -> None:
     with pytest.raises(TransientGradeError) as exc_info:
         DeployedStateReader(client).read_type(S3)
     assert exc_info.value.kind is TransientKind.EVENTUAL_CONSISTENCY
+
+
+def test_read_type_normalizes_to_deployed_read_provenance() -> None:
+    # The read path produces only DEPLOYED_READ provenance, so the reward core (which rejects any
+    # other provenance, T1) can never be handed agent plan/state through it (vectors #1/#7/#10).
+    client = FakeCloudControlClient(
+        {
+            (S3, "b1"): {
+                "BucketName": "b1",
+                "Tags": [{"Key": "assayops:address", "Value": "primary"}],
+            }
+        }
+    )
+
+    deployed = normalize(DeployedStateReader(client).read_type(S3))
+
+    assert deployed.provenance is Provenance.DEPLOYED_READ
 
 
 def test_the_reader_performs_read_operations_only() -> None:

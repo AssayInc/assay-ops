@@ -10,7 +10,7 @@ the golden lacks -> reward 0 / fail closed, NEVER reward 1.
 from __future__ import annotations
 
 import pytest
-from assayops_adapter_terraform import UnreadableResourceError
+from assayops_adapter_terraform import UnreadableResourceError, UnsupportedResourceTypeError
 from assayops_contracts import Reward
 from assayops_replay import Quarantined, Reproducible
 from cloud_control_fakes import FakeCloudControlClient
@@ -155,3 +155,33 @@ def test_grade_is_reproducible_across_k_runs() -> None:
     assert isinstance(verdict, Reproducible)
     assert verdict.runs == 5
     assert verdict.reward is Reward.number_1
+
+
+def test_a_missing_resource_grades_reward_0() -> None:
+    # The agent deployed nothing; the closed-world read enumerates an empty account -> the golden's
+    # resource is `removed` -> a settled, reproduced reward 0 (not a coverage gap).
+    verdict = _verify(FakeCloudControlClient())
+
+    assert isinstance(verdict, Reproducible)
+    assert verdict.reward is Reward.number_0
+
+
+def test_an_unsupported_resource_type_fails_closed() -> None:
+    # A deployed in-scope resource whose type has no adapter bridge fails closed (never rewarded):
+    # the closed-world read enumerates it, then normalize raises UnsupportedResourceTypeError.
+    client = FakeCloudControlClient({("AWS::SQS::Queue", "q1"): {"QueueName": "q1"}})
+    scope = ReadScope(
+        coverages=(
+            TypeCoverage("AWS::SQS::Queue", RegionScope.REGIONAL, Listability.DIRECTLY_LISTABLE),
+        ),
+        allowed_regions=("us-east-1",),
+    )
+
+    with pytest.raises(UnsupportedResourceTypeError):
+        verify(
+            {"us-east-1": DeployedStateReader(client)},
+            _registry(),
+            make_task(seed=SEED),
+            SEED,
+            scope,
+        )

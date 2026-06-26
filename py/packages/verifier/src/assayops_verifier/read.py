@@ -31,24 +31,15 @@ reward-record / ledger handoff is #32. Terraform is graded via Cloud Control onl
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 
-from assayops_adapter_terraform import (
-    BridgeRegistry,
-    DeployedResourceRead,
-    UnreadableResource,
-    normalize,
-)
+from assayops_adapter_terraform import DeployedResourceRead, UnreadableResource
 from assayops_adapter_terraform.models import DeployedRead  # union alias (not re-exported)
-from assayops_contracts import TaskSpec
-from assayops_diff_ir import GradeOutcome
 from assayops_replay import TransientGradeError, TransientKind, transient_kind
 from botocore.client import BaseClient
 from botocore.exceptions import BotoCoreError, ClientError
 
-from assayops_verifier.golden import GoldenRegistry
-from assayops_verifier.grading import grade_deployment
 from assayops_verifier.read_scope import Listability, ReadScope
 
 
@@ -189,30 +180,6 @@ def read_closed_world(
                 )
             reads.extend(reader.read_type(coverage.type_name))
     return reads
-
-
-def verify_deployment(
-    reader: DeployedStateReader,
-    registry: GoldenRegistry,
-    task: TaskSpec,
-    seed: str,
-    type_names: Iterable[str],
-    bridge_registry: BridgeRegistry | None = None,
-) -> GradeOutcome:
-    """Read deployed state, normalize it, and grade it against the regenerated golden.
-
-    The verifier skeleton's end-to-end path (DECISIONS.md section 1, T1): boto3 Cloud Control read
-    (#30) -> ``normalize`` to the DEPLOYED_READ IR (#35) -> ``grade_deployment`` regenerates the
-    golden from (task, seed) and grades it (#31) -> reward in {0, 1}. ``type_names`` is the
-    in-scope set to read in this reader's single Region. Fails closed (never a silent reward) on an
-    unreadable or unsupported deployed resource (vector #15).
-
-    This is the single-Region #30 path. The sound closed-world entry -- exhaustive type x Region
-    enumeration + the 7A K-run + the per-property gate -- is ``assayops_verifier.verify.verify``.
-    """
-    reads = [read for type_name in type_names for read in reader.read_type(type_name)]
-    deployed = normalize(reads, bridge_registry)
-    return grade_deployment(registry, task, seed, deployed)
 
 
 def _failure_reason(error: BaseException) -> str:
