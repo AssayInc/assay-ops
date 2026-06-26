@@ -48,8 +48,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   genuinely-unbuilt slice — the **§6 eval-rigor determinism gate over the real corpus inside the Inspect-AI
   `Scorer`** — needs the **E13 harness (#14, Phase 2→3)** + the **#45 quarantine policy** (7A/T8), neither
   built; so **#46** (was `E6-3`/Phase-1/lane:A) is **re-scoped → E13 / Phase 2/3 / lane:D, blocked by #14 +
-  #45** — not Phase-1-ready. E6 (#7) retains **#44** (deterministic replay) + **#45** (transient/genuine
-  classifier + quarantine).
+  #45** — not Phase-1-ready. **#45 (transient/genuine classifier + K-run reproduce + quarantine) landed**
+  (PR #159, `py/packages/replay`); E6 (#7) retains **#44** (deterministic replay).
 
 ## Recently Landed
 
@@ -117,6 +117,43 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   dropped). Adds `boto3>=1.40` to the verifier (the read SDK; account-B-pure, no write/sign deps) + the
   `adapter-terraform` workspace dep (Turbo cache edge). `bun run verify` green **26/26** (74 verifier tests);
   both lockfiles frozen-checked. (PR #160.)
+
+- **E6-2 (#45): transient/genuine classifier + K-run reproduce + quarantine — the 7A determinism gate
+  (locked 7A/T8).** New **`py/packages/replay`** (`assayops_replay`) — the E6/T8 home (ARCHITECTURE.md),
+  shared with E6-1/#44 (replay); the verifier-determinism eval-gate **#46** (re-scoped to E13/Phase 2-3)
+  consumes this policy. Scoped here to ONLY #45's classifier + harness.
+  **`classify(exc) -> FailureClass`** + **`is_transient_aws_error_code`**: the 7A transient policy —
+  **transiently unreadable** (throttle / 5xx / read-after-create eventual consistency) is TRANSIENT (retry
+  within the small read budget, then FAIL-CLOSED). A throttle is NOT a wrong answer — scoring it 0 is a
+  false-negative (deterministic-verification skill; #141 scope 1 routes a surfaced throttle through the 7A
+  classifier + K-run). **Policy vs mechanism:** boto3 adaptive owns the SDK throttle/5xx RETRY; #45 owns the
+  POLICY + the K-run gate #141 routes a surfaced transient into. AccessDenied (isolation alarm, never masked)
+  / Validation / bug = GENUINE. **`reproduce(grade_fn, *, runs, ...) -> Reproducible | Quarantined`**: drives
+  an injected grade callable K times, absorbs transients via a bounded backed-off retry (deterministic, NO
+  jitter — single grader + determinism-critical; injectable `sleep`), and **quarantines** a non-reproducing
+  (flaky) task — `Quarantined` carries **no reward attribute** (type-enforced "never silently rewarded",
+  vector #15); a genuine failure / exhausted transient budget fails closed (raises). `Reproducible` carries
+  the verified `GradeOutcome` so the ledger signs what the gate certified. **Generic over the grade callable**
+  → depends on diff-ir + contracts only (NOT verifier), so #141's read path reuses the classifier cycle-free.
+  **K is a parameter** (default 3) — DECISIONS.md leaves it unlocked (flagged, not silently locked). **TDD
+  (RED→GREEN, 32 tests):** classifier policy — transient by error code, HTTP status (5xx), AND
+  connection/timeout exception class (matching botocore's standard-retry checkers), eventual
+  consistency; AccessDenied/
+  Validation/bug genuine; marker + ClientError-shaped + malformed paths) + the AC (an **injected
+  nondeterministic task** → quarantined, no reward) + same-reward/different-diff quarantine + transient-
+  absorbed → reproducible + fail-closed paths + verdict determinism. Grounded: DECISIONS.md §1/7A + brain +
+  deterministic-verification / write-isolated-verifier / python-resilience / error-handling / type-safety
+  skills + **#141's scope (read myself, not via a stale subagent summary)**. **A primary-source re-read (the
+  skill + #141 scope 1) caught + reverted an over-narrowing that had wrongly made a surfaced throttle GENUINE
+  — a false-negative reward; throttle is a transient.** `TransientBudgetExhausted` carries a
+  `TransientKind` so #141 maps a settled-absent NotFound → reward 0 vs a sustained throttle →
+  quarantine (never a boundary false-negative). A final xhigh pass caught a second false-negative —
+  a 5xx with an unrecognized code (transient by HTTP status in botocore) was scored genuine — now
+  classified by code, HTTP status (500/502/503/504), **and** connection/timeout exception class —
+  matching botocore's standard-retry checkers; the one un-mirrorable case (service-*modeled*-retryable)
+  is documented as marker-authoritative (#141 uses boto3's own classification).
+  `bun run verify` green **29/29** (32 replay tests);
+  both lockfiles frozen-checked. (PR #159.)
 
 - **#60 (spike): IAM eventual consistency — resolved (measured against real AWS).** A bounded engineer probe
   (**not committed** — a spike's output is the recorded decision, not a package; the script is preserved in the

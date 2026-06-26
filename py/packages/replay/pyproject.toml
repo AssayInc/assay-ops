@@ -1,0 +1,66 @@
+[project]
+name = "assayops-replay"
+version = "0.0.0"
+# DECISIONS.md 7A / T8 (epic E6): the verifier determinism policy. The transient/genuine failure classifier
+# + K-run reproduce + quarantine of flaky tasks — drive a grade callable K times, absorb a
+# transiently-unreadable read (throttle / eventual consistency), then quarantine a non-reproducing task so
+# it is NEVER silently rewarded (vector #15; a flaky reward poisons training). Generic over an injected grade
+# callable, so it does NOT import the verifier — a later verifier→replay edge (#141's read path reusing this
+# classifier) stays cycle-free.
+description = "AssayOps determinism harness (DECISIONS.md 7A/T8): transient/genuine classifier + K-run reproduce + quarantine of flaky tasks, so a non-reproducing reward is never silently shipped."
+requires-python = ">=3.12"
+# No runtime deps of its own. The two sibling cores it consumes are resolved by source path (the repo's
+# virtual-member convention — see the pytest `pythonpath` + mypy `mypy_path` below): the shared reward core
+# `assayops_diff_ir` (E3-1/#34 — `GradeOutcome`) and the contract spine `assayops_contracts` (`Reward` + the
+# single-sourced JCS canonicalization used to compare diff reports by canonical bytes). pydantic/rfc8785
+# (their deps) are already in the shared workspace venv. Account-B-pure determinism policy: no
+# agent-reachable / signing / cloud deps (DECISIONS.md §8).
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) and use loose/`Any`-typed grade-callable fixtures (ANN). S/ANN stay active in src (the
+# typed, trust-boundary determinism core).
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Resolve this package AND the two siblings it consumes: the contracts spine (`Reward` + `jcs.canonicalize`)
+# and the diff-ir reward core (`GradeOutcome`). `uv run mypy` runs from the package dir, so the sibling
+# sources are `../contracts/src` and `../diff-ir/src`. Consumed by source path (the virtual-member
+# convention), keeping the landed packages untouched. No pydantic.mypy plugin: this package defines no
+# Pydantic models (frozen dataclasses + enums only); the sibling models are followed silently below.
+mypy_path = "src:../contracts/src:../diff-ir/src"
+
+[[tool.mypy.overrides]]
+# Ban explicit `Any` in the hand-written determinism core — the Python mirror of the TS lane's `any` ban.
+# `--strict` does NOT enable this. Use `object` (narrow before use, like TS `unknown`).
+module = ["assayops_replay.*"]
+disallow_any_explicit = true
+
+[[tool.mypy.overrides]]
+# contracts is a separately-typechecked package (its own CI lane). Follow it for the real `Reward` /
+# `canonicalize` types, but `silent` so its codegen models' intentional `Any` is not re-judged here.
+module = ["assayops_contracts.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
+# diff-ir is likewise separately typechecked under its own strict lane. Follow it for the real `GradeOutcome`
+# / `DiffIR` types, but `silent` so its internals (and the contracts `Any` it transitively follows) aren't
+# re-judged here. Its public surface is `Any`-free, so this only avoids double-judging, never hides an `Any`.
+module = ["assayops_diff_ir.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../contracts/src", "../diff-ir/src"]
+testpaths = ["tests"]
