@@ -10,7 +10,7 @@ the golden lacks -> reward 0 / fail closed, NEVER reward 1.
 from __future__ import annotations
 
 import pytest
-from assayops_adapter_terraform import UnreadableResourceError, UnsupportedResourceTypeError
+from assayops_adapter_terraform import UnsupportedResourceTypeError
 from assayops_contracts import Reward
 from assayops_replay import Quarantined, Reproducible
 from cloud_control_fakes import FakeCloudControlClient
@@ -98,12 +98,32 @@ def test_an_extra_enumerated_resource_grades_reward_0() -> None:
     assert verdict.reward is Reward.number_0
 
 
-def test_a_genuinely_unreadable_resource_fails_closed() -> None:
-    # AccessDenied is genuine -> propagates (fail closed), never reward 1 nor a silent 0.
+def test_a_genuinely_unreadable_resource_grades_reward_0() -> None:
+    # Floor (DECISIONS.md s1): an instance genuinely unreadable, type supported => reward 0.
+    # AccessDenied is genuine; the agent must NOT dodge a deserved 0 by denying the read-role (a
+    # same-account resource-policy explicit-Deny -> AccessDenied). -> FailedClosed(reward 0), cause
+    # in the reason (surfaced out-of-band, NOT masked). [2-review decision: A]
     client = FakeCloudControlClient(access_denied={(S3, PHYSICAL_ID)})
 
-    with pytest.raises(UnreadableResourceError):
-        _verify(client)
+    verdict = _verify(client)
+
+    assert isinstance(verdict, FailedClosed)
+    assert verdict.reward is Reward.number_0
+    assert "AccessDenied" in verdict.reason
+
+
+def test_a_malformed_address_tag_grades_reward_0() -> None:
+    # The assayops:address tag lives in the agent's IaC (agent-controlled deployed data). A missing/
+    # malformed/duplicate tag is an un-gradable deploy -> FailedClosed(reward 0), never a quarantine
+    # dodge (the agent must not escape a deserved 0 by dropping its tag). [2-review: A + extension]
+    bucket = _golden_bucket()
+    untagged = {**bucket.properties, "Arn": f"arn:aws:s3:::{PHYSICAL_ID}"}  # no address tag
+    client = FakeCloudControlClient({(S3, PHYSICAL_ID): untagged})
+
+    verdict = _verify(client)
+
+    assert isinstance(verdict, FailedClosed)
+    assert verdict.reward is Reward.number_0
 
 
 def test_a_persistent_eventual_consistency_race_fails_closed_reward_0() -> None:
