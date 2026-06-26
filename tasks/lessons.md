@@ -13,7 +13,21 @@ Entry format:
 - **Context:** files/commands involved (optional)
 ```
 
+**Quality bar.** One idea per lesson — if the Rule needs an *and*, split it. The Rule is a *generalizable*
+instruction for next time, not a recap of this run. Context is terse refs (issues/PRs/files), not an
+outcome narration. Don't duplicate — sharpen the existing lesson instead. The slug should read as the
+compressed rule.
+
 ---
+
+## 2026-06-26 — review-the-diff-itself-not-just-the-validated-claim
+- **Mistake:** Opened AssayInc/skills#10 (the #165 fix) after two reviewers CONFIRMED the *claim* — but
+  neither had seen my edits; the PR's "read under account-B credentials" wording was ambiguous about which
+  creds sign the cross-account read (the assumed account-A creds, not B's). Validating the claim ≠ reviewing
+  the implementation.
+- **Rule:** Adversarial review must see the actual **diff**, not just the underlying claim/facts — a correct
+  claim can ship with wording that re-seeds the bug.
+- **Context:** #165 / AssayInc/skills#10.
 
 ## 2026-06-25 — verify-a-trust-mechanisms-exact-semantics-in-the-conceptual-docs
 - **Mistake:** #160 used Cloud Control `RoleArn` as the B→A cross-account read hook, but `RoleArn` is a
@@ -23,7 +37,8 @@ Entry format:
 - **Rule:** Verify a security/trust mechanism's EXACT semantics against the primary CONCEPTUAL docs (the
   service user guide), not a one-line API-param ref or a brain/skill framing. For moat code, run diverse-lens
   review (forge + crash + design), not just correctness, BEFORE merge.
-- **Context:** #160 → #163. The skill/brain carry the same wrong claim — fix at the source.
+- **Context:** #160 → #163. The skill/brain carried the same wrong claim — fixed at the source in #165
+  (AssayInc/skills#10 + brain pages; re-vendored).
 
 ## 2026-06-25 — re-read-the-target-issues-own-comments-before-finalizing
 - **Mistake:** Built #30 from the body alone — my initial `gh issue view 30 --json comments` returned `[]`, but

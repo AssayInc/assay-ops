@@ -98,9 +98,13 @@ caveats in **`references/grading-primitives.md`**):
 **Grade against the expected manifest and fail closed:** reward 1 requires every *expected* resource
 to be present and **provably correct** — anything `NOT_CHECKED`, omitted, unsupported, or not readable
 via Cloud Control is **non-passing** until covered by a per-resource `GetResource` assertion. Silent
-coverage gaps are a read-side spoofing surface (deploy nothing checkable, score 1). Read under the
-**verifier's own credentials**; Cloud Control's `RoleArn` assumes a dedicated **read-only role**
-across the boundary. Reward 1 = **zero normalized diff** between the read-back state and the
+coverage gaps are a read-side spoofing surface (deploy nothing checkable, score 1). Read from the verifier's
+**account-B identity**, but reach account A's deployed state by using those B credentials to
+**STS `AssumeRole` into a pre-provisioned read-only role in A** (a grant from A — no A→B trust)
+and **signing the Cloud Control reads with the returned account-A temporary credentials**. The
+target account is whichever credentials **sign** the request — not Cloud Control's `RoleArn`, a
+same-account CloudFormation service role (assumed by `cloudformation.amazonaws.com`) that only
+scopes the operation's permissions. Reward 1 = **zero normalized diff** between the read-back state and the
 regenerated golden (decision 2A). Per-tool adapters normalize into **one diff IR**
 feeding a **shared reward core** (decision 6A) — keep tool-specific quirks in the adapter, never in
 the core.
@@ -125,7 +129,7 @@ the brain's threat model (`[[concepts/reward-hacking]]`, `[[projects/assay/eng-a
 | "Just `cdk synth` the agent's app and diff the templates." | Runs agent-authored code in the grader — the CDK-synth-escape vector. | Deploy A-side; read deployed state in B. |
 | "Grade the agent's `terraform plan` output." | A hostile provider plugin runs with the grader's trust — the Terraform provider-plugin vector. | Read live state / CFN drift, not the plan. |
 | "Store reward in a DynamoDB row we can update on rerun." | Mutable reward defeats the WORM ledger — the reward-record forgery/overwrite vector. | Conditional write-once + Object Lock; new trajectory_id, never overwrite. |
-| "Let the verifier assume a role *into account A* to fetch context." | Creates an A↔B path; inverts the boundary — the cross-account-assume-role vector. | B reads deployed state cross-account read-only; nothing in B trusts A. |
+| "Let the verifier **trust data fed from account A** — agent-reported context, resource IDs, or a role the agent can influence — to 'simplify' the read." | An A-controlled input in the grade path is read-side spoofing; and the cross-account-assume-role vector is the **A→B** direction (the agent reaching into B), which inverts the boundary. | B **`AssumeRole`s a pre-provisioned, agent-immutable read-only role _in A_** (its trust policy pins the account-B verifier; the agent can't modify or select it) and reads deployed **state** itself, scoped to **B-side episode identity** — a sanctioned **B→A read-only** assume; nothing in B trusts A. |
 | "Give the env-server / orchestrator the signing key for convenience." | Anything A-reachable holding `kms:Sign` can forge grades — the reward-forgery vector. | Signing key lives in B only; agent role has no `kms:Sign`. |
 | "Trust the agent's reported drift/state to save an API call." | Read-side spoofing — the moat-defeating read-path vector. | Read ground truth yourself; regenerate the golden independently. |
 | "Smoke-test the deploy by invoking the agent's Lambda / calling its API / running its ECS task / reading its status report." | Executes or trusts agent-controlled behavior in the grading path — same hole as synth/plan, just at runtime. | Assert on read-only deployed **state**; never invoke agent-deployed behavior or trust an agent-generated report. |

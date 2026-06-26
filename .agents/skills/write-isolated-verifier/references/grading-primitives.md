@@ -29,8 +29,11 @@ the agent can exploit).
   not the resource was provisioned using Cloud Control API" — it reads reality, not a tool's intent.
 - **`ListResources(TypeName)`** → enumerate all resources of a type in the account/Region (paginate
   via `NextToken`). Discovery: count them, confirm none left behind or over-provisioned.
-- **`RoleArn`** (optional) → the grader assumes a dedicated **read-only IAM role** in the target
-  trust domain — the concrete hook for cross-account read-only state reads.
+- **`RoleArn`** (optional) → a *same-account* CloudFormation **service role (assumed by
+  `cloudformation.amazonaws.com`) to perform the operation** (absent one, it uses the caller's credentials); it scopes downstream permissions,
+  **not** the account read. **Cross-account** read-only reads use **STS `AssumeRole` into a read-only
+  role in the target account** → temp creds → sign the call; the **target account is set by the
+  signing credentials**.
 
 ### 2. CloudFormation `DescribeStackResources` — stack manifest
 
