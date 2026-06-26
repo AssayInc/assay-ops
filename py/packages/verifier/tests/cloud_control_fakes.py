@@ -67,12 +67,8 @@ class FakeCloudControlClient:
     def invoked_operations(self) -> set[str]:
         return {operation for operation, _ in self.invoked}
 
-    def get_resource(
-        self, *, TypeName: str, Identifier: str, RoleArn: str | None = None
-    ) -> dict[str, object]:  # noqa: N803
-        self.invoked.append(
-            ("get_resource", {"TypeName": TypeName, "Identifier": Identifier, "RoleArn": RoleArn})
-        )
+    def get_resource(self, *, TypeName: str, Identifier: str) -> dict[str, object]:  # noqa: N803
+        self.invoked.append(("get_resource", {"TypeName": TypeName, "Identifier": Identifier}))
         key = (TypeName, Identifier)
         if key in self._unreadable:
             raise _error(ClientError, "ThrottlingException", "GetResource")
@@ -100,10 +96,8 @@ class FakeCloudControlClient:
             raise AssertionError(f"only list_resources is paginated, got {operation_name!r}")
         return _FakePaginator(self)
 
-    def _list_resources_pages(
-        self, *, TypeName: str, RoleArn: str | None = None
-    ) -> Iterator[dict[str, object]]:  # noqa: N803
-        self.invoked.append(("list_resources", {"TypeName": TypeName, "RoleArn": RoleArn}))
+    def _list_resources_pages(self, *, TypeName: str) -> Iterator[dict[str, object]]:  # noqa: N803
+        self.invoked.append(("list_resources", {"TypeName": TypeName}))
         listable = (
             set(self._resources)
             | self._unreadable
@@ -142,5 +136,5 @@ class _FakePaginator:
     def __init__(self, client: FakeCloudControlClient) -> None:
         self._client = client
 
-    def paginate(self, *, TypeName: str, RoleArn: str | None = None) -> Iterator[dict[str, object]]:  # noqa: N803
-        yield from self._client._list_resources_pages(TypeName=TypeName, RoleArn=RoleArn)
+    def paginate(self, *, TypeName: str) -> Iterator[dict[str, object]]:  # noqa: N803
+        yield from self._client._list_resources_pages(TypeName=TypeName)

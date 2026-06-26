@@ -53,6 +53,23 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **E2-1 follow-up (#163): corrected the cross-account read mechanism + hardened the read path.** A
+  post-merge diverse-lens review of #160 (security-forge + edge-case + design/SOTA, across Codex `gpt-5.5`
+  xhigh + Claude) found three defects; the moat holds (no reward-forge). **(1) Trust-claim fix:** #160 used
+  Cloud Control's `RoleArn` as the B→A cross-account read hook (vector #10) — but verified against the AWS
+  Cloud Control user guide, `RoleArn` is a **same-account** CloudFormation service role; the target account
+  is set by the **signing credentials**, and a cross-account read is **STS `AssumeRole` → account-A creds →
+  client**. Removed the `role_arn` hook + corrected the docstrings — the cross-account role assumption is
+  **#33/E8**, restoring DECISIONS §1 (#160 silently deviated). **(2) `RecursionError` DoS:** `_properties_of`
+  caught only `ValueError`, but `json.loads` raises `RecursionError` on deeply-nested JSON → the read crashed
+  raw instead of failing closed; now `except (ValueError, RecursionError)`. **(3) Empty-page false-crash:** an
+  absent `ResourceDescriptions` is the AWS empty-result shape (omittable array; `infra-local` assumes the
+  same) → treated as empty (refining #160's fail-closed-on-missing-key, which false-crashed the empty
+  account); a present-non-list still fails closed; truncation stays #141. **Root cause flagged:** the
+  `write-isolated-verifier` skill + its brain source carry the same wrong `RoleArn` claim — to correct at
+  AssayInc/skills + the brain. TDD RED→GREEN; `bun run verify` green **26/26** (75 verifier tests). Codex
+  `gpt-5.5` xhigh re-reviewed to convergence. (PR #164.)
+
 - **E2-1 (#30): verifier skeleton — the account-B Cloud Control deployed-state read → grade path (T1/1C/§1).**
   New **`py/packages/verifier/read.py`**: **`DeployedStateReader`** wraps an **injected** boto3 Cloud Control
   client and reads DEPLOYED state read-only (`get_resource`/`list_resources`) into the adapter's
@@ -64,18 +81,18 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   agent-reported state. **Fail-closed per record** (vector #15): `ResourceNotFoundException` = absent (a drift),
   any other `ClientError`/`BotoCoreError` or unparseable/malformed read = `UnreadableResource` → the adapter's
   `UnreadableResourceError` (never a silent reward); a listed-then-absent resource fails closed too (never
-  dropped). Optional `role_arn` = the documented **B→A read-only** Cloud Control `RoleArn` hook (never A→B).
+  dropped).
   **Grounding reconciliation (stale AI-written issue):** the body's `ts/packages/verifier` is **Python**
   (`py/packages/verifier`, E17); the `+ CloudFormation drift` is the **CDK path (#66)** — **Terraform = Cloud
-  Control only** (#80, DECISIONS §1; #35 already dropped it). boto3 `get_resource`/`list_resources` shapes +
-  the `RoleArn` param **primary-doc-verified**; anchored to `infra-local`'s LocalStack proof of the exact read
+  Control only** (#80, DECISIONS §1; #35 already dropped it). boto3 `get_resource`/`list_resources` shapes
+  **primary-doc-verified**; anchored to `infra-local`'s LocalStack proof of the exact read
   APIs (no duplicate #30 smoke). **Scope deferred** (flagged, not built): the closed-world `deployed set ≡
   golden set` enumeration + per-property coverage gate + 7A transient/genuine classifier → **#141**; the
   cross-account read-only role + IAM/SCP → **#141/#53/E8**; CFN drift → **#66**; the reward-record/ledger
   (KMS-sign + WORM) handoff → **#32**; the 15-vector red-team fixtures → **#56**. **Layering:** `read.py` is
   kept **out of the package top-level `__init__`** (boto3-dependent), so golden/grade stay cloud-free (the
   determinism subprocess needs no boto3). **TDD (RED→GREEN, +39 tests → 74 verifier total):** parsing, the
-  absent/unreadable/malformed fail-closed classification, paginated discovery, `role_arn` threading, the
+  absent/unreadable/malformed fail-closed classification, paginated discovery, the
   read-only moat, and the AC integration (clean→1, property-drift→0, missing→0, unreadable→fail-closed,
   unsupported-type→fail-closed) end-to-end through the **real** `normalize` + `grade_deployment`. **Cross-model
   `/review` converged to SHIP** — Claude `code-reviewer` (moat negative-control-verified: a planted write op
