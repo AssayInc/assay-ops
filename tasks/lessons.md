@@ -20,6 +20,20 @@ compressed rule.
 
 ---
 
+## 2026-06-26 — dont-test-the-trust-boundary-in-moto-localstack-its-theater
+- **Mistake:** A fork-analysis synthesis proposed a "moto-backed test asserting account-A is DENIED
+  `s3:GetObject` on the held-out prefix" for #76. That denial is a cross-account SCP + bucket-policy property,
+  but moto's `organizations.attach_policy` is a no-op stub (no SCP enforcement) and moto IAM is
+  same-account-identity-only — so the test passes without proving the isolation: trust-theater.
+- **Rule:** The moat's cross-account isolation — the account-A/B boundary, held-out/gold ACLs, vectors #10
+  (A→B) / #14 (eval-leakage) — **cannot be tested in moto/LocalStack**, which model neither SCPs nor the
+  AWS-Organizations / cross-account boundary. Grade these against **real-AWS** enforcement, or split them out
+  as **substrate-gated** and defer; never assert a cross-account DENY in the emulator. (The emulator stays
+  valid for the verifier's same-account read path.)
+- **Context:** #76 (E13-2). Distinct from
+  [[ground-external-api-contracts-against-primary-docs-when-the-emulator-fakes-them]] (verify-the-contract) —
+  this is *don't-write-the-isolation-test*; pairs with [[held-out-data-residency-includes-derived-uses]].
+
 ## 2026-06-26 — ground-an-issues-relationships-and-sibling-comments-not-just-its-own
 - **Mistake:** Grounding #44 I reported "0 comments, no blockers" from `gh issue view --comments` + a
   comments-only graphql — but #44 had a `blocked_by` (#25) and a cross-ref (#159) in its **timeline**, and the
