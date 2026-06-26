@@ -64,28 +64,21 @@ compressed rule.
   [[spike-output-is-a-decision-not-a-committed-package]].
 
 ## 2026-06-25 — classify-by-the-determinism-policy-not-a-library-retry-mechanism
-- **Mistake:** Building #45 (the 7A transient/genuine classifier) I first had throttle as a transient, then
-  during a botocore primary-source check **narrowed the set to eventual-consistency-only and made a surfaced
-  throttle GENUINE → fail-closed → reward 0** — reasoning "boto3 adaptive owns the throttle retry, so a
-  throttle past it is settled." That is the exact **false-negative reward** the `deterministic-verification`
-  skill names ("a `ThrottlingException` ... is not a wrong answer; scoring it 0 emits a false-negative"). I
-  conflated the retry **mechanism** (boto3 retries throttles) with the transient/genuine **policy** (a throttle
-  is *still* a transient — never scored 0). Both the Claude and Codex `xhigh` reviews **converged on the wrong
-  premise** and even "hardened" it (a throttle-is-genuine test); only the founder's "did you read the
-  comments + validate?" prompted a re-read of the **skill + #141 scope 1** ("throttle / eventual consistency /
-  read-after-create → route through the 7A classifier + K-run; never pass on a transient") that caught it.
-- **Rule:** Classify a transient/genuine signal by the **determinism policy** (is it "a wrong answer"?), not by
-  **which layer owns its retry**. A throttle / 5xx / un-propagated read is a **transient** (retry, never score
-  0 — a false-negative poisons training as badly as a false positive), *even though* boto3's adaptive retry
-  owns the SDK-level retry **mechanism**. Own the policy; let the library own the mechanism; never drop a signal
-  from "transient" because a lower layer retries it. And **a cross-model review converging is not validation** —
-  for a load-bearing correctness rule, ground it against the **skill + the consuming issue's scope** (primary
-  sources); reviews can bless a wrong premise.
-- **Context:** #45 / PR #159; `py/packages/replay/classifier.py`. Pairs with
-  [[ground-in-decisions-and-brain-not-the-ai-written-issue]] +
-  [[a-subagents-doc-citation-is-secondary-verify-the-primary-source-yourself]] — I had also taken the #46/#141
-  scope from a **subagent summary** that was stale (#46 was re-scoped E6-3→E13) and missed #141's throttle
-  framing; read the consuming/related issues' scope + comments **yourself**.
+- **Mistake:** Classified a surfaced AWS throttle as GENUINE → reward 0 because "boto3's adaptive retry already
+  owns throttle retries" — conflating the retry *mechanism* with the transient/genuine *policy*.
+- **Rule:** Decide transient-vs-genuine by the policy question — *is this a wrong answer?* — never by which
+  layer owns the retry. A throttle / 5xx / un-propagated read is a **transient** (scoring it 0 is a
+  false-negative reward, as poisonous to training as a false positive), even when a lower layer already retries
+  it. Own the policy; let the library own the mechanism.
+- **Context:** #45 / `py/packages/replay/classifier.py`; `deterministic-verification` skill + #141 scope 1.
+
+## 2026-06-25 — a-converged-cross-model-review-is-not-validation
+- **Mistake:** A false-negative-reward premise was accepted (and "hardened") by both the Claude and Codex
+  `xhigh` reviews; only a primary-source re-read caught it.
+- **Rule:** A converged cross-model review (Claude + Codex agreeing) is not validation of a load-bearing
+  correctness premise — reviews surface findings but inherit the assumptions handed to them. Validate the
+  premise against the primary source (skill / frozen floor / the consuming issue), not reviewer consensus.
+- **Context:** #45 / PR #159. Sharpens [[verify-against-official-docs-and-skills-before-acting]].
 
 ## 2026-06-25 — spike-output-is-a-decision-not-a-committed-package
 - **Mistake:** Resolving the #60 IAM-eventual-consistency spike, I committed the throwaway measurement probe as
