@@ -4,8 +4,8 @@
 ``grade_deployment`` (#31): a clean deploy grades reward 1, a drifted/missing one grades 0 -- all
 from state read independently of the agent (DECISIONS.md section 1, T1). A read that cannot be
 vouched for fails CLOSED (vector #15). The deployed state the read path produces is always
-DEPLOYED_READ provenance, so the grade can never be handed agent-reported state (vectors
-#1/#7/#10).
+DEPLOYED_READ provenance, so the grade can never be handed agent-reported state
+(vectors #1/#7/#10).
 
 The deployed resource a CORRECT deploy reads back is the golden's resources, carrying the
 ``assayops:address`` tag bridge (#35) and a server-computed readOnly ``Arn`` the adapter drops.

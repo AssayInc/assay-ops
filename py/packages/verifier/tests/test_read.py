@@ -9,8 +9,8 @@ section 1/8, T1; vectors #1 and #10).
 The #30 skeleton deferred the transient/genuine *classification* to #141: a throttle / 5xx /
 timeout is TRANSIENT (raised as ``TransientGradeError`` so the K-run re-attempts it, never scored 0
 on the spot -- the false-negative the deterministic-verification skill names); only a GENUINE
-failure (AccessDenied / validation / unparseable) fails closed to ``UnreadableResource``. So the
-#30 "throttle -> UnreadableResource" tests are updated here to the #141 routing.
+failure (AccessDenied / validation / unparseable) fails closed to ``UnreadableResource``. So the #30
+"throttle -> UnreadableResource" tests are updated here to the #141 routing.
 """
 
 from __future__ import annotations

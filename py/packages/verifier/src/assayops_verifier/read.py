@@ -11,12 +11,11 @@ injected Cloud Control client -- ground truth the agent cannot forge.
 The read surface is exactly Cloud Control ``get_resource`` + ``list_resources`` (IAM
 ``cloudformation:GetResource`` / ``cloudformation:ListResources``; #141 scopes least-privilege to
 these). The injected client's ``Config(retries=...)`` absorbs SDK-level throttles/5xx WITHIN a read
-(boto3 adaptive, never a hand-rolled loop). A failure that surfaces past that is **classified**
-(7A;
-# 141 scope 1): a transient (throttle / 5xx / timeout / list-get race) raises
-# ``TransientGradeError``
-so the K-run re-attempts it (never scored 0 on the spot -- the false-negative); a genuine failure
-fails CLOSED to ``UnreadableResource`` (the adapter then raises -- never a silent reward, #15).
+(boto3 adaptive, never a hand-rolled loop). A failure that surfaces past that is **classified** by
+the 7A policy (#141 scope 1): a transient (throttle / 5xx / timeout / list-get race) raises
+``TransientGradeError`` so the K-run re-attempts it (never scored 0 on the spot -- the
+false-negative); a genuine failure fails CLOSED to ``UnreadableResource`` (the adapter then
+raises -- never a silent reward, #15).
 
 This module owns the read path: the per-resource read (``read_resource``), the per-type enumeration
 in one Region (``read_type``), and the **closed-world** ``deployed set == golden set`` walk over
@@ -32,7 +31,7 @@ reward-record / ledger handoff is #32. Terraform is graded via Cloud Control onl
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from assayops_adapter_terraform import (
@@ -50,6 +49,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from assayops_verifier.golden import GoldenRegistry
 from assayops_verifier.grading import grade_deployment
+from assayops_verifier.read_scope import Listability, ReadScope
 
 
 @dataclass(frozen=True)
@@ -146,6 +146,49 @@ class DeployedStateReader:
                 )
             reads.append(read)
         return reads
+
+
+class ClosedWorldError(ValueError):
+    """Closed-world enumeration cannot be proven exhaustive -- fail closed, never a silent reward.
+
+    Raised for a structural gap the read path cannot fill: an in-scope type that cannot be
+    flat-enumerated (UNLISTABLE / CONTEXT_LISTABLE), or a required Region with no reader. Either
+    would leave a blind spot an extra resource could hide in (vector #15), so the episode fails
+    closed rather than grading against an incomplete deployed set. A GENUINE failure, not transient.
+    """
+
+
+def read_closed_world(
+    readers: Mapping[str, DeployedStateReader], scope: ReadScope
+) -> list[DeployedRead]:
+    """Enumerate the in-scope account EXHAUSTIVELY over the type x Region matrix (#141 scope 2).
+
+    The closed-world ``deployed set == golden set`` predicate (vector #15) is sound only over a
+    COMPLETE deployed set, so this reads every in-scope type in every Region its coverage allows
+    (REGIONAL -> all allowed Regions; GLOBAL -> the control Region), via that Region's reader, and
+    unions the results. A type that cannot be flat-enumerated (UNLISTABLE / CONTEXT_LISTABLE), or a
+    required Region with no reader, is a blind spot an extra could hide in -- so it FAILS CLOSED
+    (``ClosedWorldError``) rather than enumerate a partial account. A list / get transient surfaces
+    from ``read_type`` as ``TransientGradeError`` (the 7A K-run re-attempts it upstream); the reward
+    core flags any *enumerated* extra (an address in deployed not in golden) as a diff.
+    """
+    reads: list[DeployedRead] = []
+    for coverage in scope.coverages:
+        if coverage.listability is not Listability.DIRECTLY_LISTABLE:
+            raise ClosedWorldError(
+                f"in-scope type {coverage.type_name!r} is {coverage.listability.value} -- it "
+                "cannot be flat-enumerated, so closed-world cannot be proven; quarantine it (#15)"
+            )
+        for region in scope.regions_for(coverage):
+            reader = readers.get(region)
+            if reader is None:
+                raise ClosedWorldError(
+                    f"no reader for required Region {region!r} (type {coverage.type_name!r}): "
+                    "that Region cannot be enumerated, so an extra resource there could hide -- "
+                    "fail closed (#15)"
+                )
+            reads.extend(reader.read_type(coverage.type_name))
+    return reads
 
 
 def verify_deployment(
