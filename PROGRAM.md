@@ -49,7 +49,12 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `Scorer`** — needs the **E13 harness (#14, Phase 2→3)** + the **#45 quarantine policy** (7A/T8), neither
   built; so **#46** (was `E6-3`/Phase-1/lane:A) is **re-scoped → E13 / Phase 2/3 / lane:D, blocked by #14 +
   #45** — not Phase-1-ready. **#45 (transient/genuine classifier + K-run reproduce + quarantine) landed**
-  (PR #159, `py/packages/replay`); E6 (#7) retains **#44** (deterministic replay).
+  (PR #159, `py/packages/replay`). **#44 (E6-1, deterministic replay) reconciled → closed (not-planned):**
+  no distinct unblocked account-B slice — its AC splits into the determinism primitive (#45, done), the
+  verifier read+grade K-run consumer (**#141**, per the code's own earmark) + the corpus gate (#46/E13,
+  blocked on #14), the certified-reproducibility verdict (routed → **#141** production + **#32** enforcement),
+  and the *identical-end-state* snapshot-restore + delta-apply (**T9 → #47/E7**, blocked on T6/T7). E6 (#7)
+  stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
 
