@@ -1,11 +1,12 @@
 """E2-1 (#30): the account-B deployed-state read harness -- the verifier skeleton's read path.
 
 DECISIONS.md section 1/8, T1/1C. The write-isolated verifier runs in account B and reads DEPLOYED
-resource state read-only via Cloud Control (``get_resource`` / ``list_resources``), under its own
-account-B credentials -- optionally assuming a READ-ONLY role in account A via Cloud Control's
-``RoleArn`` (a B->A read, never an A->B trust path, vector #10). It NEVER runs the agent's
+resource state read-only via Cloud Control (``get_resource`` / ``list_resources``) through the
+injected client's credentials, which determine the target account. A B->A cross-account read obtains
+account-A credentials by STS ``AssumeRole`` into a READ-ONLY role in account A and builds the client
+with them (#33/E8) -- never an A->B path (vector #10). It NEVER runs the agent's
 ``terraform plan`` / ``cdk synth`` or reads a ``.tfstate`` / plan file (vectors #1/#4/#5): the only
-data source is the injected Cloud Control client -- ground truth the agent cannot forge.
+injected Cloud Control client -- ground truth the agent cannot forge.
 
 The read surface is exactly Cloud Control ``get_resource`` + ``list_resources`` (IAM
 ``cloudformation:GetResource`` / ``cloudformation:ListResources``; #141 scopes least-privilege to
@@ -16,8 +17,9 @@ handles it, never a hand-rolled loop -- DECISIONS.md 7A); a genuine read failure
 Scope: the read-and-grade skeleton. Deferred: the closed-world ``deployed set == golden set``
 enumeration (exhaustive / paginated / Region-aware, fail-closed on truncation), the per-property
 coverage gate, and the 7A transient/genuine classifier are #141; the cross-account read-only role
-and its SCP allow-list are #141/#53/E8; CloudFormation drift is the CDK path (#66); the
-reward-record / ledger handoff is #32. Terraform is graded via Cloud Control only (#80, section 1).
+assumption is #33 (its SCP allow-list #53, the E8 role infra #52); CloudFormation drift is the CDK
+path (#66); the reward-record / ledger handoff is #32. Terraform is graded via Cloud Control only
+(#80, section 1).
 """
 
 from __future__ import annotations
@@ -46,14 +48,13 @@ from assayops_verifier.grading import grade_deployment
 class DeployedStateReader:
     """A read-only wrapper over an account-B boto3 Cloud Control client.
 
-    Holds ZERO account-A credentials: ``client`` is the verifier's own account-B client. A
-    cross-account read passes ``role_arn`` (a READ-ONLY role in account A) to Cloud Control --
-    a B->A read, the only cross-account mechanism, never an A->B assume (vector #10). On LocalStack
-    or a single account, ``role_arn`` is ``None``.
+    The injected ``client`` carries the credentials that decide which account is read. For a single
+    account / LocalStack that is account-B's own; a B->A cross-account read uses account-A read-only
+    credentials obtained by STS ``AssumeRole`` into a read-only role in A (#33/E8) -- never an A->B
+    path (vector #10). The reader holds no credentials of its own.
     """
 
     client: BaseClient
-    role_arn: str | None = None
 
     def read_resource(
         self, type_name: str, identifier: str
@@ -67,9 +68,7 @@ class DeployedStateReader:
         -- is #141; boto3's ``Config(retries=...)`` retries the transient ones first.
         """
         try:
-            response: object = self.client.get_resource(
-                **self._read_kwargs(TypeName=type_name, Identifier=identifier)
-            )
+            response: object = self.client.get_resource(TypeName=type_name, Identifier=identifier)
         except self.client.exceptions.ResourceNotFoundException:
             return None
         except (ClientError, BotoCoreError) as error:
@@ -96,7 +95,7 @@ class DeployedStateReader:
         """
         paginator = self.client.get_paginator("list_resources")
         identifiers: list[str] = []
-        for page in paginator.paginate(**self._read_kwargs(TypeName=type_name)):
+        for page in paginator.paginate(TypeName=type_name):
             identifiers.extend(_identifiers_in_page(page))
         return identifiers
 
@@ -120,12 +119,6 @@ class DeployedStateReader:
                     )
                 reads.append(read)
         return reads
-
-    def _read_kwargs(self, **kwargs: str) -> dict[str, str]:
-        """Cloud Control read-call kwargs, adding the B->A read-only ``RoleArn`` when configured."""
-        if self.role_arn is not None:
-            kwargs["RoleArn"] = self.role_arn
-        return kwargs
 
 
 def verify_deployment(
@@ -177,7 +170,9 @@ def _properties_of(response: object) -> dict[str, object] | None:
         return None
     try:
         parsed: object = json.loads(raw)
-    except ValueError:
+    except (ValueError, RecursionError):
+        # RecursionError (NOT a ValueError) on deeply-nested JSON: fail closed, never crash the
+        # worker (a DoS / fail-closed-contract break). Mirrors the adapter's deep-nesting guard.
         return None
     if not isinstance(parsed, dict):
         return None
@@ -188,12 +183,15 @@ def _properties_of(response: object) -> dict[str, object] | None:
 def _identifiers_in_page(page: object) -> list[str]:
     """Narrow an untyped ``list_resources`` page to its identifiers (fail closed on a bad shape).
 
-    A page missing ``ResourceDescriptions`` fails CLOSED -- it is NOT defaulted to "no resources",
-    which would hide deployed resources (a fail-open read, vector #15).
+    An absent ``ResourceDescriptions`` is the AWS empty-result shape (the array may be omitted when
+    the type has no resources; ``infra-local`` assumes the same) -> ``[]``; failing closed on it
+    would false-crash the normal empty-account case. A present-but-non-list value fails CLOSED.
+    Failing closed on a TRUNCATED enumeration (a ``NextToken`` the paginator follows) is the
+    closed-world concern -> #141, not this per-page shape check.
     """
-    if not isinstance(page, dict) or "ResourceDescriptions" not in page:
+    if not isinstance(page, dict):
         raise ValueError(f"Cloud Control list_resources returned a malformed page: {page!r}")
-    descriptions = page["ResourceDescriptions"]
+    descriptions = page.get("ResourceDescriptions", [])
     if not isinstance(descriptions, list):
         raise ValueError(f"Cloud Control list_resources returned a malformed page: {page!r}")
     identifiers: list[str] = []

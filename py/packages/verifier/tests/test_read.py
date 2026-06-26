@@ -2,8 +2,8 @@
 
 Drives ``DeployedStateReader`` against a faithful, recording fake of the boto3 cloudcontrol client
 (``cloud_control_fakes``): GetResource parsing, the absent/unreadable fail-closed classification,
-paginated discovery, the ``role_arn`` B->A read-only hook, and -- the moat -- that the harness
-performs READ operations only (DECISIONS.md section 1/8, T1; vectors #1 and #10).
+paginated discovery, fail-closed narrowing, and -- the moat -- that the harness performs READ
+operations only (DECISIONS.md section 1/8, T1; vectors #1 and #10).
 """
 
 from __future__ import annotations
@@ -103,20 +103,6 @@ def test_read_types_carries_an_unreadable_resource_through_fail_closed() -> None
     )
 
 
-def test_role_arn_is_threaded_as_the_b_to_a_read_only_hook() -> None:
-    # Cross-account reads pass a READ-ONLY role ARN to Cloud Control (a B->A read; never an A->B
-    # assume, vector #10). With no role_arn (LocalStack / single account) none is sent.
-    role = "arn:aws:iam::111111111111:role/assayops-verifier-readonly"
-    client = FakeCloudControlClient({(S3, "b1"): {"BucketName": "b1"}})
-
-    DeployedStateReader(client, role_arn=role).read_types([S3])
-
-    get_calls = [kwargs for op, kwargs in client.invoked if op == "get_resource"]
-    list_calls = [kwargs for op, kwargs in client.invoked if op == "list_resources"]
-    assert all(call["RoleArn"] == role for call in get_calls)
-    assert all(call["RoleArn"] == role for call in list_calls)
-
-
 def test_the_reader_performs_read_operations_only() -> None:
     # The moat (DECISIONS.md section 1/8, T1): the verifier READS deployed state; it never writes,
     # mutates, or runs agent code -- so vector #1 (fs/state write to the grader) and vector #10
@@ -157,17 +143,31 @@ def test_read_types_surfaces_a_listed_then_absent_resource_as_unreadable() -> No
     ]
 
 
+def test_identifiers_in_page_treats_absent_resource_descriptions_as_empty() -> None:
+    # An absent ResourceDescriptions is the empty-result shape (the AWS array is omittable when
+    # empty; matches infra-local) -> []. Failing closed on it would false-crash the empty account.
+    assert _identifiers_in_page({"TypeName": S3}) == []
+
+
 def test_identifiers_in_page_fails_closed_on_a_malformed_page() -> None:
-    # A page missing ResourceDescriptions must fail closed, NOT default to empty -- a fail-open
-    # would hide deployed resources (vector #15). A non-list ResourceDescriptions also fails closed.
-    with pytest.raises(ValueError, match="malformed page"):
-        _identifiers_in_page({"TypeName": S3})
+    # A present-but-malformed shape fails closed; truncation (a NextToken) is the closed-world #141.
     with pytest.raises(ValueError, match="malformed page"):
         _identifiers_in_page({"ResourceDescriptions": "not-a-list"})
+    with pytest.raises(ValueError, match="malformed page"):
+        _identifiers_in_page("not-a-dict")
 
 
 def test_properties_of_fails_closed_on_valid_json_that_is_not_an_object() -> None:
     # Properties that parse as JSON but are not a JSON object are unusable -> fail closed (None).
     response = {"ResourceDescription": {"Identifier": "x", "Properties": "[1, 2, 3]"}}
+
+    assert _properties_of(response) is None
+
+
+def test_properties_of_fails_closed_on_deeply_nested_json() -> None:
+    # json.loads raises RecursionError (NOT ValueError) on deeply-nested JSON; the read path must
+    # fail closed (None -> UnreadableResource), never crash the worker (a DoS / fail-closed break).
+    deep = "[" * 100_000 + "]" * 100_000
+    response = {"ResourceDescription": {"Identifier": "x", "Properties": deep}}
 
     assert _properties_of(response) is None

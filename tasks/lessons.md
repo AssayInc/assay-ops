@@ -15,6 +15,16 @@ Entry format:
 
 ---
 
+## 2026-06-25 — verify-a-trust-mechanisms-exact-semantics-in-the-conceptual-docs
+- **Mistake:** #160 used Cloud Control `RoleArn` as the B→A cross-account read hook, but `RoleArn` is a
+  SAME-account CFN service role (cross-account = STS `AssumeRole`; the target account is set by the signing
+  creds). I grounded it on the boto3 param-ref + the `write-isolated-verifier` skill/brain, not the AWS user
+  guide; two correctness reviews missed it — a 3rd design-lens review caught it post-merge (#163).
+- **Rule:** Verify a security/trust mechanism's EXACT semantics against the primary CONCEPTUAL docs (the
+  service user guide), not a one-line API-param ref or a brain/skill framing. For moat code, run diverse-lens
+  review (forge + crash + design), not just correctness, BEFORE merge.
+- **Context:** #160 → #163. The skill/brain carry the same wrong claim — fix at the source.
+
 ## 2026-06-25 — re-read-the-target-issues-own-comments-before-finalizing
 - **Mistake:** Built #30 from the body alone — my initial `gh issue view 30 --json comments` returned `[]`, but
   the founder posted a detailed pre-start grounding review *during* the session and I never re-checked.
