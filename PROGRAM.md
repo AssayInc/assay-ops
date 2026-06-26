@@ -64,8 +64,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   the recorded decision, the committed documented-to-fail suite is **#56**'s owner-gated job). **OPEN
   half — 15h closed-world/over-provisioning, 15i discovery-scoping, 15j per-property coverage:** reads
   alone can't see an extra resource of a type outside the verifier's `type_names` / an unscanned Region
-  (demonstrated — a forbidden out-of-scope `IAM::Role` forges a false in-sync), gated by **#53** (T7 SCP,
-  `assay-cloud-org`) + **#141** (verifier read-coverage) + **E8** (#33/#52, episode-scoped discovery).
+  (demonstrated — a forbidden out-of-scope `IAM::Role` forges a false in-sync). The moat-critical closure —
+  **#141** verifier-side closed-world enumeration (detection) — is **unblocked (next E2 slice; does not
+  depend on #53,** per the #141 scoping comment); **#53** (T7 SCP prevention, `assay-cloud-org`) + **E8**
+  (#33/#52) close the residual non-listable / out-of-scope-reachability / decoy sub-cases.
   **Per R1, vector 15 is OPEN → no reward/lift claim** until #56's suite is green. Concrete fixtures
   **promoted to #56** (comment) + **#56 wired blocked-by #53/#141**. **Diverse-lens review** (Claude
   forge-lens + Codex `gpt-5.5` xhigh, re-reviewed to convergence) caught + corrected a mis-classification
