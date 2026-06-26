@@ -13,16 +13,21 @@ Entry format:
 - **Context:** files/commands involved (optional)
 ```
 
+**Quality bar.** One idea per lesson — if the Rule needs an *and*, split it. The Rule is a *generalizable*
+instruction for next time, not a recap of this run. Context is terse refs (issues/PRs/files), not an
+outcome narration. Don't duplicate — sharpen the existing lesson instead. The slug should read as the
+compressed rule.
+
 ---
 
 ## 2026-06-26 — review-the-diff-itself-not-just-the-validated-claim
-- **Mistake:** Opened AssayInc/skills#10 (the #165 fix) after 2 reviewers CONFIRMED the *claim* — but neither
-  saw my actual edits; the PR text's "read under account-B credentials" was ambiguous about which creds sign
-  the cross-account read (account-A temp creds from `AssumeRole`, not B's).
-- **Rule:** Review the actual **diff/wording**, not just the underlying claim — a correct claim can ship with
-  text that re-seeds the bug. Ground load-bearing facts **firsthand** from primary docs (e.g. `/browse`), not
-  only via a delegated reviewer. review → fix → **re-review to convergence**.
-- **Context:** #165 / AssayInc/skills#10 (Codex `gpt-5.5` xhigh FIX→SHIP on re-review; Claude Opus 4.8 SHIP).
+- **Mistake:** Opened AssayInc/skills#10 (the #165 fix) after two reviewers CONFIRMED the *claim* — but
+  neither had seen my edits; the PR's "read under account-B credentials" wording was ambiguous about which
+  creds sign the cross-account read (the assumed account-A creds, not B's). Validating the claim ≠ reviewing
+  the implementation.
+- **Rule:** Adversarial review must see the actual **diff**, not just the underlying claim/facts — a correct
+  claim can ship with wording that re-seeds the bug.
+- **Context:** #165 / AssayInc/skills#10.
 
 ## 2026-06-25 — verify-a-trust-mechanisms-exact-semantics-in-the-conceptual-docs
 - **Mistake:** #160 used Cloud Control `RoleArn` as the B→A cross-account read hook, but `RoleArn` is a
