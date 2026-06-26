@@ -5,13 +5,15 @@ description = "AssayOps account-B verifier core. E2-5 (#75): the golden-target g
 requires-python = ">=3.12"
 # pydantic for the verifier-internal golden models; boto3 for the account-B Cloud Control read path
 # (E2-1/#30 — read-only `get_resource`/`list_resources`; the read SDK, never a cloud write / signing dep, so
-# the verifier stays account-B-pure, DECISIONS.md §1/§8). Three sibling cores are consumed by source path
+# the verifier stays account-B-pure, DECISIONS.md §1/§8). Four sibling cores are consumed by source path
 # (the repo's virtual-member convention — see the pytest `pythonpath` + mypy `mypy_path` below): the contract
 # spine `assayops_contracts` (TaskSpec input + the single-sourced JCS canonicalization for the content
 # address), the shared reward core `assayops_diff_ir` (E3-1/#34 — `grade` + the NormalizedState IR the golden
-# is bridged into for grading; E2-2/#31), and the Terraform adapter `assayops_adapter_terraform` (E3-2/#35 —
-# `normalize` turns the read harness's Cloud Control records into the DEPLOYED_READ IR). All, and their
-# rfc8785 dep, are already in the shared workspace venv.
+# is bridged into for grading; E2-2/#31), the Terraform adapter `assayops_adapter_terraform` (E3-2/#35 —
+# `normalize` turns the read harness's Cloud Control records into the DEPLOYED_READ IR), and the replay
+# determinism harness `assayops_replay` (E6-2/#45/#159 — the 7A transient/genuine classifier + K-run
+# `reproduce` the #141 read-coverage path routes a surfaced transient through). All, and their rfc8785 dep,
+# are already in the shared workspace venv.
 dependencies = ["pydantic>=2.10", "boto3>=1.40"]
 
 [tool.uv]
@@ -34,12 +36,14 @@ strict = true
 # the plugin's synthesized `Any`, so hand-written Pydantic models pass `disallow_any_explicit` — the
 # pydantic-v2 skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha.
 plugins = ["pydantic.mypy"]
-# Resolve this package AND the three siblings it consumes: the contracts spine (TaskSpec + jcs), the
-# diff-ir reward core (`grade` + NormalizedState), and the Terraform adapter (`normalize` — #30 reads, #35
-# normalizes). `uv run mypy` runs from the package dir, so the sibling sources are `../contracts/src`,
-# `../diff-ir/src`, and `../adapter-terraform/src`. Cross-package imports are consumed by source path here
-# (the repo's virtual-member convention), keeping the landed packages untouched.
-mypy_path = "src:../contracts/src:../diff-ir/src:../adapter-terraform/src"
+# Resolve this package AND the four siblings it consumes: the contracts spine (TaskSpec + jcs), the
+# diff-ir reward core (`grade` + NormalizedState), the Terraform adapter (`normalize` — #30 reads, #35
+# normalizes), and the replay determinism harness (`reproduce` / the 7A classifier / `TransientGradeError`
+# the #141 read path routes a surfaced transient through). `uv run mypy` runs from the package dir, so the
+# sibling sources are `../contracts/src`, `../diff-ir/src`, `../adapter-terraform/src`, and `../replay/src`.
+# Cross-package imports are consumed by source path here (the repo's virtual-member convention), keeping the
+# landed packages untouched.
+mypy_path = "src:../contracts/src:../diff-ir/src:../adapter-terraform/src:../replay/src"
 
 [tool.pydantic-mypy]
 init_typed = true
@@ -78,6 +82,16 @@ follow_imports = "silent"
 disallow_any_explicit = false
 
 [[tool.mypy.overrides]]
+# replay is separately-typechecked under its OWN strict + disallow_any_explicit lane. Follow it for the real
+# `reproduce` / `Reproducible` / `Quarantined` / `TransientBudgetExhausted` / `TransientGradeError` /
+# `transient_kind` types the #141 read path routes transients through, but `silent` so its internals aren't
+# re-judged here. Mirrors the diff-ir/adapter overrides; replay's public surface is `Any`-free, so this only
+# avoids double-judging, never hides an `Any`.
+module = ["assayops_replay.*"]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
 # boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The #30 read harness's
 # boundary is botocore's own `BaseClient` + `ClientError` (imported names, not a literal `Any`; `Any` at an
 # untyped-third-party boundary is idiomatic per python-type-safety — narrow the open responses to
@@ -86,5 +100,5 @@ module = ["boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "../contracts/src", "../diff-ir/src", "../adapter-terraform/src"]
+pythonpath = ["src", "../contracts/src", "../diff-ir/src", "../adapter-terraform/src", "../replay/src"]
 testpaths = ["tests"]
