@@ -51,6 +51,7 @@
         "@assayops/py-adapter-terraform": "workspace:*",
         "@assayops/py-contracts": "workspace:*",
         "@assayops/py-diff-ir": "workspace:*",
+        "@assayops/py-replay": "workspace:*",
       },
     },
     "ts/packages/biome-config": {

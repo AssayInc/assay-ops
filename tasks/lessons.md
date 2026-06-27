@@ -20,6 +20,19 @@ compressed rule.
 
 ---
 
+## 2026-06-26 — resolve-a-floor-touching-design-decision-with-two-grounded-reviews
+- **Mistake:** Surfaced a moat / frozen-floor-touching design decision (a genuine unreadable → reward 0
+  vs. raise) to the founder as a bare `AskUserQuestion` multiple-choice.
+- **Rule (founder directive):** Resolve a **moat / floor-touching DESIGN decision** with **two grounded
+  adversarial reviews** (Opus 4.8 max + Codex gpt-5.5 xhigh, each grounded in DECISIONS.md + brain +
+  official docs + skills) and synthesize — don't punt the choice to the user as a multiple-choice.
+  Present the *synthesized* recommendation (or a genuine tie), having validated the load-bearing
+  premises against the primary sources yourself.
+- **Context:** #141 / PR #172 — the genuine-unreadable→reward-0 call (both reviews → Recommendation A,
+  after confirming the agent reward-channel dodge against the AWS IAM docs). Sharpens
+  [[diverse-lens-review-for-moat-code-before-merge]] (applies to *decisions*, not just code review) +
+  [[a-converged-cross-model-review-is-not-validation]].
+
 ## 2026-06-26 — ground-an-issues-relationships-and-sibling-comments-not-just-its-own
 - **Mistake:** Grounding #44 I reported "0 comments, no blockers" from `gh issue view --comments` + a
   comments-only graphql — but #44 had a `blocked_by` (#25) and a cross-ref (#159) in its **timeline**, and the

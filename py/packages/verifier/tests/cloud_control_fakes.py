@@ -9,8 +9,8 @@ exceptions: a modeled ``ResourceNotFoundException`` for an absent resource, a th
 
 It records every operation invoked so a test can prove the read harness performs READ operations
 only -- the moat (DECISIONS.md section 1/8, T1): the verifier never writes, mutates, or runs agent
-code. Any operation not defined here is recorded and fails loudly, so a regression that adds a write
-or STS-assume call is caught.
+code. Any operation not defined here is recorded and fails loudly, so a regression that adds a
+write or STS-assume call is caught.
 """
 
 from __future__ import annotations
@@ -21,8 +21,9 @@ from collections.abc import Callable, Iterator
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 
-# botocore is untyped (ClientError is Any), so mypy cannot statically verify the subclass; this IS a
-# ClientError subclass at runtime, mirroring boto3's modeled cloudcontrol ResourceNotFoundException.
+# botocore is untyped (ClientError is Any), so mypy cannot statically verify the subclass; this IS
+# a ClientError subclass at runtime, mirroring boto3's modeled cloudcontrol
+# ResourceNotFoundException.
 class FakeResourceNotFoundException(ClientError):  # type: ignore[misc]
     """Mirror of boto3's modeled cloudcontrol ResourceNotFoundException (a ClientError subclass)."""
 
@@ -39,9 +40,13 @@ class FakeCloudControlClient:
     """A recording, read-only fake of the boto3 cloudcontrol client.
 
     ``resources`` maps ``(type_name, identifier)`` to a property dict (the parsed ``Properties``).
-    Other id sets are listable but fail on get: ``unreadable`` (throttling ``ClientError``),
-    ``network_error`` (``EndpointConnectionError``), ``malformed`` (non-JSON ``Properties``),
-    ``vanished`` (``ResourceNotFoundException`` -- a list/get race). ``page_size`` paginates.
+    Other id sets are listable but fail on get: ``unreadable`` (throttling ``ClientError`` -- a
+    TRANSIENT under #141), ``network_error`` (``EndpointConnectionError`` -- TRANSIENT),
+    ``access_denied`` (``AccessDeniedException`` -- a GENUINE failure, fail closed), ``malformed``
+    (non-JSON ``Properties`` -- genuine), ``vanished`` (``ResourceNotFoundException`` -- a list/get
+    race, EVENTUAL_CONSISTENCY). ``list_throttle`` / ``list_error`` (type-name sets) make
+    ``list_resources`` raise a throttling / genuine ``ClientError`` for that type. ``page_size``
+    paginates.
     """
 
     def __init__(
@@ -49,17 +54,23 @@ class FakeCloudControlClient:
         resources: dict[tuple[str, str], dict[str, object]] | None = None,
         *,
         unreadable: set[tuple[str, str]] | None = None,
+        access_denied: set[tuple[str, str]] | None = None,
         malformed: set[tuple[str, str]] | None = None,
         network_error: set[tuple[str, str]] | None = None,
         vanished: set[tuple[str, str]] | None = None,
+        list_throttle: set[str] | None = None,
+        list_error: set[str] | None = None,
         page_size: int | None = None,
     ) -> None:
         self.invoked: list[tuple[str, dict[str, object]]] = []
         self._resources = dict(resources or {})
         self._unreadable = set(unreadable or set())
+        self._access_denied = set(access_denied or set())
         self._malformed = set(malformed or set())
         self._network_error = set(network_error or set())
         self._vanished = set(vanished or set())
+        self._list_throttle = set(list_throttle or set())
+        self._list_error = set(list_error or set())
         self._page_size = page_size
         self.exceptions = _Exceptions
 
@@ -72,6 +83,8 @@ class FakeCloudControlClient:
         key = (TypeName, Identifier)
         if key in self._unreadable:
             raise _error(ClientError, "ThrottlingException", "GetResource")
+        if key in self._access_denied:
+            raise _error(ClientError, "AccessDeniedException", "GetResource")
         if key in self._network_error:
             raise EndpointConnectionError(endpoint_url="https://cloudcontrol.local")
         if key in self._malformed:
@@ -98,9 +111,14 @@ class FakeCloudControlClient:
 
     def _list_resources_pages(self, *, TypeName: str) -> Iterator[dict[str, object]]:  # noqa: N803
         self.invoked.append(("list_resources", {"TypeName": TypeName}))
+        if TypeName in self._list_throttle:
+            raise _error(ClientError, "ThrottlingException", "ListResources")
+        if TypeName in self._list_error:
+            raise _error(ClientError, "InvalidRequestException", "ListResources")
         listable = (
             set(self._resources)
             | self._unreadable
+            | self._access_denied
             | self._malformed
             | self._network_error
             | self._vanished

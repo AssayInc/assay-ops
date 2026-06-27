@@ -29,12 +29,14 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (Python structlog logger — landed; carved from #116)**, **#116 (boto3 skill + LocalStack boto3 read smoke
   + language flip — landed, PR #134)**, #117 (brain/wiki sync).
 - **Next ready work:** **E2 verifier core progressing** — the golden-target generator (**#75**), the
-  **golden→reward integration (#31** — `grade_deployment`), and now the **deployed-state read skeleton
-  (#30** — `read.py`: `DeployedStateReader` + `verify_deployment`, read→normalize→grade) landed in
-  `py/packages/verifier` (account-B-pure). Next E2: the reward-record/ledger handoff (**#32**) +
-  read-coverage enforcement (**#141**).
+  **golden→reward integration (#31** — `grade_deployment`), the **deployed-state read path (#30)**, and
+  now **read-coverage enforcement (#141** — FAIL-CLOSED + closed-world + per-property gate) landed in
+  `py/packages/verifier` (account-B-pure). The sound closed-world **`verify`** entry is now the only
+  reward-emitting read path (it superseded the #30 `verify_deployment` skeleton). **Next E2: the
+  reward-record/ledger handoff (#32).**
   Plus **account infra T7 (P1-BLOCKING)** — now also owns the #80-surfaced closed-world SCP
-  create-allow-list (**#53**) — plus **#141** (E2 verifier-side read-coverage enforcement, from the #80 spike).
+  create-allow-list (**#53**); the #141-deferred real-AWS coverage-matrix tool + cross-account
+  read-role (**#52/#33**) stay T7-gated.
   With **E1's spine (#26–#29) complete** and the **#80 / #114 / #115 spikes all GO**, the gates for E2–E7 are
   cleared (**E5/#6** from the #114 GO; **E4/#5** inputs from the #115 GO; **E2/E3** inputs from the #80 GO); and
   the **E3 diff-ir core (#34) + Terraform adapter (#35) have landed** — the shared reward core + normalized
@@ -57,6 +59,34 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
+  in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:
+  `RegionScope`/`Listability`/`TypeCoverage`/`ReadScope` + the per-property gate `assert_golden_readable`),
+  `verify.py` (the sound closed-world **`verify`** entry + `VerifyVerdict = Reproducible | Quarantined |
+  FailedClosed`), and the read path (`read.py`) extended with transient classification (7A) +
+  `read_closed_world` over the in-scope **type × Region** matrix. **The three scopes (DECISIONS.md §1):**
+  (1) a transient read failure routes through the 7A classifier + K-run (`reproduce`, #45) — never scored
+  0 on the spot; (2) exhaustive, paginated, fail-closed enumeration so an extra can't hide *unenumerated*
+  (`deployed set ≡ golden set`, vector #15); (3) the authoring-time write-only-property gate. `verify` is
+  now the **only** reward-emitting read entry (it **removed** the #30 `verify_deployment` skeleton — an
+  unsound single-Region, no-K-run bypass a caller could have scored reward 1 through). **AC negative
+  control:** an extra/unreadable B-side resource → reward 0 / fail closed, never 1.
+  **Floor-touching decision (Recommendation A, two-model grounded):** `verify` initially RAISED on a
+  genuine unreadable — a silent deviation from §1 ("genuine unreadability ⇒ reward=0") leaving a
+  reward-channel dodge open. Surfaced per "flag, don't silently deviate"; **Opus 4.8 max + Codex gpt-5.5
+  xhigh** both CONFIRMED the dodge (the verifier reads same-account via STS-assume-into-A, so an agent
+  resource-policy explicit-Deny — sharpest for the Phase-1 KMS key policies — → AccessDenied; SCPs gate
+  actions not policy content) and converged on A: a genuine / un-gradable instance of agent-controlled
+  deployed state (`UnreadableResourceError` + `AddressBridgeError`/`DuplicateAddressError`) → reward 0
+  (cause in the verdict reason, alarm out-of-band, never masked); corpus/config errors propagate. A
+  PRECONDITION is documented for #52/#60 (the readiness gate must exercise per-type read perms).
+  **Review:** two adversarial rounds (Codex xhigh + a 19-agent diverse-lens Workflow, every confirmed
+  finding fixed) + the 2-model A decision + a clean **final Codex xhigh re-review → SHIP** (no
+  false-reward-1 path in any pass). `bun run verify` green **29/29** (102 verifier tests); the
+  verifier→`replay` Turbo cache edge + the cloud-free `import assayops_verifier` boundary asserted.
+  **Deferred (T7-gated, do NOT gate on):** the real-AWS coverage-matrix regeneration tool + `describe-type`
+  IAM derivation (scope 4/5) → **#174** (E2-8, blocked-by #53/#52/#33); SCP #53; read-role #52/#33. (PR #172.)
 
 - **#63 (spike): read-side reward-hacking → vector 15 characterized (E10/T10, R1).** Resolved the
   read-side reward-hacking spike. Characterized **vector 15** (read-side state-read spoofing — crafted

@@ -25,12 +25,14 @@ would be the false-negative). So the read path (#141) must surface a kind-carryi
 a raw botocore ``ClientError`` (its code identifies the kind), or a ``TransientGradeError`` with an
 explicit ``kind``.
 
-boto3-free. The **authoritative** transient signal is the ``TransientGradeError`` marker — #141
-classifies transient-ness with boto3's OWN retry logic and raises it. As a defensive fallback this
-also classifies a surfaced botocore ``ClientError`` (by error code + HTTP status) and connection /
-timeout exception classes — covering boto3's code / status / exception retry checkers. The one thing
-it cannot mirror boto3-free is a service-*modeled*-retryable error (per-service JSON metadata), so
-that one relies on the marker.
+boto3-free. #141's read path classifies a surfaced transient by calling ``transient_kind`` (this
+classifier's best-effort policy: the static code sets + a 5xx HTTP status + a connection / timeout
+exception class — covering boto3's code / status / exception retry checkers), then raises a
+``TransientGradeError`` marker carrying that verdict. boto3's adaptive retry owns the per-read RETRY
+MECHANISM (it absorbs throttles / 5xx WITHIN a read); this classifier owns the surfaced-transient
+POLICY. The one case it cannot mirror boto3-free is a service-*modeled*-retryable error (per-service
+JSON metadata) with an unrecognized code AND a non-5xx status — it classifies GENUINE (a narrow,
+safe-direction false-negative; Cloud Control's own throttles are code/status-covered).
 """
 
 from __future__ import annotations

@@ -5,7 +5,8 @@
   "dependencies": {
     "@assayops/py-adapter-terraform": "workspace:*",
     "@assayops/py-diff-ir": "workspace:*",
-    "@assayops/py-contracts": "workspace:*"
+    "@assayops/py-contracts": "workspace:*",
+    "@assayops/py-replay": "workspace:*"
   },
   "scripts": {
     "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",

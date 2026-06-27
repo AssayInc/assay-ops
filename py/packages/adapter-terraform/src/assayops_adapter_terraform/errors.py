@@ -2,7 +2,10 @@
 
 The adapter raises rather than emit a ``NormalizedState`` it cannot vouch for: a silently-dropped or
 mis-addressed resource could grade a wrong deploy as in-sync. Every failure is an ``AdapterError``
-(a ``ValueError``), so the verifier skeleton (#30) catches one family and quarantines the episode.
+(a ``ValueError``); the verifier (``verify``, #141) catches the family and maps each to its reward
+disposition -- a genuine / un-gradable agent-controlled deployed-state error (unreadable instance,
+or a malformed/missing/duplicate address tag) fails closed to reward 0; a corpus/config error (an
+unsupported type) propagates (never a graded 0).
 """
 
 from __future__ import annotations
