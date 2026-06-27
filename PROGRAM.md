@@ -81,7 +81,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   false-reward-1 path in any pass). `bun run verify` green **29/29** (102 verifier tests); the
   verifier→`replay` Turbo cache edge + the cloud-free `import assayops_verifier` boundary asserted.
   **Deferred (T7-gated, do NOT gate on):** the real-AWS coverage-matrix regeneration tool + `describe-type`
-  IAM derivation (scope 4/5), SCP #53, read-role #52/#33 — tracked separately. (PR #172.)
+  IAM derivation (scope 4/5) → **#174** (E2-8, blocked-by #53/#52/#33); SCP #53; read-role #52/#33. (PR #172.)
 
 - **#165: corrected the `RoleArn`-as-cross-account knowledge-source error (skill + brain) + re-vendored.**
   The `write-isolated-verifier` skill + brain claimed Cloud Control's `RoleArn` is the B→A cross-account
