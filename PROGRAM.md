@@ -58,6 +58,28 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#63 (spike): read-side reward-hacking → vector 15 characterized (E10/T10, R1).** Resolved the
+  read-side reward-hacking spike. Characterized **vector 15** (read-side state-read spoofing — crafted
+  state that fools the verifier's *read* into a false "in-sync") into concrete sub-attacks across the two
+  reward-hacking modes (`red-team-exit-bar`). **Closable sub-attacks DEFENDED today** (mode-1 isolation:
+  run-agent-code / A→B-redirect / agent-provenance; mode-2: `assayops:address` tag-bridge spoof,
+  unreadable-masquerade, list/get race, normalization-gaming, empty-golden) — each demonstrated
+  end-to-end against the **real** `verify_deployment → normalize → grade` path (scratchpad proof, 5 demos
+  incl. a self-controlling in-scope-vs-out-of-scope differential; **not committed** — a spike's output is
+  the recorded decision, the committed documented-to-fail suite is **#56**'s owner-gated job). **OPEN
+  half — 15h closed-world/over-provisioning, 15i discovery-scoping, 15j per-property coverage:** reads
+  alone can't see an extra resource of a type outside the verifier's `type_names` / an unscanned Region
+  (demonstrated — a forbidden out-of-scope `IAM::Role` forges a false in-sync). The moat-critical closure —
+  **#141** verifier-side closed-world enumeration (detection) — is **unblocked (next E2 slice; does not
+  depend on #53,** per the #141 scoping comment); **#53** (T7 SCP prevention, `assay-cloud-org`) + **E8**
+  (#33/#52) close the residual non-listable / out-of-scope-reachability / decoy sub-cases.
+  **Per R1, vector 15 is OPEN → no reward/lift claim** until #56's suite is green. Concrete fixtures
+  **promoted to #56** (comment) + **#56 wired blocked-by #53/#141**. **Diverse-lens review** (Claude
+  forge-lens + Codex `gpt-5.5` xhigh, re-reviewed to convergence) caught + corrected a mis-classification
+  (empty-golden is DEFENDED on the production path — the `GoldenTarget` validator — with #154 the
+  `grade()`-boundary defense-in-depth, not OPEN), re-verified against the code. **No code change** (spike
+  = decision); DECISIONS.md §5 untouched (locked; the vector-15 row is already correct). (#63.)
+
 - **#165: corrected the `RoleArn`-as-cross-account knowledge-source error (skill + brain) + re-vendored.**
   The `write-isolated-verifier` skill + brain claimed Cloud Control's `RoleArn` is the B→A cross-account
   read hook — but it is a **same-account** CloudFormation service role (assumed by `cloudformation.amazonaws.com`,
