@@ -75,6 +75,10 @@ DRY · KISS · YAGNI · verify-first. (After Karpathy's LLM-coding guidelines.)
 - **Evidence, not assertion** — "done" = a pasted green `bun run verify`.
 - **Think first** — state assumptions; surface multiple readings instead of choosing silently; if unclear,
   ask.
+- **Moat / floor-touching decisions** — resolve a design choice that touches the moat or the frozen floor
+  with **two grounded adversarial reviews** (the Opus 4.8 max + Codex gpt-5.5 xhigh pass, each grounded in
+  `DECISIONS.md` + brain + official docs + skills) and synthesize — not a bare ask; validate the
+  load-bearing premises against the primary sources yourself.
 - **Reuse before adding** a helper/fixture/script; comments only for non-obvious boundaries, security/trust
   rules, or external-API constraints — never narration. Match surrounding style; keep modules focused.
 
