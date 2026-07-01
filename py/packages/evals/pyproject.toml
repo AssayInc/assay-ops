@@ -22,8 +22,10 @@ package = false
 extend = "../../../pyproject.toml"
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert (S101) and use loose synthetic fixtures/fakes (ANN) — not the typed harness core.
-"tests/**" = ["S101", "ANN"]
+# Tests assert (S101), use loose synthetic fixtures/fakes (ANN), construct fake port-mapping dicts
+# with wildcard bind strings (S104 — reported addresses, not real binds), and spawn a trusted `git
+# init` to build a foreign-repo residency fixture (S603) — not the typed, security-critical core.
+"tests/**" = ["S101", "ANN", "S104", "S603"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -40,6 +40,11 @@ from inspect_ai.solver import TaskState
 # authored by the harness at dataset-build time and is not reachable from the agent's sandbox.
 TASK_SPEC_METADATA_KEY = "assayops_task_spec"
 
+# The name the @scorer decorator registers this scorer under -- the key its Score lands under in
+# every eval log. Defined HERE, beside the function it names, so a rename is caught in one place
+# (the report reads logs by this key). MUST equal the function name; a registry test locks it.
+DEPLOY_VERIFIER_SCORER_NAME = "deploy_verifier_scorer"
+
 # Builds the per-Region account-B Cloud Control reader map for the CURRENT sample -- production
 # discovers the sample's LocalStack endpoint here; tests inject fakes. Async because discovery
 # talks to the sample's sandbox.
@@ -62,6 +67,10 @@ def deploy_verifier_scorer(
         readers = await reader_factory()
         # verify() is synchronous (blocking boto3 reads through the K-run); a worker thread keeps
         # the event loop free for the other samples' model calls and sandbox execs.
+        # abandon_on_cancel=True: verify() is READ-ONLY (Cloud Control reads + in-process grading,
+        # no writes/state), so when Inspect's scoring time limit cancels this task, the read thread
+        # can be abandoned safely -- otherwise a wedged LocalStack (K x adaptive retries x 30s read
+        # timeout) would hold the slot far past the budget. A discarded read forges nothing.
         verdict = await run_sync(
             partial(
                 verify,
@@ -72,7 +81,8 @@ def deploy_verifier_scorer(
                 scope,
                 bridge_registry=bridge_registry,
                 runs=runs,
-            )
+            ),
+            abandon_on_cancel=True,
         )
         return _score_of(verdict, task)
 

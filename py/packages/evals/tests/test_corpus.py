@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
+from conftest import FIXTURE_CORPUS
+from conftest import FIXTURE_TASK_ID as TASK_ID
 
 from assayops_evals.corpus import Corpus, CorpusError, load_corpus
-
-FIXTURE_CORPUS = Path(__file__).parent / "fixtures" / "synthetic_corpus"
-TASK_ID = "synthetic-corpus-task"
 
 
 def _tmp_corpus(tmp_path: Path) -> Path:
@@ -56,6 +56,53 @@ def test_the_committed_synthetic_fixture_loads_with_the_test_flag() -> None:
     corpus = load_corpus(FIXTURE_CORPUS, allow_in_repo_for_tests=True)
 
     assert [task.spec.task_id for task in corpus.tasks] == [TASK_ID]
+
+
+def test_a_corpus_inside_a_foreign_git_repo_fails_closed(tmp_path: Path) -> None:
+    # The residency guard keys off the CORPUS's own location, not the harness's -- so a corpus in
+    # ANY git repo is refused (I11 = never a code repo), and it does not fail OPEN when the harness
+    # itself has no .git ancestor (installed/site-packages). Here: a tmp corpus placed under a dir
+    # made into a git repo (a foreign repo, not this harness's) must be refused.
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)  # noqa: S607
+    corpus_dir = _tmp_corpus(tmp_path)  # tmp_path/corpus, under tmp_path/.git
+
+    with pytest.raises(CorpusError, match="git repo"):
+        load_corpus(corpus_dir)
+
+
+def test_a_corpus_module_that_raises_on_import_fails_closed(tmp_path: Path) -> None:
+    # A corpus.py that crashes at import time is a corpus-contract violation -> fail closed with
+    # the cause chained, never a raw traceback mid-eval.
+    corpus_dir = _tmp_corpus(tmp_path)
+    (corpus_dir / "corpus.py").write_text('raise RuntimeError("boom")\n')
+
+    with pytest.raises(CorpusError, match="failed to load"):
+        load_corpus(corpus_dir)
+
+
+def test_a_valid_bridge_registry_propagates(tmp_path: Path) -> None:
+    corpus_dir = _tmp_corpus(tmp_path)
+    module = corpus_dir / "corpus.py"
+    module.write_text(
+        module.read_text()
+        + "\nfrom assayops_adapter_terraform import BridgeRegistry\n"
+        + "BRIDGE_REGISTRY = BridgeRegistry()\n"
+    )
+
+    from assayops_adapter_terraform import BridgeRegistry
+
+    corpus = load_corpus(corpus_dir)
+
+    assert isinstance(corpus.bridge_registry, BridgeRegistry)
+
+
+def test_a_non_bridge_registry_bridge_fails_closed(tmp_path: Path) -> None:
+    corpus_dir = _tmp_corpus(tmp_path)
+    module = corpus_dir / "corpus.py"
+    module.write_text(module.read_text() + "\nBRIDGE_REGISTRY = 42\n")
+
+    with pytest.raises(CorpusError, match="BRIDGE_REGISTRY"):
+        load_corpus(corpus_dir)
 
 
 def test_a_missing_corpus_dir_fails_closed(tmp_path: Path) -> None:

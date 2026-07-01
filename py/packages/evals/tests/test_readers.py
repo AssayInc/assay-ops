@@ -37,7 +37,7 @@ def _connection(ports: list[dict[str, object]] | None) -> SandboxConnection:
     )
 
 
-def _published(host_port: int = 55123, host_ip: str = "0.0.0.0") -> list[dict[str, object]]:  # noqa: S104
+def _published(host_port: int = 55123, host_ip: str = "0.0.0.0") -> list[dict[str, object]]:
     return [
         {
             "container_port": 4566,
@@ -53,10 +53,39 @@ def test_localstack_endpoint_resolves_the_published_port() -> None:
     assert endpoint == "http://127.0.0.1:49321"
 
 
+@pytest.mark.parametrize("wildcard", ["0.0.0.0", "", "::"])
+def test_localstack_endpoint_dials_loopback_for_every_wildcard_bind(wildcard: str) -> None:
+    # Docker reports a wildcard bind address (0.0.0.0 / '' / IPv6 '::') that can't be dialed
+    # directly -- all must normalize to loopback, not just the 0.0.0.0 default the base test uses.
+    endpoint = localstack_endpoint(_connection(_published(host_ip=wildcard)))
+
+    assert endpoint == "http://127.0.0.1:55123"
+
+
 def test_localstack_endpoint_keeps_a_concrete_host_ip() -> None:
     endpoint = localstack_endpoint(_connection(_published(host_ip="192.168.5.9")))
 
     assert endpoint == "http://192.168.5.9:55123"
+
+
+def test_localstack_endpoint_fails_closed_on_a_non_tcp_gateway_mapping() -> None:
+    udp = [
+        {
+            "container_port": 4566,
+            "protocol": "udp",
+            "mappings": [{"host_ip": "0.0.0.0", "host_port": 5}],
+        }
+    ]
+    with pytest.raises(ValueError, match="4566"):
+        localstack_endpoint(_connection(udp))
+
+
+def test_localstack_endpoint_fails_closed_on_an_empty_host_mapping() -> None:
+    # A gateway-port entry whose host mappings list is empty (published but not bound) must fall
+    # through to the fail-closed error, never return a half-formed endpoint.
+    unbound = [{"container_port": 4566, "protocol": "tcp", "mappings": []}]
+    with pytest.raises(ValueError, match="4566"):
+        localstack_endpoint(_connection(unbound))
 
 
 def test_localstack_endpoint_fails_closed_without_a_mapping() -> None:

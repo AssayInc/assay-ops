@@ -57,7 +57,6 @@ def drift_slice(
     message_limit: int = _DEFAULT_MESSAGE_LIMIT,
     time_limit: int = _DEFAULT_TIME_LIMIT_SECONDS,
     runs: int = DEFAULT_RUNS,
-    allow_in_repo_for_tests: bool = False,
 ) -> Task:
     """The #176 directional-slice eval: n tasks x ``epochs`` rollouts, LocalStack-graded.
 
@@ -65,8 +64,12 @@ def drift_slice(
     scorer grades through the shipped ``verify()`` (K=``runs``) against the sample's OWN
     LocalStack. The resulting number is PRE-T0 DIRECTIONAL ONLY -- never published, never the E13
     proof (R1; see the package docstring).
+
+    The I11 residency guard is NOT overridable here -- the ``load_corpus``
+    ``allow_in_repo_for_tests`` seam is a library-test-only kwarg, deliberately kept off this
+    ``@task`` signature so Inspect's ``-T`` flag surface cannot disable the guard from the CLI.
     """
-    corpus = load_corpus(Path(corpus_dir), allow_in_repo_for_tests=allow_in_repo_for_tests)
+    corpus = load_corpus(Path(corpus_dir))
     return Task(
         dataset=samples_of(corpus),
         solver=react(

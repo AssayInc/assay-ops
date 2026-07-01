@@ -98,23 +98,25 @@ def load_corpus(corpus_dir: Path, *, allow_in_repo_for_tests: bool = False) -> C
 
 
 def _require_out_of_repo(corpus_dir: Path) -> None:
-    """The I11 residency rule, fail closed: a corpus inside this code repo is refused.
+    """The I11 residency rule, fail closed: a corpus inside ANY git repo is refused.
 
-    Real tasks/goldens live in the private store; committing them here would be held-out/corpus
-    leakage (DECISIONS.md I11 + the held-out-data residency rule). The guard finds the repo this
-    harness is checked out in (the nearest ancestor with a ``.git`` -- a dir in a clone, a file in
-    a worktree) and refuses a corpus under it. ``allow_in_repo_for_tests`` exists ONLY for the
-    committed synthetic fixture in this package's own tests.
+    Real tasks/goldens live in the private store; committing them to a code repo would be
+    held-out/corpus leakage (DECISIONS.md I11 + the held-out-data residency rule). The guard asks
+    whether the corpus itself sits inside a git repo -- ``corpus_dir`` or any ancestor holds a
+    ``.git`` marker (a dir in a clone, a file in a worktree). That question is answered from the
+    corpus's OWN location, so it holds regardless of where this harness is checked out (an
+    installed / site-packages harness has no ``.git`` ancestor -- keying off ``__file__`` would
+    fail OPEN there) and it refuses a corpus in a FOREIGN repo too (I11 = never ANY code repo, not
+    just this one). ``allow_in_repo_for_tests`` exists ONLY for the committed synthetic fixture in
+    this package's own tests.
     """
-    for ancestor in Path(__file__).resolve().parents:
-        if (ancestor / ".git").exists():
-            if corpus_dir == ancestor or ancestor in corpus_dir.parents:
-                raise CorpusError(
-                    f"corpus directory {str(corpus_dir)!r} is inside the code repo "
-                    f"{str(ancestor)!r} -- tasks/goldens live in the private store, never a code "
-                    "repo (DECISIONS.md I11)"
-                )
-            return
+    for candidate in (corpus_dir, *corpus_dir.parents):
+        if (candidate / ".git").exists():
+            raise CorpusError(
+                f"corpus directory {str(corpus_dir)!r} is inside the git repo "
+                f"{str(candidate)!r} -- tasks/goldens live in the private store, never a code "
+                "repo (DECISIONS.md I11)"
+            )
 
 
 def _grading_inputs(module_path: Path) -> tuple[GoldenRegistry, ReadScope, BridgeRegistry | None]:

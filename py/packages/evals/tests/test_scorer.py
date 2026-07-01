@@ -160,6 +160,44 @@ def test_a_persistent_infra_transient_is_unscored() -> None:
     assert score.metadata["verdict"] == "quarantined"
 
 
+def test_a_flaky_grade_is_unscored_with_its_distinct_outcomes() -> None:
+    # The OTHER Quarantined path (distinct from a persistent infra transient): a non-reproducing
+    # grade (the K runs disagree). The moat-critical "never a false 0 from a flaky reward" case ->
+    # unscored, carrying distinct_outcomes so a divergent-quarantine audit can see it.
+    from assayops_replay import Quarantined
+
+    from assayops_evals.scorer import _score_of
+
+    verdict = Quarantined(reason="K runs disagreed", runs=3, distinct_outcomes=2)
+
+    score = _score_of(verdict, make_task(seed=SEED))
+
+    assert isinstance(score.value, float) and math.isnan(score.value)
+    assert score.metadata is not None
+    assert score.metadata["verdict"] == "quarantined"
+    assert score.metadata["distinct_outcomes"] == 2
+
+
+def test_the_runs_parameter_is_forwarded_to_verify() -> None:
+    # A regression dropping the runs kwarg into verify() would leave K at the default; the
+    # reproduced-runs count in the score metadata pins the forwarding.
+    async def reader_factory() -> Mapping[str, DeployedStateReader]:
+        return {
+            "us-east-1": DeployedStateReader(
+                FakeCloudControlClient({(S3, PHYSICAL_ID): _correct_read_back()})
+            )
+        }
+
+    score_fn = deploy_verifier_scorer(
+        registry=_registry(), scope=_scope(), reader_factory=reader_factory, runs=5
+    )
+    score = asyncio.run(score_fn(_state(), Target("")))
+
+    assert score is not None
+    assert score.metadata is not None
+    assert score.metadata["runs"] == 5
+
+
 def test_an_unknown_task_propagates() -> None:
     # A corpus/config error is the harness's bug, not the agent's deploy: it fails the sample
     # LOUDLY (propagates), never scored (a silent 0 would hide a corpus gap as a false-negative).

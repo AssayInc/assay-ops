@@ -23,13 +23,13 @@ from assayops_evals.readers import (
     readers_for_scope,
 )
 from assayops_evals.report import (
-    DEPLOY_VERIFIER_SCORER_NAME,
     DirectionalDelta,
     ModelSlice,
     directional_delta,
     render_report,
 )
 from assayops_evals.scorer import (
+    DEPLOY_VERIFIER_SCORER_NAME,
     TASK_SPEC_METADATA_KEY,
     ReaderFactory,
     deploy_verifier_scorer,
