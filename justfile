@@ -105,6 +105,7 @@ down:
 logs:
     {{compose}} logs -f
 
-# Run the boto3 Cloud Control read-path smoke (Python — the verifier's read SDK) against a running LocalStack
+# Run the boto3 Cloud Control read-path + adapter↔golden grade round-trip smokes (Python — the
+# verifier's read SDK) against a running LocalStack
 smoke:
     cd py/packages/infra-local && bun run smoke
