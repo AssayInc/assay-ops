@@ -149,6 +149,49 @@ Single region/account/time-of-day and **same-account** assume, so directional �
 cross-account when E8 lands**. Consumed by **#141** (the read-path FAIL-CLOSED budget) + the **E8**
 episode/account-setup work (the assume-readiness gate).
 
+### LocalStack ↔ real-CFN drift parity — resolved [spike] (#61)
+
+Measured against the **licensed** LocalStack image (2026.5.4 `pro`, license-activated; bounded engineer
+probes, not committed — preserved in #61) + the current LocalStack and AWS official docs. Resolves **R3**
+for the Phase-1 substrate; the ratio + unit economics feed **T3/T9** and the directional slice (#176).
+
+- **CFN drift detection: zero parity — the API family does not exist on LocalStack.** Every drift op
+  (`DetectStackDrift`, `DetectStackResourceDrift`, `DescribeStackResourceDrifts`,
+  `DescribeStackDriftDetectionStatus`, `DetectStackSetDrift`) returns **HTTP 501 "not currently
+  supported"** on the licensed image (empirical, incl. against a nested-stack root;
+  `DescribeStacks.DriftInformation` is a static `NOT_CHECKED`); the docs' CFN feature table lists Drift
+  detection "—" with all five ops unimplemented. **Drift-detection-graded reads are real-AWS-only** (the
+  CDK/T3 path, #66). The Phase-1 Terraform path is untouched — it is Cloud-Control-only by #80.
+- **The Cloud Control grade-read is live-state faithful on LocalStack** (the fidelity that matters for
+  grading): after an out-of-band mutation `GetResource` returns the **drifted** values, and after the fix
+  the **restored** values (S3 versioning + SSM value, both directions) — the verifier grades truth, not
+  template state. Cloud Control + CloudFormation are in **every** LocalStack tier (Hobby/Base/Ultimate).
+- **Parity by corpus feature.** **DeletionPolicy:** `Retain` honored on stack delete (retained bucket
+  survives; default bucket removed) — real-CFN semantics; drift detection is N/A to it on both substrates
+  (a template attribute, not a deployed property) → gradable via CC presence/absence reads.
+  **Nested stacks:** deploy on LocalStack and the child's resources are CC-readable; real CFN excludes
+  nested stacks from a parent drift run anyway (per-stack `DetectStackDrift` required). **Custom
+  resources:** full lifecycle works on LocalStack (Lambda-backed, `ResponseURL` callback + `Fn::GetAtt`)
+  but needs the **docker-socket mount** (an E7 episode-substrate requirement; `infra-local`'s compose
+  omits it by design) — and they are **ungradable on both substrates** (not CC types; real drift ⇒
+  `NOT_CHECKED`) → exclude from the gradable corpus (grade their side-effect AWS resources instead).
+- **Real-CFN drift detection is itself lossy (doc-grounded).** It checks only **explicitly-set**
+  properties (defaults invisible); per-type support is a subset (types exist with import-yes/drift-no;
+  unsupported ⇒ silent `NOT_CHECKED`); `KMSKeyId` is never checked; unmappable (Lambda `Code`) and
+  write-only/sensitive properties are excluded; equal-but-not-identical values (`1GB` vs `1024MB`)
+  false-positive. Confirms #80: drift alone is incomplete — the CDK adapter (#66) needs CC reads as the
+  primary channel even on real AWS.
+- **Unit economics / the ratio.** Measured minimal drift episode on LocalStack (CFN create → out-of-band
+  mutate → CC `get`+paginated `list` → delete): **median ~2.1s wall** (n=5, M-series host) ⇒ substrate
+  compute ≈ **$0.0003/trajectory** at GitHub-Actions Linux rates (even a 5-min full-agent episode ≈
+  $0.04); license = Hobby $0 today (non-commercial R&D) / Base **$39/license/mo** commercial with CI
+  **un-metered** (fair-use) ⇒ < $0.04/trajectory amortized at ≥1k trajectories/mo. **Bulk = 100%
+  LocalStack-viable for the CC-graded Terraform corpus** (8A/T3 hold); **0% for drift-detection-graded**;
+  the T3 real-AWS eval slice + T9 fidelity-diff sample stay real by **trust posture** — their job is
+  per-type CC-read parity, not drift APIs. Real-AWS empirical episode timing is **pending fresh creds**
+  (the #60 probe profile was rotated); resource cost for the S3/SSM shapes is ~$0 by AWS pricing — the
+  real-side cost drivers are account-pool + guardrail infra (T6/T7) and slower stack operations.
+
 ---
 
 ## 2. Locked architecture decisions (1C–T3)

@@ -5,6 +5,13 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
+- **Sequencing follows `docs/priorities.md` (set 2026-07-01 — it wins over the board on what-first).**
+  P0: the Henry scout note (E15-2) + closing the RL/eval seat (the real T0 gate; the board's "E15-3 =
+  Done" is stale) + the LocalStack↔real-CFN drift/unit-economics spike **#61 — resolved, see Recently
+  Landed**. P1: the pre-T0 **directional slice #176** (~15 TF drift tasks × 7B SFT, LocalStack-graded,
+  NOT the proof) — #61's answer clears its substrate and biases its drift-task types. Non-P0/P1 infra
+  (ledger polish, account-pool automation, env-server polish beyond the slice) is **frozen** until the
+  seat + a directional number + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -59,6 +66,31 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#61 (spike): LocalStack ↔ real-CFN drift parity — resolved (measured on the licensed image + official
+  docs; the R3 substrate answer + unit economics recorded).** **Zero parity on CFN drift detection — the
+  API family does not exist on LocalStack:** every drift op (`DetectStackDrift`, `DetectStackResourceDrift`,
+  `DescribeStackResourceDrifts`, `DescribeStackDriftDetectionStatus`, `DetectStackSetDrift`) returns HTTP
+  501 "not currently supported" on licensed 2026.5.4 `pro` (empirical, incl. a nested-stack root;
+  `DriftInformation` statically `NOT_CHECKED`; the docs' feature table + API table agree) ⇒
+  **drift-detection-graded reads are real-AWS-only** (the CDK/T3 path #66); the Phase-1 Terraform/CC path
+  is untouched (#80). **The fidelity that matters HOLDS: LocalStack Cloud Control reads live state** —
+  an out-of-band drifted value AND its fix are both read back truthfully (S3 versioning + SSM value; both
+  grade directions), so the shipped verifier grades truth on LocalStack. Parity by corpus feature:
+  DeletionPolicy=`Retain` honored on delete; nested-stack children deploy + CC-readable; **custom
+  resources** work end-to-end (Lambda-backed, needs the **docker-socket mount** — an E7 substrate
+  requirement; `infra-local` omits it by design) but are **ungradable on both substrates** (not CC types;
+  real drift ⇒ `NOT_CHECKED`) → corpus-excluded. Real-CFN drift detection is itself lossy (explicit-props
+  only, per-type subset, `KMSKeyId`/Lambda-`Code`/write-only excluded, `1GB`≠`1024MB` false positives) —
+  confirms #80's "drift alone is incomplete" as a design input to #66. **Unit economics (the Phase-1
+  exit-bar "measured LocalStack cost/trajectory"):** minimal drift episode (create → mutate → CC grade-read
+  → teardown) = **~2.1s median** (n=5) ⇒ ~$0.0003/trajectory substrate compute at GH-Actions rates;
+  license Hobby $0 now / Base $39/license/mo commercial, CI un-metered ⇒ **<$0.04/trajectory at ≥1k/mo**;
+  **ratio: bulk = 100% LocalStack for the CC-graded Terraform corpus; 0% for drift-detection-graded; the
+  T3 real-AWS eval slice + T9 fidelity-diff sample stay real by trust posture.** Ratified note in
+  `DECISIONS.md` §1; probes preserved in the #61 thread (scratchpad-only — a spike's output is the
+  decision, not a package); real-AWS empirical timing flagged **pending fresh creds** (the #60 probe
+  profile was rotated). Biases #176's task authoring → CC-readable types, no custom resources. (#61.)
 
 - **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
   in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:
