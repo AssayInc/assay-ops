@@ -175,7 +175,13 @@ unit economics feed **T3/T9** and the directional slice (#176).
   template on both substrates, `GetResource` compared key-by-key) ran **clean on the graded surface —
   every explicitly-authored property matched**; the divergences classify as (a) server-computed
   endpoint-shaped `readOnlyProperties` (adapter-dropped, #35), (b) server-default posture on unauthored
-  properties (`BucketEncryption` — exactly the #155 golden-authoring discipline), and (c) real-CFN-injected
+  properties — **presence-parity holds** (a never-configured bucket returns all **four** posture blocks
+  on both substrates; `PublicAccessBlockConfiguration`/`OwnershipControls`/`AbacStatus` byte-equal) but
+  **`BucketEncryption`'s shape diverges**: LocalStack emits the S3-API field name
+  `ApplyServerSideEncryptionByDefault` where the CFN schema (and the real read) has
+  `ServerSideEncryptionByDefault`, and real AWS adds `BlockedEncryptionTypes` — so #155's
+  "pin the golden shape to a real read" rule is **per-substrate** (a LocalStack-pinned posture golden
+  grades a correct real-AWS deploy 0 on that block: safe direction, broken signal), and (c) real-CFN-injected
   **`aws:cloudformation:*` system tags** absent on LocalStack — a substrate-dependent false negative on a
   Tags-asserting golden; the `aws:*`-strip normalization rule is tracked as **#179**. The corpus-wide
   sample stays **T9**'s job. Cloud Control + CloudFormation are in **every** LocalStack tier

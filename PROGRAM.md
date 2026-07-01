@@ -86,8 +86,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   path is untouched (#80). **The fidelity that matters HOLDS: LocalStack Cloud Control reads live state**
   (drift AND fix read truthfully; S3+SSM, both grade directions), and the **first LocalStack↔real-AWS
   fidelity-diff sample ran clean on the graded surface** — every explicitly-authored property matched;
-  divergences: adapter-dropped readOnly endpoint props (#35), server-default posture on unauthored props
-  (#155), and real-CFN-injected **`aws:cloudformation:*` system tags** absent on LocalStack → the
+  divergences: adapter-dropped readOnly endpoint props (#35); server-default posture on unauthored props
+  (**presence-parity holds** — all four S3 posture blocks present on both substrates, three byte-equal;
+  `BucketEncryption` shape diverges: LocalStack's S3-API-style `ApplyServerSideEncryptionByDefault` vs the
+  CFN-schema `ServerSideEncryptionByDefault` + real-AWS-only `BlockedEncryptionTypes` ⇒ #155's shape-pin
+  is **per-substrate**); and real-CFN-injected **`aws:cloudformation:*` system tags** absent on LocalStack → the
   `aws:*`-strip adapter rule filed as **#179** (E3, boarded); per-type gates (#35/#141/canary) still admit
   each corpus type; corpus-wide sample = T9. Parity by corpus feature: DeletionPolicy=`Retain` honored on
   delete (both substrates); nested-stack children deploy + CC-readable, and real CFN's root drift run
