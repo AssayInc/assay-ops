@@ -52,6 +52,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   **T0 team gate (#25) closed on the board** (founder interim RL/eval owner) — **superseded by
   `docs/priorities.md` (2026-07-01): the RL/eval seat is effectively OPEN** (interim ≠ closed; closing it
   is P0); Phase 3 stays hard-gated on the permanent owner.
+- **The E11-1 corpus contract (#155) landed** — the `assayops:address` deploy-tag + golden-server-posture
+  requirements are documented (`NORMALIZATION.md`) and round-trip-pinned to a real LocalStack read, so the
+  **#176 pre-T0 P1 slice's corpus leg** (~15 Terraform drift tasks, private store) is authorable against it
+  (`docs/priorities.md` P1 — the live priority order sits above the board).
 - **E6 determinism (#7): verifier-determinism check status clarified; #46 re-scoped → E13.** The
   compute-level check — **golden ×K → identical reward; a nondeterministic path fails** — is **already
   built + negative-controlled by #31** (`verifier/tests/test_grade_determinism.py`), reinforced by the
@@ -109,6 +113,40 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   #176's task authoring → CC-readable types, no custom resources. **Cross-model adversarial review**
   (Claude subagent + Codex gpt-5.5 xhigh, both fed the verbatim probe record): both P1s fixed pre-merge
   (empirical-vs-doc attribution split; R3-spike vs §7-R3 scoping); Codex re-review → SHIP. (#61, PR #177.)
+
+- **E11-1 (#155): the Terraform-adapter corpus contract — `assayops:address` deploy-tag + golden
+  server-posture, pinned to a real read (the LocalStack grade round-trip).** The two corpus requirements
+  the #35 adapter established are now a documented, machine-verified contract for corpus authoring
+  (#76/#67 — and the **#176 pre-T0 P1 slice's corpus leg**, which authors "on the #155 contract",
+  `docs/priorities.md` P1): (1) every graded resource deploys tagged `assayops:address = <its logical
+  address>` (the golden's addresses); (2) **goldens declare server-defaulted posture explicitly** —
+  confirmed empirically on a real Cloud Control read (against the **pinned LocalStack image**; the
+  *defaults* themselves are AWS-user-guide facts, and real-AWS read-*shape* parity re-pins with the
+  real-cloud read path, #30/#141/#61): `AWS::S3::Bucket` returns **four** blocks the deploy
+  never set (`BucketEncryption` SSE-S3, `PublicAccessBlockConfiguration`, `OwnershipControls`
+  `BucketOwnerEnforced`, plus **`AbacStatus` `Disabled`** — a writable current-schema property the probe
+  surfaced beyond the issue's predicted three), each grounded live in the AWS user guide + the real
+  `AWS::S3::Bucket` schema (top-level `readOnlyProperties` exactly match the adapter registry;
+  `tagProperty=Tags`). New `infra-local` **grade round-trip smoke** drives the verifier's production
+  read→normalize→grade components against LocalStack (get-scoped by identifier; the closed-world
+  `verify` enumeration stays #141's hermetically-tested layer) — deploy a tagged bucket →
+  `DeployedStateReader.read_resource` → adapter
+  `normalize` → `grade_deployment` (synthetic registry; the golden is **declared constants, never derived
+  from the read** — no tautology) → **reward 1** — plus the negative control: the minimal pre-contract
+  golden grades the SAME correct deploy **reward 0** with the diff naming exactly the four posture blocks
+  (the issue's defect pinned; the non-vacuousness proof; the image-bump shape canary), and a
+  missing-`assayops:address` deploy **fails closed on a real read** too. Docs: the
+  `NORMALIZATION.md` corpus-contract note (declare the posture; **pin a new type's golden shape to a real
+  read before authoring**) + adapter/infra-local READMEs. Wiring: infra-local consumes the five sibling
+  cores by source path (mypy_path/pythonpath + pydantic.mypy) with workspace deps + a `turbo.json`
+  `^typecheck` edge (the #152/#31 pattern; hash-flip verified). **Review** (Claude adversarial + testing +
+  maintainability agents + Codex `gpt-5.5` xhigh, findings validated then fixed): `localstack-smoke.yml`
+  now **triggers on the five consumed sibling packages** (a grading-chain change runs the round-trip on
+  ITS OWN PR — the canary fires where the break is); fixtures **delete-and-recreate** (a locally-mutated
+  posture can't produce stale false alarms; CI was always fresh); substrate-honest wording (LocalStack-
+  pinned shape vs AWS-documented defaults). Smoke green on a fresh LocalStack (re-run-proof); `bun run
+  verify` green **29/29**. **No production code change** (corpus requirements, not adapter bugs); nested
+  `MetadataConfiguration/*` readOnly paths characterized as out of Phase-1 scope (ISSUES.md). (PR #178.)
 
 - **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
   in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:

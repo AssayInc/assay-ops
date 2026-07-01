@@ -5,7 +5,15 @@ name: localstack-smoke
 on:
   pull_request:
     paths:
+      # The grade round-trip executes the five sibling cores by source path, so a change to any of
+      # them must run this smoke on ITS OWN PR — not surface later, misattributed, on the next
+      # infra-local-touching one.
       - "py/packages/infra-local/**"
+      - "py/packages/verifier/**"
+      - "py/packages/adapter-terraform/**"
+      - "py/packages/diff-ir/**"
+      - "py/packages/contracts/**"
+      - "py/packages/replay/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"
@@ -16,6 +24,11 @@ on:
     branches: [main]
     paths:
       - "py/packages/infra-local/**"
+      - "py/packages/verifier/**"
+      - "py/packages/adapter-terraform/**"
+      - "py/packages/diff-ir/**"
+      - "py/packages/contracts/**"
+      - "py/packages/replay/**"
       - "justfile"
       - ".github/workflows/localstack-smoke.yml"
       - "package.json"

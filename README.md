@@ -45,7 +45,7 @@ Then:
 
 ```sh
 just up      # start LocalStack and wait for it to report healthy
-just smoke   # seed an S3 bucket, read it back via Cloud Control GetResource
+just smoke   # Cloud Control read smoke + the adapter↔golden grade round-trip
 just down    # stop LocalStack and remove its volumes
 ```
 
