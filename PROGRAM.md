@@ -92,12 +92,25 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   DIRECTIONAL / NOT the E13 proof / never publish) into the delta artifact; quarantined rollouts are
   excluded, never failures. **Pre-T0 trust caveat documented** (no A/B split — the substrate is
   agent-reachable; licensed by priorities.md P1 for a no-claim directional number only). TDD
-  (RED→GREEN, 41 hermetic tests — no Docker/model in the gate; the scorer exercised end-to-end
-  through the REAL verify→read_closed_world→normalize→grade path over the shared Cloud Control
-  fakes; FailedClosed→CORRECT + Quarantined→INCORRECT negative controls proven to fail). Turbo edge
+  (RED→GREEN, no Docker/model in the gate; the scorer exercised end-to-end through the REAL
+  verify→read_closed_world→normalize→grade path over the shared Cloud Control fakes;
+  FailedClosed→CORRECT + Quarantined→INCORRECT negative controls proven to fail). Turbo edge
   verified (a verifier source change flips the evals task hash). `inspect-ai` pinned (0.3.244,
-  py.typed → mypy-strict native). `bun run verify` green **32/32**; both lockfiles frozen-checked.
-  (#176 comment records the grounding reconciliation + leg gating.)
+  py.typed → mypy-strict native).
+  **Diverse-lens adversarial review** (4 specialists + 2 moat-forge lenses + Codex gpt-5.5 xhigh):
+  both moat reviewers cleared the trust seam (no agent output reaches the grade); Codex's initial
+  "block" was the pre-T0 quarantine-as-dodge, **validated against the floor as licensed** (R1
+  non-adversarial-SFT, never-published; strictly weaker than the already-forgeable reward 1 in a
+  no-A/B slice) — documented, not changed. Fixes applied + re-reviewed to a clean Codex xhigh SHIP:
+  the **I11 residency guard** was FAIL-OPEN on an installed harness (no `.git` ancestor) — now keys
+  off the corpus's own location, refusing a corpus inside ANY git repo; **removed the
+  `allow_in_repo_for_tests` bypass from the `drift_slice` `-T` CLI surface**; **cancellable verify
+  thread** (`abandon_on_cancel=True` — read-only, so the scoring time limit can cancel a wedged
+  K-run); **report robustness** — errored samples excluded (never crash the artifact), a
+  full-rollout-grid `(task_id, epoch)` comparability gate, a conservative quarantines-as-failures
+  lower bound + a divergent-quarantine WARNING (anti-farming visibility). Tests **41 → 61**.
+  `bun run verify` green **32/32**; both lockfiles frozen-checked. (#176 comment records the
+  grounding reconciliation + leg gating.)
 
 - **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
   in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:

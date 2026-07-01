@@ -74,8 +74,8 @@ Files: `src/assayops_evals/report.py`, `tests/test_report.py`.
 - [x] `bun run verify` green — 32/32 tasks (41 evals tests).
 - [x] Package README/docstring: the pre-T0 trust caveat + run recipe (`inspect eval … -T corpus_dir=…`).
 - [x] Update PROGRAM.md (Right Now + Recently Landed) + ISSUES.md if residuals.
-- [ ] `/review` + Codex gpt-5.5 xhigh adversarial review (diverse-lens: forge + crash + design) → re-review fixed code to convergence.
-- [ ] PR `Advances #176` (never Closes — umbrella), diff scoped to this leg.
+- [x] Diverse-lens review (4 specialists + 2 moat-forge + Codex xhigh) → all valid findings fixed → Codex xhigh re-reviewed to a clean SHIP; quarantine-dodge validated as licensed pre-T0 (not a blocker).
+- [ ] PR `Advances #176` (never Closes — umbrella), diff scoped to this leg. [opening]
 
 ## Out of scope (tracked, not built here)
 - Corpus leg (15 TF drift tasks): private store (#76 unbuilt), informed by #61 (open P0), per-type LocalStack Cloud Control smoke gate — comment on #176.
