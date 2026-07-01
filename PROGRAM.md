@@ -5,6 +5,17 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
+- **Sequencing is now governed by `docs/priorities.md` (set 2026-07-01): evidence + the team before
+  architecture.** P0 = the Henry scout note (E15-2, founder), close the RL/eval seat (the real E15-3),
+  and the **#61** LocalStack↔real-CFN parity spike (startable now — the `blocked_by #25` edge is a
+  stale-strategy artifact, overridden by the #61 comment of record). P1 = the **#176 pre-T0
+  directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-graded, never
+  published, R1-scoped): **leg 3 (the Inspect harness, `py/packages/evals`) is BUILT** (see Recently
+  Landed); **leg 1 (corpus, ~15 TF drift tasks)** is gated on the #61 answer + a minimal private-store
+  decision (#76 unbuilt) + the per-type LocalStack Cloud Control smoke (only `AWS::S3::Bucket` proven);
+  **leg 2 (trainer: TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its
+  ETL consumes the leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat +
+  the number + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -59,6 +70,34 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#176 leg 3: the Inspect-AI eval harness — new `py/packages/evals` (`assayops_evals`), the E13/T11
+  seam built pre-T0 for the directional slice.** The **deploy-verifier as a custom Inspect `Scorer`**
+  (I6/T11) around the shipped **`verify()`** — the only reward-emitting entry — with every grading
+  input HARNESS-OWNED (the TaskSpec re-validated from sample metadata the dataset loader writes; the
+  registry/scope/bridge from the private corpus; readers from the injected factory — never agent
+  output). Verdict→Score preserves the 7A semantics: `Reproducible`→C/I, `FailedClosed`→I (cause
+  surfaced), **`Quarantined`→`Score.unscored()`** (excluded from the rate — never a false 0), and a
+  corpus/config error PROPAGATES (fails the sample loudly). **`load_corpus`** defines the private
+  corpus-directory contract (corpus.py REGISTRY/READ_SCOPE/BRIDGE_REGISTRY + compose.yaml +
+  `tasks/<id>/{task.json,setup.sh,files/**}`) and is the task-ADMISSION gate — the golden must
+  regenerate (#75) and pass `assert_golden_readable` (#141's authoring-time per-property gate) — plus
+  a **fail-closed I11 residency guard** (an in-repo corpus is refused; in-repo fixtures synthetic
+  only). **`drift_slice`** wires the react agent (bash/text_editor) in a per-sample compose sandbox
+  (agent workbench + the sample's OWN LocalStack — per-sample isolation because the closed-world read
+  enumerates the whole substrate); **`localstack_reader_factory`** discovers the sample's published
+  4566 endpoint from the sandbox connection's typed port mappings (fail-closed) and builds one
+  reader per scope-required Region (mirrors the skill-validated `infra-local` client shape; boto3
+  adaptive per the #45/#141 policy split). **`render_report`** hard-codes the R1 framing (PRE-T0
+  DIRECTIONAL / NOT the E13 proof / never publish) into the delta artifact; quarantined rollouts are
+  excluded, never failures. **Pre-T0 trust caveat documented** (no A/B split — the substrate is
+  agent-reachable; licensed by priorities.md P1 for a no-claim directional number only). TDD
+  (RED→GREEN, 41 hermetic tests — no Docker/model in the gate; the scorer exercised end-to-end
+  through the REAL verify→read_closed_world→normalize→grade path over the shared Cloud Control
+  fakes; FailedClosed→CORRECT + Quarantined→INCORRECT negative controls proven to fail). Turbo edge
+  verified (a verifier source change flips the evals task hash). `inspect-ai` pinned (0.3.244,
+  py.typed → mypy-strict native). `bun run verify` green **32/32**; both lockfiles frozen-checked.
+  (#176 comment records the grounding reconciliation + leg gating.)
 
 - **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
   in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:
