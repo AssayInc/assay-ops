@@ -14,3 +14,45 @@ requires the full trust stack.
 """
 
 from __future__ import annotations
+
+from assayops_evals.corpus import Corpus, CorpusError, CorpusTask, load_corpus
+from assayops_evals.readers import (
+    LOCALSTACK_SERVICE,
+    localstack_endpoint,
+    localstack_reader_factory,
+    readers_for_scope,
+)
+from assayops_evals.report import (
+    DEPLOY_VERIFIER_SCORER_NAME,
+    DirectionalDelta,
+    ModelSlice,
+    directional_delta,
+    render_report,
+)
+from assayops_evals.scorer import (
+    TASK_SPEC_METADATA_KEY,
+    ReaderFactory,
+    deploy_verifier_scorer,
+)
+from assayops_evals.task import drift_slice, samples_of
+
+__all__ = [
+    "DEPLOY_VERIFIER_SCORER_NAME",
+    "LOCALSTACK_SERVICE",
+    "TASK_SPEC_METADATA_KEY",
+    "Corpus",
+    "CorpusError",
+    "CorpusTask",
+    "DirectionalDelta",
+    "ModelSlice",
+    "ReaderFactory",
+    "deploy_verifier_scorer",
+    "directional_delta",
+    "drift_slice",
+    "load_corpus",
+    "localstack_endpoint",
+    "localstack_reader_factory",
+    "readers_for_scope",
+    "render_report",
+    "samples_of",
+]
