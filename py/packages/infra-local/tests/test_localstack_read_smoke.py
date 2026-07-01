@@ -28,42 +28,14 @@ not ``test``.
 from __future__ import annotations
 
 import json
-import os
 
-import boto3
 import pytest
 from botocore.client import BaseClient
-from botocore.config import Config
+from localstack_clients import client as _client
 
-# Cost-free LocalStack dev loop: no real AWS, static dummy credentials, the localhost gateway.
-_ENDPOINT = os.environ.get("LOCALSTACK_ENDPOINT", "http://localhost:4566")
-_REGION = "us-east-1"
 _BUCKET = "assayops-read-smoke-bucket"
 _MISSING = "assayops-read-smoke-absent-404"
 _BUCKET_TYPE = "AWS::S3::Bucket"
-
-# Let botocore handle transient retries (bounded): standard mode retries connection / 5xx errors
-# while a service warms, but NOT a 4xx like ResourceNotFoundException (so the negative test fails
-# fast on the modeled error). Bounded timeouts stop a hung LocalStack blowing the test budget.
-_CONFIG = Config(
-    retries={"total_max_attempts": 5, "mode": "standard"},
-    connect_timeout=5,
-    read_timeout=10,
-    # LocalStack needs path-style S3 addressing (the original TS smoke's forcePathStyle).
-    s3={"addressing_style": "path"},
-)
-
-
-def _client(service: str) -> BaseClient:
-    """A boto3 client pinned at the LocalStack gateway with static dummy credentials."""
-    return boto3.client(
-        service,
-        endpoint_url=_ENDPOINT,
-        region_name=_REGION,
-        aws_access_key_id="test",  # LocalStack's well-known dummy creds (not a real secret)
-        aws_secret_access_key="test",  # noqa: S106
-        config=_CONFIG,
-    )
 
 
 @pytest.fixture(scope="module")

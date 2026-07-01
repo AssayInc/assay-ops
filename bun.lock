@@ -42,6 +42,13 @@
     "py/packages/infra-local": {
       "name": "@assayops/infra-local",
       "version": "0.0.0",
+      "dependencies": {
+        "@assayops/py-adapter-terraform": "workspace:*",
+        "@assayops/py-contracts": "workspace:*",
+        "@assayops/py-diff-ir": "workspace:*",
+        "@assayops/py-replay": "workspace:*",
+        "@assayops/py-verifier": "workspace:*",
+      },
     },
     "py/packages/logger": {
       "name": "@assayops/py-logger",

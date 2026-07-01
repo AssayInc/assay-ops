@@ -72,7 +72,7 @@ assay-ops/
 │     ├─ assayctl/ ............ ◻ E7 dev CLI (run episode, grade, replay, red-team)
 │     ├─ trainer/ ............. ◻ E12 SFT pipeline (TRL v1.0 + LoRA) [I6]
 │     ├─ evals/ ............... ◻ E13 Inspect AI harness (deploy-verifier as Scorer) [T11]
-│     └─ infra-local/ ......... ✅ E0-3 LocalStack dev loop + boto3 Cloud Control read smoke (`just smoke`) [#116]
+│     └─ infra-local/ ......... ✅ E0-3 LocalStack dev loop + boto3 Cloud Control read smoke + adapter↔golden grade round-trip (`just smoke`) [#116/#155]
 │
 ├─ tasks/ ..................... ◻ E11 CDK drift&debug task SPECS [T13]; gold corpus + held-out eval
 │                                  live in a PRIVATE data store, never committed [I11]
