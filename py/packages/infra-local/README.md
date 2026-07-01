@@ -8,11 +8,16 @@ is boto3/Python (E17 — re-homed from the original TS smoke); it grounds the ve
 (#80) and is **not** the verifier itself.
 
 The grade round-trip (`tests/test_localstack_grade_roundtrip.py`) extends the read smoke through the
-verifier's production grading chain — deploy a tagged bucket, `DeployedStateReader` read, Terraform-adapter
-`normalize`, `grade_deployment` against a synthetic golden → `reward 1` — pinning the **corpus contract**
-(the `assayops:address` deploy tag + goldens declaring server-defaulted posture) to a **real** read: a
+verifier's production grading components — deploy a tagged bucket, `DeployedStateReader` read (get-scoped
+by identifier; the closed-world `verify` enumeration layer is the verifier's own hermetically-tested
+surface, deliberately not exercised against shared LocalStack state), Terraform-adapter `normalize`,
+`grade_deployment` against a synthetic golden → `reward 1` — pinning the **corpus contract** (the
+`assayops:address` deploy tag + goldens declaring server-defaulted posture) to a **real** read: a
 golden omitting a server-defaulted posture block (S3 encryption / public-access / ownership / ABAC) grades
-a correct deploy `reward 0`, and the round-trip's negative control proves exactly that.
+a correct deploy `reward 0`, and the round-trip's negative control proves exactly that. A deploy missing
+the address tag fails closed on a real read too. The posture *defaults* are AWS-documented facts; the
+exact read *shape* asserted is the pinned image's — real-AWS parity re-pins when the real-cloud read
+path lands.
 
 ## Why this exists (it is NOT a boto3 test)
 
@@ -53,7 +58,7 @@ gateway reports healthy) are covered by botocore's own bounded retries, not a ha
 ## Recipes (`just`)
 
 - `just up` — start LocalStack and wait for the gateway (http://localhost:4566) to report healthy
-- `just smoke` — seed an S3 bucket and read it back via Cloud Control `get_resource` / `list_resources` (boto3)
+- `just smoke` — run the Cloud Control read smoke + the adapter↔golden grade round-trip against LocalStack (boto3)
 - `just down` — stop LocalStack and remove its volumes
 - `just logs` — follow LocalStack logs
 

@@ -40,7 +40,8 @@ never the address.
 > The golden's other half of the corpus contract: it declares server-defaulted posture explicitly (for
 > S3: encryption / public-access / ownership / ABAC — see
 > [`NORMALIZATION.md`](../diff-ir/NORMALIZATION.md)). Both halves are pinned to a real Cloud Control
-> read by the `infra-local` adapter↔golden grade round-trip smoke.
+> read by the `infra-local` adapter↔golden grade round-trip smoke (today against the pinned
+> LocalStack image; real-AWS read-shape parity re-pins when the real-cloud read path lands).
 
 ## Fail closed (never a silent reward)
 

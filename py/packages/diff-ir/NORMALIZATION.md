@@ -99,7 +99,10 @@ emitting it, the adapter must:
   for new buckets — and `AbacStatus` (`Disabled`; a writable schema property, not readOnly). Before
   authoring corpus tasks of a new type, **pin its golden shape to a real read** — the `infra-local`
   adapter↔golden grade round-trip smoke is that pin (it also catches a nested-shape mismatch, e.g.
-  `VersioningConfiguration`).
+  `VersioningConfiguration`). The *defaults* above are AWS-documented facts; the exact read *shape*
+  the pin asserts is the pinned LocalStack image's — re-pin it against a real-AWS read when the
+  real-cloud read path lands (a shape divergence grades a correct deploy 0: the safe direction,
+  never a forge, but a broken signal to fix).
 
 Rule of thumb: if a field can differ between two runs of the same correct deploy, it must not appear in
 the `NormalizedState`.

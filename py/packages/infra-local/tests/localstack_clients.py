@@ -38,3 +38,19 @@ def client(service: str) -> BaseClient:
         aws_secret_access_key="test",  # noqa: S106
         config=CONFIG,
     )
+
+
+def fresh_bucket(s3: BaseClient, name: str) -> None:
+    """Delete-and-recreate a bucket so a run never sees stale local state.
+
+    A test whose meaning rests on SERVER-DEFAULTED state (the grade round-trip) must start from a
+    fresh bucket: an idempotent create would keep a locally-mutated posture (e.g. a hand-set KMS
+    encryption) and fail every run until someone remembers to reset LocalStack. These smoke
+    buckets never hold objects, so the delete is trivial; a manually-filled bucket fails loudly
+    (BucketNotEmpty) rather than being silently emptied.
+    """
+    try:
+        s3.delete_bucket(Bucket=name)
+    except s3.exceptions.NoSuchBucket:
+        pass  # nothing stale to remove
+    s3.create_bucket(Bucket=name)

@@ -69,7 +69,8 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   current schema, not readOnly) — so a correct deploy grades reward 0 (safe direction, broken signal). Landed:
   the `infra-local` **adapter↔golden grade round-trip smoke** (real LocalStack read →
   `DeployedStateReader` → `normalize` → `grade_deployment` → reward 1, with a negative control proving the
-  minimal golden grades 0 over exactly those four blocks) + the `NORMALIZATION.md` corpus-contract note
+  minimal golden grades 0 over exactly those four blocks, and a missing-tag deploy failing closed on a
+  real read) + the `NORMALIZATION.md` corpus-contract note
   (declare the posture explicitly; pin a new type's golden shape to a real read before authoring). The
   corpus (#76/#67/#176) authors against that contract; real-cloud posture parity re-checks with #30/#141's
   real-AWS read (LocalStack mirrors the AWS defaults today; #61 owns fidelity). The current-schema nested
