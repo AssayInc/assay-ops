@@ -24,28 +24,29 @@
 
 ## Deliverables
 
-- [ ] **Round-trip smoke** `py/packages/infra-local/tests/test_localstack_grade_roundtrip.py`:
+- [x] **Round-trip smoke** `py/packages/infra-local/tests/test_localstack_grade_roundtrip.py`:
       deploy a tagged bucket (S3 API: `assayops:address` + a user tag + versioning Enabled) →
       `DeployedStateReader.read_resource` (the verifier's production read) → adapter `normalize`
       (default_registry) → `grade_deployment` (synthetic GoldenRegistry) → **reward 1** with the
       posture-declaring golden (declared constants in the test — never computed from the read).
       Negative control: the minimal pre-#155 golden (BucketName+Versioning only) → **reward 0**
       with the diff naming the posture properties (proves non-vacuous, pins the issue's exact gap).
-- [ ] **Wiring:** infra-local pyproject (mypy_path + pythonpath for verifier/adapter-terraform/
+- [x] **Wiring:** infra-local pyproject (mypy_path + pythonpath for verifier/adapter-terraform/
       diff-ir/contracts/replay src; pydantic.mypy plugin; follow_imports=silent overrides mirroring
       the verifier's), package.json workspace deps, infra-local turbo.json (`typecheck` dependsOn
       `^typecheck` — the #152/#31 cache-edge pattern).
-- [ ] **NORMALIZATION.md:** the corpus-contract note — goldens make server-defaulted intent-bearing
+- [x] **NORMALIZATION.md:** the corpus-contract note — goldens make server-defaulted intent-bearing
       posture explicit; Phase-1 S3 = BucketEncryption / PublicAccessBlockConfiguration /
       OwnershipControls / AbacStatus; pin a type's golden shape to a real read (the round-trip smoke)
       before authoring tasks of that type.
-- [ ] **adapter-terraform README:** extend the corpus-contract callout (deploy-tag already there)
+- [x] **adapter-terraform README:** extend the corpus-contract callout (deploy-tag already there)
       with the golden-posture half + pointer.
-- [ ] **infra-local README:** scope now includes the adapter↔golden grade round-trip.
-- [ ] **Trackers:** ISSUES.md #155 entry → resolved; PROGRAM.md Right Now + Recently Landed.
-- [ ] `bun run verify` green + `just smoke` green (LocalStack) + negative-control proof.
-- [ ] PR `Closes #155`; /review + Codex gpt-5.5 xhigh adversarial, validate findings, re-review to
-      convergence.
+- [x] **infra-local README:** scope now includes the adapter↔golden grade round-trip.
+- [x] **Trackers:** ISSUES.md #155 entry → resolved; PROGRAM.md Right Now + Recently Landed.
+- [x] `bun run verify` green + `just smoke` green (LocalStack) + negative-control proof.
+- [x] PR #178 `Closes #155`; 4-pass review (Claude adversarial + testing + maintainability + Codex
+      xhigh) — findings validated, fixed (smoke-workflow sibling triggers, fresh fixtures,
+      missing-tag real-read test, substrate-honest wording); Codex xhigh re-review on the fixed diff.
 
 ## Boundaries honored
 
