@@ -151,11 +151,11 @@ episode/account-setup work (the assume-readiness gate).
 
 ### LocalStack ↔ real-CFN drift parity — resolved [spike] (#61)
 
-Measured against the **licensed** LocalStack image (2026.5.4 `pro`, license-activated; bounded engineer
-probes, not committed — preserved in #61) + the current LocalStack and AWS official docs. Resolves the
-**R3 drift-parity spike** — **§7 R3 itself stays open** until the **T9 real-AWS fidelity-diff sample**
-runs (see the pending-creds flag below); the ratio + unit economics feed **T3/T9** and the directional
-slice (#176).
+Measured against the **licensed** LocalStack image (2026.5.4 `pro`, license-activated) **and real AWS**
+(us-east-1, re-issued spike creds; bounded engineer probes, not committed — preserved in #61) + the
+current LocalStack and AWS official docs. Resolves the **R3 drift-parity spike**; **§7 R3 stays open
+until the corpus-wide T9 fidelity-diff sample** (the first 2-type sample below ran clean); the ratio +
+unit economics feed **T3/T9** and the directional slice (#176).
 
 - **CFN drift detection: zero parity — the API family does not exist on LocalStack.**
   `DetectStackDrift`, `DetectStackResourceDrift`, and `DescribeStackResourceDrifts` return **HTTP 501
@@ -163,21 +163,33 @@ slice (#176).
   nested-stack root; `DescribeStacks.DriftInformation` remains `NOT_CHECKED`);
   `DescribeStackDriftDetectionStatus` (no detection id can exist) and `DetectStackSetDrift` are
   unimplemented per the docs' **API-coverage table**, and the docs' **feature table** lists Drift
-  detection "—". **Drift-detection-graded reads are real-AWS-only** (the CDK/T3 path, #66). The Phase-1
+  detection "—". The real-CFN side is empirical too: the same drifted stack reads
+  `DETECTION_COMPLETE`/`DRIFTED` with exact per-property `NOT_EQUAL` diffs on the two mutated
+  properties. **Drift-detection-graded reads are real-AWS-only** (the CDK/T3 path, #66). The Phase-1
   Terraform path is untouched — it is Cloud-Control-only by #80.
 - **The Cloud Control grade-read is live-state faithful on LocalStack** (the fidelity that matters for
   grading): after an out-of-band mutation `GetResource` returns the **drifted** values, and after the fix
   the **restored** values — both grade directions read truth, not template state. Empirically shown for
-  **S3 + SSM**, and it is LocalStack **self**-consistency: every additional corpus type still passes the
-  per-type gates (#35 `BridgeRegistry` / #141 coverage / the infra-local canary), and LocalStack↔real-AWS
-  per-type read **parity** is the **T9 fidelity-diff sample's** job. Cloud Control + CloudFormation are
-  in **every** LocalStack tier (Hobby/Base/Ultimate).
+  **S3 + SSM**; every additional corpus type still passes the per-type gates (#35 `BridgeRegistry` /
+  #141 coverage / the infra-local canary). The **first LocalStack↔real-AWS fidelity-diff sample** (same
+  template on both substrates, `GetResource` compared key-by-key) ran **clean on the graded surface —
+  every explicitly-authored property matched**; the divergences classify as (a) server-computed
+  endpoint-shaped `readOnlyProperties` (adapter-dropped, #35), (b) server-default posture on unauthored
+  properties (`BucketEncryption` — exactly the #155 golden-authoring discipline), and (c) real-CFN-injected
+  **`aws:cloudformation:*` system tags** absent on LocalStack — a substrate-dependent false negative on a
+  Tags-asserting golden; the `aws:*`-strip normalization rule is tracked as **#179**. The corpus-wide
+  sample stays **T9**'s job. Cloud Control + CloudFormation are in **every** LocalStack tier
+  (Hobby/Base/Ultimate).
 - **Parity by corpus feature.** **DeletionPolicy:** `Retain` honored on stack delete (retained bucket
-  survives; default bucket removed) — real-CFN semantics; drift detection is N/A to it on both substrates
-  (a template attribute, not a deployed property) → gradable via CC presence/absence reads.
-  **Nested stacks:** deploy on LocalStack and the child's resources are CC-readable; real CFN excludes
-  nested stacks from a parent drift run anyway (per-stack `DetectStackDrift` required). **Custom
-  resources:** full lifecycle works on LocalStack (Lambda-backed, `ResponseURL` callback + `Fn::GetAtt`)
+  survives; default bucket removed) — **empirically identical on both substrates**; drift detection is
+  N/A to it on both (a template attribute, not a deployed property) → gradable via CC presence/absence
+  reads. **Nested stacks:** deploy on LocalStack and the child's resources are CC-readable; real CFN
+  excludes nested stacks from a parent drift run (empirical, and sharper than the docs read: with the
+  child's resource drifted, the **root run reads `IN_SYNC` — it actively masks nested drift**, a
+  false-clean; `DetectStackDrift` on the child directly reads `DRIFTED`). **Custom resources:** full
+  lifecycle works on both substrates (Lambda-backed, `ResponseURL` callback + `Fn::GetAtt`; empirical on
+  real CFN: drift status `NOT_CHECKED`, and a custom-resource-only stack still reads stack-level
+  `IN_SYNC` — a second false-clean shape)
   but needs the **docker-socket mount** (an E7 episode-substrate requirement; `infra-local`'s compose
   omits it by design) — and they are **ungradable on both substrates** (not registry types, so absent
   from the resource-type-support table ⇒ not Cloud-Control-readable; drift's supported-type rule ⇒
@@ -198,11 +210,11 @@ slice (#176).
   substrate blocker — the per-type gates above still admit each type); **0% for drift-detection-graded**;
   the T3 real-AWS eval slice + T9 fidelity-diff sample stay real by **trust posture** (for the Phase-1
   Terraform path their job is per-type CC-read parity; the CDK/T3 drift path is real-AWS-only end-to-end,
-  so there is nothing to fidelity-diff). **The entire real-AWS empirical half is pending fresh creds**
-  (the #60 probe profile was rotated): episode timing AND the per-type CC-read fidelity-diff — the
-  real-CFN side of the parity verdict is doc-grounded. Resource cost for the S3/SSM shapes is ~$0 by AWS
-  pricing — the real-side cost drivers are account-pool + guardrail infra (T6/T7) and slower stack
-  operations.
+  so there is nothing to fidelity-diff). **Real-AWS measured** (n=3, the identical minimal episode):
+  **median ~26.0s wall** (create 19.4s, grade-read 1.2s, teardown 4.6s) ⇒ **~12× LocalStack substrate
+  wall-clock**; resource cost ~$0 for the S3/SSM shapes — the real-side cost drivers are account-pool +
+  guardrail infra (T6/T7). The one remaining real-AWS gap is the **corpus-wide** T9 fidelity-diff (the
+  2-type sample above is the first data point).
 
 ---
 
