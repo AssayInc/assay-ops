@@ -1,0 +1,84 @@
+[project]
+name = "assayops-evals"
+version = "0.0.0"
+description = "AssayOps Inspect-AI eval harness (E13/T11 seam, built pre-T0 for the #176 directional slice). The deploy-verifier runs as an Inspect Scorer around the shipped account-B verify() — the only reward-emitting entry — over a PRIVATE task corpus (I11: tasks/goldens never committed; in-repo tests are synthetic-only). Directional-slice numbers are LocalStack-graded and R1-scoped: never published, never the E13 proof."
+requires-python = ">=3.12"
+# inspect-ai is the eval framework (I6: deploy-verifier as a custom Scorer); pydantic for the
+# harness-internal frozen models; boto3 only to CONSTRUCT the injected Cloud Control readers the
+# verifier's read path consumes (read-only — never a write/sign dep). The five sibling cores are
+# consumed by source path (the repo's virtual-member convention — see the pytest `pythonpath` +
+# mypy `mypy_path` below): `assayops_verifier` (verify — the sole reward entry — GoldenRegistry,
+# ReadScope), `assayops_adapter_terraform` (BridgeRegistry), `assayops_replay` (the VerifyVerdict
+# shapes: Reproducible/Quarantined), `assayops_diff_ir` (GradeOutcome), and `assayops_contracts`
+# (TaskSpec).
+dependencies = ["inspect-ai>=0.3.244", "pydantic>=2.10", "boto3>=1.40"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) and use loose synthetic fixtures/fakes (ANN) — not the typed harness core.
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# pydantic.mypy synthesizes typed model __init__s. With init_typed + init_forbid_extra (below) it drops
+# the plugin's synthesized `Any`, so hand-written Pydantic models pass `disallow_any_explicit` — the
+# pydantic-v2 skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha.
+plugins = ["pydantic.mypy"]
+# Resolve this package AND the five siblings it consumes (verify/GoldenRegistry/ReadScope, the adapter's
+# BridgeRegistry, replay's verdict shapes, diff-ir's GradeOutcome, contracts' TaskSpec). `uv run mypy`
+# runs from the package dir, so the sibling sources are `../<pkg>/src`. Cross-package imports are consumed
+# by source path (the repo's virtual-member convention), keeping the landed packages untouched.
+# `../verifier/tests` exposes the shared Cloud Control test fakes + synthetic golden fixtures
+# (cloud_control_fakes / synthetic) this package's tests REUSE rather than duplicate (CLAUDE.md:
+# reuse before adding a fixture) — test-only modules, never imported by src.
+mypy_path = "src:../contracts/src:../diff-ir/src:../adapter-terraform/src:../replay/src:../verifier/src:../verifier/tests"
+
+[tool.pydantic-mypy]
+init_typed = true
+init_forbid_extra = true
+
+[[tool.mypy.overrides]]
+# Ban explicit `Any` in the hand-written harness core — the Python mirror of the TS lane's `any` ban.
+# `--strict` does NOT enable this. Use `object` (narrow before use, like TS `unknown`) or a Pydantic model.
+module = ["assayops_evals.*"]
+disallow_any_explicit = true
+
+[[tool.mypy.overrides]]
+# The five sibling cores are each separately typechecked under their OWN strict lane. Follow them for the
+# real types but `silent` so their internals (and any intentional codegen `Any`) aren't re-judged under
+# this package's stricter config — mirrors the verifier package's sibling overrides.
+module = [
+    "assayops_contracts.*",
+    "assayops_diff_ir.*",
+    "assayops_adapter_terraform.*",
+    "assayops_replay.*",
+    "assayops_verifier.*",
+]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
+# boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The reader factory's
+# boundary is botocore's own `BaseClient` (an imported name, not a literal `Any`) — mirrors the verifier.
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src",
+    "../contracts/src",
+    "../diff-ir/src",
+    "../adapter-terraform/src",
+    "../replay/src",
+    "../verifier/src",
+    "../verifier/tests",
+]
+testpaths = ["tests"]

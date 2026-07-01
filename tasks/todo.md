@@ -1,72 +1,84 @@
-# todo — #141 E2-6: boto3 read-coverage enforcement (FAIL-CLOSED + closed-world + per-property gate)
+# #176 leg 3 — Inspect-AI eval harness (`py/packages/evals`) Implementation Plan
 
-> Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md (Recently Landed) + the PR + GitHub #141.
+> Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md + the PR + GitHub #176.
+> **For Claude:** REQUIRED SUB-SKILL: superpowers:test-driven-development per task; superpowers:verification-before-completion before claiming done.
 
-## Scope (grounded: DECISIONS.md §1 "E3-4 read coverage" + §5 vector #15 + §8; brain `iac-verification-primitives`; the #141 **founder scope comment** 2026-06-26; the #45 handoff note)
+**Goal:** The Inspect-AI harness leg of the pre-T0 directional slice (#176): the deploy-verifier as
+an Inspect `Scorer` around the shipped `assayops_verifier.verify`, a private-corpus dataset loader,
+the drift-slice `Task` builder, and the R1-framed directional pass-rate-delta report — so the
+15 × 3-seed LocalStack-graded base-vs-SFT runs have a harness.
 
-**In (the in-repo, account-B, moat-critical half — unblocked; its only named dep #45/#159 landed):**
-1. **FAIL-CLOSED read policy** — never reward 1 for a resource the verifier can't independently read. Route a **transient** (throttle/5xx/eventual-consistency) read failure through the 7A classifier + K-run (`assayops_replay`); a **genuine** unreadable fails closed (reward 0 / raise); `skip`-and-grade-the-rest forbidden.
-2. **Closed-world enumeration** (`deployed set ≡ golden set`) — exhaustive, paginated `list_resources` over the in-scope **type × allowed-Region** matrix, `GetResource`-normalizing each id, **failing closed** on any list/partial error, an **unlistable / context-listable** in-scope type, or a missing region client. The reward core already flags an *enumerated* extra (`added`→0); this makes the enumeration **complete**, so an extra can't hide unenumerated (vector #15).
-3. **Per-asserted-property coverage gate** — authoring-time: each golden-diffed property must be one `GetResource.Properties` actually returns (Cloud Control omits write-only props) → else quarantine the task.
+**Architecture:** New `py/packages/evals` (`assayops_evals`), consuming the shipped verifier (E2),
+Terraform adapter (E3-2), replay verdicts (E6-2), and contracts by source path (the repo's
+virtual-member convention). The scorer maps `VerifyVerdict` → Inspect `Score`
+(`Reproducible(1)`→CORRECT, `Reproducible(0)`/`FailedClosed`→INCORRECT, `Quarantined`→
+`Score.unscored()`; corpus/config errors PROPAGATE). Tasks + goldens live in the PRIVATE corpus dir
+(I11 — never committed); in-repo tests use synthetic fixtures only. Per-sample Docker-compose
+sandbox = agent container + its own LocalStack service; the scorer runs in the eval process
+(outside the sandbox) and reads deployed state via boto3 Cloud Control against the sample's
+LocalStack endpoint (ephemeral published port, discovered via the sandbox connection — injected
+seam, hermetically tested).
 
-**Deferred (blocked on `assay-cloud-org` / a live account — do NOT gate the above; cross-reference, ensure tracked):**
-- Real-AWS **coverage-matrix regeneration tool** + `describe-type` IAM read∪list verification (scope 4) — T7-gated corpus-admission tooling.
-- The corrected read-only **IAM policy doc** (scope 5; the `cloudformation:` prefix is already in `read.py`/DECISIONS.md §1 — only the real-AWS-derived policy is deferred).
-- **SCP primary closure** (#53), **cross-account read-role** (#52/#33). The in-repo enforcement runs on fakes until these land.
+**Tech Stack:** inspect-ai (pinned), pydantic v2, boto3 (reader construction only), pytest,
+mypy --strict + disallow_any_explicit, ruff.
 
-**AC for this slice (founder comment):** negative control — an *extra* or *unreadable* B-side resource the golden doesn't have → **reward 0, never 1**. Testable on fakes.
+**Trust framing (write-isolated-verifier / eval-rigor):** pre-T0 the agent and LocalStack share a
+compose network — no account A/B split. Allowed per docs/priorities.md P1 (no adversarial policy,
+no external claim; never published — R1). The report artifact hard-codes the
+"PRE-T0 DIRECTIONAL — NOT the E13 proof" framing so the number can't be innocently reused.
+Scorer inputs (task_id, seed, scope, registries) are harness-owned (sample metadata written by the
+dataset loader from the validated TaskSpec) — never agent-supplied. The verifier never executes in
+the agent's container; grading runs in the eval process via `verify()` only (the sole
+reward-emitting entry).
 
-## Reuse (don't rebuild)
-- `assayops_replay` (#45/#159): `classify` / `transient_kind` / `TransientGradeError(kind)` (the read path RAISES this) / `reproduce(grade_fn, runs=K) -> Reproducible | Quarantined` / `TransientBudgetExhausted(kind)` (EVENTUAL_CONSISTENCY→reward 0, INFRA→quarantine). **Purpose-built for #141.**
-- `read.py` `DeployedStateReader` (#30): per-resource `get_resource`/`list_resources` reads + the recording read-only fake `cloud_control_fakes.py`. The closed-world enumerator builds on this.
-- `grade_deployment` (#31) / `normalize` (#35) / `grade` (#34) — the existing read→normalize→grade path + its fail-closed family.
+---
 
-## Module plan (boto3-dependent code stays OUT of the cloud-free top-level `__init__`, like `read.py`)
-- **`read_scope.py`** (new, pure): the verifier-side read-coverage matrix — `RegionScope`(GLOBAL|REGIONAL), `Listability`(DIRECTLY_LISTABLE|CONTEXT_LISTABLE|UNLISTABLE), `TypeCoverage`(type, region_scope, listability, write_only_paths), `ReadScope`(per-type coverage + allowed regions; fail-closed on an unregistered type) + the **per-property coverage gate** `assert_golden_readable(golden, scope)`.
-- **`read.py`** (modify): the per-resource read **classifies** the boto3 error (transient → raise `TransientGradeError(kind)`; genuine → `UnreadableResource`) + the **closed-world enumerator** `read_closed_world(readers, scope)` over type×region, fail-closed on a list error / unlistable type / missing region.
-- **`verify.py`** (new): the closed-world verify entry `verify(...)` = build `grade_fn` → `reproduce(grade_fn, runs=K)` → `VerifyVerdict`; maps `TransientBudgetExhausted` (EVENTUAL_CONSISTENCY→reward 0 fail-closed; INFRA→quarantine). `VerifyVerdict = Reproducible | Quarantined | FailedClosed`.
+## Task 0: Grounding + package scaffold
+- [x] Ground #176 (body, comments=none, timeline), #61/#155/#78/#76/#67 siblings, DECISIONS.md §1/§3/§6/§8, priorities.md, ARCHITECTURE.md, brain (impl-plan E12/E13 lines), Inspect docs (custom-scorers/sandboxing/tasks/metrics), write-isolated-verifier + eval-rigor skills.
+- [ ] Comment the grounding reconciliation + leg plan on #176.
+- [ ] Scaffold `py/packages/evals`: `pyproject.toml` (deps: `inspect-ai` pinned, `pydantic>=2.10`, `boto3>=1.40`; mypy strict + `disallow_any_explicit` + sibling `follow_imports=silent` overrides mirroring verifier), thin `package.json` (`@assayops/py-evals`, workspace deps on py-verifier/py-adapter-terraform/py-diff-ir/py-contracts/py-replay), `turbo.json` (`dependsOn ^typecheck/^test`), `src/assayops_evals/__init__.py`.
+- [ ] `bun install` + `uv sync` → BOTH lockfiles updated (lessons: bun-lock-and-uv-lock-after-adding-a-py-package); verify `bun install --frozen-lockfile` passes.
 
-## Wiring (verifier → replay; acyclic — replay imports contracts+diff-ir only)
-- `package.json`: add `"@assayops/py-replay": "workspace:*"` (already a bun member).
-- `pyproject.toml`: add `../replay/src` to mypy `mypy_path` + pytest `pythonpath`; add an `assayops_replay.*` mypy override (follow_imports=silent, disallow_any_explicit=false), mirroring the diff-ir/adapter overrides.
-- Turbo `dependsOn ^typecheck/^test` already present → the new workspace dep edge is modeled (#31 cache-graph fix). Run `bun install` + `uv lock`/`uv sync`; commit BOTH lockfiles (lesson `bun-lock-and-uv-lock`).
+## Task 1: Scorer — verdict → Score mapping (the moat seam)
+Files: `src/assayops_evals/scorer.py`, `tests/test_scorer.py`.
+- [ ] RED: tests with a synthetic golden registry + fake reader (recording fake proving read-only ops only, mirroring verifier tests):
+      clean deploy → CORRECT; property drift → INCORRECT; extra resource → INCORRECT;
+      FailedClosed (unreadable) → INCORRECT + `verdict:"failed_closed"` metadata;
+      Quarantined → unscored (excluded from metrics); corpus error (unknown task) PROPAGATES;
+      task identity read from sample metadata (agent text cannot override).
+- [ ] GREEN: `deploy_verifier_scorer(corpus, reader_factory, runs)` — `@scorer(metrics=[accuracy(), stderr()])`; re-validate TaskSpec from metadata (fail closed); call `verify()`; map verdict.
+- [ ] Negative-control the load-bearing assertions (disable mapping → tests fail).
 
-## TDD task list — ALL DONE (test-first, RED→GREEN, commit per task; 102 verifier tests; `bun run verify` green 29/29)
-- [x] **T0** — wire the replay dep (package.json + pyproject + Turbo edge `@assayops/py-replay#test` confirmed upstream of verifier#test; lockfiles frozen-clean).
-- [x] **T1** — `read_scope.py` ReadScope/TypeCoverage (fail-closed on unregistered type) + RegionScope/Listability.
-- [x] **T2** — per-property gate `assert_golden_readable` (write-only property → quarantine; adjacent-correct readable-property test).
-- [x] **T3** — transient classification: throttle/5xx/timeout → `TransientGradeError(INFRA)`; list/get-race → `TransientGradeError(EVENTUAL_CONSISTENCY)`; genuine → `UnreadableResource`. Updated the 2 #30 throttle tests + cloud_control_fakes (access_denied/list-error paths).
-- [x] **T4** — `read_closed_world(readers, scope)` exhaustive type×region; fail-closed (`ClosedWorldError`) on unlistable/context-listable/missing-region; per-Region matrix (GLOBAL vs REGIONAL).
-- [x] **T5** — `verify(...)` + `VerifyVerdict = Reproducible|Quarantined|FailedClosed`; maps `TransientBudgetExhausted` (EVENTUAL_CONSISTENCY→FailedClosed 0; INFRA→Quarantined); genuine propagates (fail closed). The AC negative control: extra-enumerated→reward 0; genuine unreadable→fail closed; never 1.
-- [x] **T6** — moat read-only assertion across the K-run multi-Region verify (vectors #1/#10 by construction).
-- [x] **T7** — cloud-free `__init__` re-exports the PURE read_scope API; read/verify stay boto3 submodule imports (`import assayops_verifier` pulls no boto3 — asserted).
+## Task 2: Private-corpus loader (I11 residency, fail closed)
+Files: `src/assayops_evals/corpus.py`, `tests/test_corpus.py` (+ synthetic corpus fixture under `tests/fixtures/`).
+- [ ] RED: loads `tasks/*.json` → validated `TaskSpec`s; loads `corpus.py` module (GoldenRegistry/ReadScope/BridgeRegistry, fail closed if missing/malformed); duplicate task_id → error; malformed spec → error; per-task sandbox assets (files/setup/compose) resolved.
+- [ ] GREEN: `load_corpus(corpus_dir)` → frozen `Corpus` object.
+- [ ] Residency guard: loading a corpus dir inside this repo fails closed unless the test-only flag is set (protects I11).
 
-## Self-validated against primary sources (lesson `a-converged-cross-model-review-is-not-validation`)
-- No fail-OPEN: every enumeration gap raises (list error→classified; malformed page→ValueError; unlistable/missing-region→ClosedWorldError; UnreadableResource→adapter raises = whole episode fails closed, never skip-and-grade-rest).
-- AccessDenied → genuine → UnreadableResource → raises (loud, never masked, never silent reward 0) ✓ (#45).
-- EVENTUAL_CONSISTENCY-exhausted→reward 0, INFRA-exhausted→quarantine ✓ (#45 `TransientBudgetExhausted` doc).
-- list-indexing lag → K-run disagreement → Quarantine (not a false reward) ✓.
-- **Open design point (watch in review):** verify RAISES on a genuine unreadable (vs returning FailedClosed 0) — chosen so AccessDenied surfaces loudly; the caller maps to reward 0/quarantine. Defensible (fail-closed, never 1).
+## Task 3: Task builder + dataset mapping
+Files: `src/assayops_evals/task.py`, `tests/test_task.py`.
+- [ ] RED: TaskSpec → `Sample` (input=description, metadata=spec+seed, files/setup from corpus); task builder wires solver (react agent + bash/text_editor), scorer, `epochs`, sandbox=(docker, corpus compose), limits.
+- [ ] GREEN: `drift_slice_task(...)` `@task` factory, params for corpus_dir/epochs/limits.
 
-## Review
-- [x] **Codex gpt-5.5 xhigh** (`b5tsr66ov`, banner-confirmed xhigh) — NO false-reward-1 in the new `verify` path (moat holds). 2 findings, BOTH fixed + committed:
-  - **F1 (High):** `verify_deployment` was an unsound single-Region reward-emitting bypass → REMOVED; `verify()` is now the only reward entry; coverage migrated; `test_verify.py` dropped.
-  - **F2 (Med):** the per-property gate only checked top-level names → a raw JSON-Pointer `write_only_path` would silently miss (false 0) → `TypeCoverage.__post_init__` now fails closed on a "/"-path.
-- [x] **Diverse-lens Workflow** (`wewrpk0g1`, 19 agents) — moat holds (forge lens: no agent-controllable false-1). 3 confirmed of 15:
-  - **F1 (Low):** classifier.py docstring overstates "boto3's own retry logic" (actually `transient_kind`) — HELD, batch with the read-path doc updates after the Finding-3 decision.
-  - **F2 (Low):** ReadScope duplicate-region guard — FIXED + committed.
-  - **F3 (Med, the crux):** `verify` RAISES on a genuine unreadable vs the floor's reward=0 — UNDER a 2-review decision (founder asked for Opus 4.8 max + Codex xhigh, grounded).
-    - **Opus 4.8 (`acead7cca...`) DONE → Recommendation A, decisive.** CONFIRMED the AWS fact (verifier reads same-account via STS-assume-into-A → an agent resource-policy explicit-Deny, sharpest for KMS key policies in the Phase-1 corpus, overrides the read-role allow → AccessDenied; SCPs gate actions not policy content → dodge is REAL). Per-cause map: UnreadableResourceError (AccessDenied/validation/unparseable/malformed instance) → FailedClosed(reward 0, cause in reason); Unsupported/ClosedWorld/Golden → RAISE; EC→0 + INFRA→quarantine already correct. PRECONDITION: the #60/#52 readiness gate must exercise PER-TYPE read perms (else a per-type read-role hole → false-negative). FLAG: address-bridge errors (AddressBridgeError/DuplicateAddressError) need explicit classification (lean reward 0 IF the `assayops:address` tag is agent-controlled). Also: fix the false "score-0 vs alarm" dichotomy in the docstrings; reconcile the stale errors.py "quarantines" doc. I validated all load-bearing claims against the floor + IAM semantics myself — they hold.
-    - **Codex xhigh (`bya6npkjk`) RUNNING** (first launch `bgrs1bflg` hung on stdin; relaunched with `< /dev/null`).
-  - Spot-checked the 12 refuted: the only catastrophic-direction one ("GLOBAL mis-declaration fails OPEN") is SOUNDLY refuted (documented T7 boundary, non-agent-reachable config error). Add a cheap `region_scope`-is-moat-load-bearing comment (fail-open asymmetry vs listability) — batch post-decision.
-- [ ] **FINAL** Codex xhigh re-review of the fully-fixed diff (after F3 lands) — lesson `re-review-fixed-code-with-codex-xhigh`.
+## Task 4: LocalStack endpoint discovery + reader factory (injected seam)
+Files: `src/assayops_evals/readers.py`, `tests/test_readers.py`.
+- [ ] RED: reader factory builds per-region `DeployedStateReader` map from `ReadScope` + endpoint (boto3 client with endpoint_url, test creds, region); endpoint discovery parses the sandbox connection/port output (injected exec — no docker in tests); malformed discovery output fails closed.
+- [ ] GREEN: `localstack_reader_factory(...)`, `discover_localstack_endpoint(...)`.
 
-## Review (memory `elevated-rigor-for-moat-features` + `assayops-standing-three-questions`)
-- [ ] Diverse-lens adversarial review (forge + crash + design) over the diff — a **Workflow** (moat-focused) + the gstack `/review`.
-- [ ] **Codex gpt-5.5 xhigh** pass (paste GitHub content inline — Codex has no network; `git diff` local). Re-review FIXED code to convergence (lesson `re-review-fixed-code-with-codex-xhigh`).
-- [ ] Validate load-bearing premises against the **primary sources** myself (DECISIONS.md / skills), not reviewer consensus (lesson `a-converged-cross-model-review-is-not-validation`).
+## Task 5: Directional report (R1-framed)
+Files: `src/assayops_evals/report.py`, `tests/test_report.py`.
+- [ ] RED: two eval logs (synthetic) → per-model pass rate, delta, n/epochs/unscored counts; report text contains the hard-coded PRE-T0/NOT-the-proof framing; quarantined excluded from the rate.
+- [ ] GREEN: `directional_delta(base_log, sft_log)` + `render_report(...)`.
 
-## Finalize
-- [ ] Update **PROGRAM.md** (Right Now + Recently Landed) IN the branch (lesson `update-program-state-before-landing`).
-- [ ] **Create a tracked issue for the deferred scope-4** real-AWS coverage-matrix regeneration tool + `describe-type` IAM read∪list derivation (NOT covered by #53 SCP / #52 read-role — confirmed); board + parent it; cross-reference #53/#52. Needed before `Closes #141` (narrowed to the in-repo half) loses it.
-- [ ] Focused PR `Closes #141` (the issue is narrowed to this in-repo half; deferred layers tracked elsewhere). Wait for explicit founder go to merge (lesson `never-merge-without-explicit-user-approval`).
+## Task 6: Gate + docs + reviews
+- [ ] `bun run verify` green (paste output).
+- [ ] Package README/docstring: the pre-T0 trust caveat + run recipe (`inspect eval … -T corpus_dir=…`).
+- [ ] Update PROGRAM.md (Right Now + Recently Landed) + ISSUES.md if residuals.
+- [ ] `/review` + Codex gpt-5.5 xhigh adversarial review (diverse-lens: forge + crash + design) → re-review fixed code to convergence.
+- [ ] PR `Advances #176` (never Closes — umbrella), diff scoped to this leg.
+
+## Out of scope (tracked, not built here)
+- Corpus leg (15 TF drift tasks): private store (#76 unbuilt), informed by #61 (open P0), per-type LocalStack Cloud Control smoke gate — comment on #176.
+- Trainer leg (TRL SFT + LoRA + ETL): follow-up PR; ETL consumes this harness's logs (#78 shape minus KMS — no ledger yet).
+- #155 item 3 (LocalStack adapter↔golden round-trip test) — owned by #155.
+- #46 (§6 determinism gate over the real corpus in the Scorer) — E13/Phase 2-3, blocked by #14/#45.

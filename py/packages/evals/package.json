@@ -1,0 +1,18 @@
+{
+  "name": "@assayops/py-evals",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@assayops/py-adapter-terraform": "workspace:*",
+    "@assayops/py-contracts": "workspace:*",
+    "@assayops/py-diff-ir": "workspace:*",
+    "@assayops/py-replay": "workspace:*",
+    "@assayops/py-verifier": "workspace:*"
+  },
+  "scripts": {
+    "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",
+    "format": "uv run --frozen ruff format .",
+    "typecheck": "uv run --frozen mypy src tests",
+    "test": "uv run --frozen pytest -q"
+  }
+}
