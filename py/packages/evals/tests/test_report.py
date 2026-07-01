@@ -219,7 +219,18 @@ def test_mismatched_task_sets_fail_closed() -> None:
     base = _make_log("hf/base", [_sample("task-a", CORRECT), _sample("task-b", INCORRECT)])
     sft = _make_log("hf/sft", [_sample("task-a", CORRECT), _sample("task-c", CORRECT)])
 
-    with pytest.raises(ValueError, match="different task sets"):
+    with pytest.raises(ValueError, match="different rollout grid"):
+        directional_delta(base, sft)
+
+
+def test_mismatched_epoch_multiplicity_fails_closed() -> None:
+    # Same task ids, different epoch counts (base ran epochs=3, sft epochs=1) is NOT a comparable
+    # pair -- the delta would span different n. The rollout-grid multiset catches it (a task-id-set
+    # check would not).
+    base = _make_log("hf/base", [_sample("task-a", CORRECT, epoch=e) for e in (1, 2, 3)])
+    sft = _make_log("hf/sft", [_sample("task-a", CORRECT)])
+
+    with pytest.raises(ValueError, match="different rollout grid"):
         directional_delta(base, sft)
 
 

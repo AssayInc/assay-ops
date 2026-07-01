@@ -20,6 +20,7 @@ Neither changes a score (7A holds); they frame the number for the reader.
 from __future__ import annotations
 
 import math
+from collections import Counter
 from dataclasses import dataclass
 
 from inspect_ai.log import EvalLog, EvalSample
@@ -107,29 +108,38 @@ def directional_delta(base: EvalLog, sft: EvalLog) -> DirectionalDelta:
     """Both logs' verifier scores -> the directional read, fail-closed on non-comparable logs.
 
     Refuses two logs that are not a base-vs-SFT pair over the SAME slice: they must run the same
-    task and cover the same set of task ids (else the "delta" compares different work and is
-    meaningless -- an honest-mistake guard for a directional number, eval-rigor).
+    task and the same ROLLOUT GRID -- the identical ``(task_id, epoch)`` multiset (same tasks AND
+    same epoch count per task, including any errored/quarantined rollouts, which still appear as
+    samples). Otherwise the "delta" compares different work / a different n and is meaningless -- an
+    honest-mistake guard for a directional number (eval-rigor). Comparing task-id SETS alone would
+    miss a base run at epochs=3 vs an sft run at epochs=1.
     """
     base_slice = _slice_of(base)
     sft_slice = _slice_of(sft)
-    _require_comparable(base, sft, base_slice, sft_slice)
+    _require_comparable(base, sft)
     return DirectionalDelta(base=base_slice, sft=sft_slice)
 
 
-def _require_comparable(
-    base: EvalLog, sft: EvalLog, base_slice: ModelSlice, sft_slice: ModelSlice
-) -> None:
+def _rollout_grid(log: EvalLog) -> Counter[tuple[str, int]]:
+    # Reached only after _slice_of has confirmed samples are present; `or ()` keeps mypy happy.
+    return Counter((str(sample.id), sample.epoch) for sample in log.samples or ())
+
+
+def _require_comparable(base: EvalLog, sft: EvalLog) -> None:
     if base.eval.task != sft.eval.task:
         raise ValueError(
             f"logs are not comparable: base ran task {base.eval.task!r}, sft ran "
             f"{sft.eval.task!r} -- the directional delta compares one slice across two models"
         )
-    if base_slice.task_ids != sft_slice.task_ids:
-        only_base = sorted(base_slice.task_ids - sft_slice.task_ids)
-        only_sft = sorted(sft_slice.task_ids - base_slice.task_ids)
+    base_grid = _rollout_grid(base)
+    sft_grid = _rollout_grid(sft)
+    if base_grid != sft_grid:
+        only_base = sorted(base_grid - sft_grid)
+        only_sft = sorted(sft_grid - base_grid)
         raise ValueError(
-            "logs cover different task sets -- not a base-vs-SFT pair over the same slice "
-            f"(only in base: {only_base}; only in sft: {only_sft})"
+            "logs cover a different rollout grid -- not a base-vs-SFT pair over the same slice "
+            f"(same task/epoch (id, epoch) rollouts required; only in base: {only_base}; only in "
+            f"sft: {only_sft})"
         )
 
 
