@@ -1,0 +1,15 @@
+# The per-sample sandbox shape a real private corpus provides: the agent's workbench ('default')
+# plus the sample's OWN LocalStack (per-sample isolation -- the closed-world read enumerates the
+# whole substrate, so samples can never share one). Synthetic fixture: images are placeholders.
+services:
+  default:
+    image: assayops-workbench:placeholder
+    x-local: true
+    init: true
+    command: tail -f /dev/null
+  localstack:
+    image: localstack/localstack:placeholder
+    x-local: true
+    init: true
+    ports:
+      - "4566"
