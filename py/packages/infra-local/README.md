@@ -7,6 +7,13 @@ account-B verifier uses in production (`DECISIONS.md` §1). It is boto3/Python b
 is boto3/Python (E17 — re-homed from the original TS smoke); it grounds the verifier read-coverage spike
 (#80) and is **not** the verifier itself.
 
+The grade round-trip (`tests/test_localstack_grade_roundtrip.py`) extends the read smoke through the
+verifier's production grading chain — deploy a tagged bucket, `DeployedStateReader` read, Terraform-adapter
+`normalize`, `grade_deployment` against a synthetic golden → `reward 1` — pinning the **corpus contract**
+(the `assayops:address` deploy tag + goldens declaring server-defaulted posture) to a **real** read: a
+golden omitting a server-defaulted posture block (S3 encryption / public-access / ownership / ABAC) grades
+a correct deploy `reward 0`, and the round-trip's negative control proves exactly that.
+
 ## Why this exists (it is NOT a boto3 test)
 
 boto3 is reliable — testing AWS's SDK would be pointless. The uncertain thing worth guarding is
@@ -33,6 +40,10 @@ serves the read path before building on it.
 - `get_resource` — per-resource state read (`Identifier` + `Properties`).
 - `list_resources` — enumerate all resources of a type (paginated).
 - `ResourceNotFoundException` — the clean negative-assertion path.
+- The adapter↔golden grade round-trip — real read → `normalize` → `grade_deployment`, pinning the
+  corpus contract (deploy tag + golden server-posture) and each supported type's golden shape to a
+  real read. It is also the shape canary: an image bump that changes the served posture/shape fails
+  the reward-1 test loudly.
 
 CloudFormation server-side **drift detection** is also part of the verifier read path (`DECISIONS.md` §1),
 but LocalStack does **not** serve `DetectStackDrift` ("not currently supported by LocalStack", verified) —

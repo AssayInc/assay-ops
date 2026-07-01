@@ -62,13 +62,19 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   the blessed path today (`GoldenTarget` forbids empty; the `GoldenTarget→NormalizedState` conversion is #32,
   unbuilt), but the trust gate should enforce it as defense-in-depth — add an empty-golden fail-closed to
   `_require_trusted_inputs`. Flagged on #32; **now tracked as #154** (E2 / board). (2) **Goldens must declare
-  server-defaulted posture (#76 corpus +
-  the real-cloud read path):** a real `AWS::S3::Bucket` Cloud Control read returns server-defaulted blocks the
-  minimal synthetic golden omits (`BucketEncryption` since 2023, likely `OwnershipControls`/
-  `PublicAccessBlockConfiguration`) → a correct deploy grades reward 0 against real cloud (safe direction, but
-  breaks the signal). Needs a LocalStack round-trip test + a `NORMALIZATION.md` note that S3 goldens make
-  encryption/BPA/ownership explicit. Forward-looking (no real-cloud reads until #30/#141 land); **now tracked
-  as #155** (E11 / board, with the `assayops:address` deploy-tag convention above).
+  server-defaulted posture — RESOLVED as #155 (E11-1).** Confirmed empirically: a real `AWS::S3::Bucket`
+  Cloud Control read returns **four** server-defaulted blocks the minimal synthetic golden omits —
+  `BucketEncryption` (SSE-S3 base since 2023-01-05), `PublicAccessBlockConfiguration` + `OwnershipControls`
+  (`BucketOwnerEnforced`; both defaulted for new buckets), and `AbacStatus` (`Disabled`; **writable** in the
+  current schema, not readOnly) — so a correct deploy grades reward 0 (safe direction, broken signal). Landed:
+  the `infra-local` **adapter↔golden grade round-trip smoke** (real LocalStack read →
+  `DeployedStateReader` → `normalize` → `grade_deployment` → reward 1, with a negative control proving the
+  minimal golden grades 0 over exactly those four blocks) + the `NORMALIZATION.md` corpus-contract note
+  (declare the posture explicitly; pin a new type's golden shape to a real read before authoring). The
+  corpus (#76/#67/#176) authors against that contract; real-cloud posture parity re-checks with #30/#141's
+  real-AWS read (LocalStack mirrors the AWS defaults today; #61 owns fidelity). The current-schema nested
+  `readOnlyProperties` under `MetadataConfiguration/*` are out of Phase-1 corpus scope (the registry drops
+  top-level readOnly names only) — a CDK/#66-era concern if metadata-table tasks ever enter the corpus.
 - **E3-4 (#80) boto3 read-coverage spike — GO (with conditions); recorded decision (no floor change).**
   Resolves the E17 #113 verifier-read spike. Grounded in AWS primary docs (fetched live) + `DECISIONS.md`
   §1/§5/§8 + brain; hardened by a cross-model `/review` (Claude adversarial + Codex `gpt-5.5` xhigh, PR #138):

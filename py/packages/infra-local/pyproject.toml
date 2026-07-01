@@ -1,10 +1,12 @@
 [project]
 name = "assayops-infra-local"
 version = "0.0.0"
-description = "LocalStack dev loop for the verifier's Cloud Control read path: a boto3 smoke (get_resource/list_resources) proving the read path on LocalStack. Re-homed from the original TS smoke (E17 Python-first core); the read-path seed that grounds #80. Runs via `just smoke` (needs LocalStack), never in the hermetic `bun run verify` gate."
+description = "LocalStack dev loop for the verifier's Cloud Control read path: a boto3 smoke (get_resource/list_resources) proving the read path on LocalStack, plus the adapter<->golden grade round-trip pinning the corpus contract to a real read. Re-homed from the original TS smoke (E17 Python-first core); the read-path seed that grounds #80. Runs via `just smoke` (needs LocalStack), never in the hermetic `bun run verify` gate."
 requires-python = ">=3.12"
 # No runtime deps: a test-only smoke run against LocalStack. boto3 (the verifier's read SDK) is the pinned
-# workspace dev `boto3` (root pyproject dev group) -- reused, not re-declared.
+# workspace dev `boto3` (root pyproject dev group) -- reused, not re-declared. The grade round-trip consumes
+# the verifier chain (verifier / adapter-terraform / diff-ir / contracts / replay) by source path -- the
+# repo's virtual-member convention (see the pytest `pythonpath` + mypy `mypy_path` below).
 
 [tool.uv]
 package = false
@@ -25,6 +27,35 @@ strict = true
 # Ban explicit `Any` in hand-written code -- the Python mirror of the TS lane's `any` ban; `--strict` does
 # NOT enable this. Use `object` (narrow before use, like TS `unknown`) or a library type at the boundary.
 disallow_any_explicit = true
+# pydantic.mypy synthesizes typed model __init__s (init_typed + init_forbid_extra below), so constructing
+# the sibling packages' Pydantic models (TaskSpec, GoldenResource) typechecks for real -- the pydantic-v2
+# skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha. Mirrors the verifier's config.
+plugins = ["pydantic.mypy"]
+# Resolve the verifier chain the grade round-trip smoke drives: the read harness + golden/grade
+# (assayops_verifier), the Terraform adapter (normalize), the reward core (NormalizedState/grade), the
+# contracts spine (TaskSpec), and replay (a verifier.read dependency). `uv run mypy` runs from the package
+# dir, so the sibling sources are `../<pkg>/src`. Cross-package imports are consumed by source path (the
+# repo's virtual-member convention), keeping the landed packages untouched.
+mypy_path = "../verifier/src:../adapter-terraform/src:../diff-ir/src:../contracts/src:../replay/src"
+
+[tool.pydantic-mypy]
+init_typed = true
+init_forbid_extra = true
+
+[[tool.mypy.overrides]]
+# The five sibling cores are each separately-typechecked under their OWN strict + disallow_any_explicit
+# lanes. Follow them for the real types the smoke drives, but `silent` so their internals (and the contracts
+# codegen models' intentional `Any`) aren't re-judged under this package's run. Mirrors the verifier's
+# per-sibling overrides, collapsed to one because this package consumes them read-only in tests.
+module = [
+    "assayops_verifier.*",
+    "assayops_adapter_terraform.*",
+    "assayops_diff_ir.*",
+    "assayops_contracts.*",
+    "assayops_replay.*",
+]
+follow_imports = "silent"
+disallow_any_explicit = false
 
 [[tool.mypy.overrides]]
 # boto3/botocore ship no py.typed (typed stubs live in the separate boto3-stubs). The smoke exercises the
@@ -35,4 +66,5 @@ module = ["boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
+pythonpath = ["../verifier/src", "../adapter-terraform/src", "../diff-ir/src", "../contracts/src", "../replay/src"]
 testpaths = ["tests"]
