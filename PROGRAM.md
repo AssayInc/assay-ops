@@ -87,7 +87,7 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `^typecheck` edge (the #152/#31 pattern; hash-flip verified). Smoke green on a fresh LocalStack ×2
   (idempotent); `bun run verify` green **29/29**. **No production code change** (corpus requirements, not
   adapter bugs); nested `MetadataConfiguration/*` readOnly paths characterized as out of Phase-1 scope
-  (ISSUES.md). (PR #TBD.)
+  (ISSUES.md). (PR #178.)
 
 - **E2-6 (#141): boto3 read-coverage enforcement — FAIL-CLOSED + closed-world + per-property gate (the
   in-repo, account-B verifier-side half).** New `read_scope.py` (the verifier's read-coverage matrix:
