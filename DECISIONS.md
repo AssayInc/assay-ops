@@ -152,20 +152,26 @@ episode/account-setup work (the assume-readiness gate).
 ### LocalStack ↔ real-CFN drift parity — resolved [spike] (#61)
 
 Measured against the **licensed** LocalStack image (2026.5.4 `pro`, license-activated; bounded engineer
-probes, not committed — preserved in #61) + the current LocalStack and AWS official docs. Resolves **R3**
-for the Phase-1 substrate; the ratio + unit economics feed **T3/T9** and the directional slice (#176).
+probes, not committed — preserved in #61) + the current LocalStack and AWS official docs. Resolves the
+**R3 drift-parity spike** — **§7 R3 itself stays open** until the **T9 real-AWS fidelity-diff sample**
+runs (see the pending-creds flag below); the ratio + unit economics feed **T3/T9** and the directional
+slice (#176).
 
-- **CFN drift detection: zero parity — the API family does not exist on LocalStack.** Every drift op
-  (`DetectStackDrift`, `DetectStackResourceDrift`, `DescribeStackResourceDrifts`,
-  `DescribeStackDriftDetectionStatus`, `DetectStackSetDrift`) returns **HTTP 501 "not currently
-  supported"** on the licensed image (empirical, incl. against a nested-stack root;
-  `DescribeStacks.DriftInformation` is a static `NOT_CHECKED`); the docs' CFN feature table lists Drift
-  detection "—" with all five ops unimplemented. **Drift-detection-graded reads are real-AWS-only** (the
-  CDK/T3 path, #66). The Phase-1 Terraform path is untouched — it is Cloud-Control-only by #80.
+- **CFN drift detection: zero parity — the API family does not exist on LocalStack.**
+  `DetectStackDrift`, `DetectStackResourceDrift`, and `DescribeStackResourceDrifts` return **HTTP 501
+  "not currently supported"** on the licensed image (empirical, incl. `DetectStackDrift` against a
+  nested-stack root; `DescribeStacks.DriftInformation` remains `NOT_CHECKED`);
+  `DescribeStackDriftDetectionStatus` (no detection id can exist) and `DetectStackSetDrift` are
+  unimplemented per the docs' **API-coverage table**, and the docs' **feature table** lists Drift
+  detection "—". **Drift-detection-graded reads are real-AWS-only** (the CDK/T3 path, #66). The Phase-1
+  Terraform path is untouched — it is Cloud-Control-only by #80.
 - **The Cloud Control grade-read is live-state faithful on LocalStack** (the fidelity that matters for
   grading): after an out-of-band mutation `GetResource` returns the **drifted** values, and after the fix
-  the **restored** values (S3 versioning + SSM value, both directions) — the verifier grades truth, not
-  template state. Cloud Control + CloudFormation are in **every** LocalStack tier (Hobby/Base/Ultimate).
+  the **restored** values — both grade directions read truth, not template state. Empirically shown for
+  **S3 + SSM**, and it is LocalStack **self**-consistency: every additional corpus type still passes the
+  per-type gates (#35 `BridgeRegistry` / #141 coverage / the infra-local canary), and LocalStack↔real-AWS
+  per-type read **parity** is the **T9 fidelity-diff sample's** job. Cloud Control + CloudFormation are
+  in **every** LocalStack tier (Hobby/Base/Ultimate).
 - **Parity by corpus feature.** **DeletionPolicy:** `Retain` honored on stack delete (retained bucket
   survives; default bucket removed) — real-CFN semantics; drift detection is N/A to it on both substrates
   (a template attribute, not a deployed property) → gradable via CC presence/absence reads.
@@ -173,7 +179,8 @@ for the Phase-1 substrate; the ratio + unit economics feed **T3/T9** and the dir
   nested stacks from a parent drift run anyway (per-stack `DetectStackDrift` required). **Custom
   resources:** full lifecycle works on LocalStack (Lambda-backed, `ResponseURL` callback + `Fn::GetAtt`)
   but needs the **docker-socket mount** (an E7 episode-substrate requirement; `infra-local`'s compose
-  omits it by design) — and they are **ungradable on both substrates** (not CC types; real drift ⇒
+  omits it by design) — and they are **ungradable on both substrates** (not registry types, so absent
+  from the resource-type-support table ⇒ not Cloud-Control-readable; drift's supported-type rule ⇒
   `NOT_CHECKED`) → exclude from the gradable corpus (grade their side-effect AWS resources instead).
 - **Real-CFN drift detection is itself lossy (doc-grounded).** It checks only **explicitly-set**
   properties (defaults invisible); per-type support is a subset (types exist with import-yes/drift-no;
@@ -182,15 +189,20 @@ for the Phase-1 substrate; the ratio + unit economics feed **T3/T9** and the dir
   false-positive. Confirms #80: drift alone is incomplete — the CDK adapter (#66) needs CC reads as the
   primary channel even on real AWS.
 - **Unit economics / the ratio.** Measured minimal drift episode on LocalStack (CFN create → out-of-band
-  mutate → CC `get`+paginated `list` → delete): **median ~2.1s wall** (n=5, M-series host) ⇒ substrate
-  compute ≈ **$0.0003/trajectory** at GitHub-Actions Linux rates (even a 5-min full-agent episode ≈
-  $0.04); license = Hobby $0 today (non-commercial R&D) / Base **$39/license/mo** commercial with CI
-  **un-metered** (fair-use) ⇒ < $0.04/trajectory amortized at ≥1k trajectories/mo. **Bulk = 100%
-  LocalStack-viable for the CC-graded Terraform corpus** (8A/T3 hold); **0% for drift-detection-graded**;
-  the T3 real-AWS eval slice + T9 fidelity-diff sample stay real by **trust posture** — their job is
-  per-type CC-read parity, not drift APIs. Real-AWS empirical episode timing is **pending fresh creds**
-  (the #60 probe profile was rotated); resource cost for the S3/SSM shapes is ~$0 by AWS pricing — the
-  real-side cost drivers are account-pool + guardrail infra (T6/T7) and slower stack operations.
+  mutate → CC `get`+paginated `list` → delete): **median ~2.1s wall** (n=5, M-series host; poll-dominated,
+  so a ceiling on substrate work) ⇒ substrate compute ≈ **$0.0003/trajectory** extrapolated at
+  GitHub-Actions Linux rates (even a 5-min full-agent episode ≈ $0.04); license = Hobby $0 today
+  (non-commercial R&D) / Base **$39/license/mo** (annual billing; $45 monthly) with CI **un-metered**
+  (fair-use) ⇒ ≈**$0.039/trajectory** at 1k trajectories/mo on annual billing, falling with volume.
+  **Bulk = 100% LocalStack-viable for the CC-graded Terraform corpus** (8A/T3 hold; "viable" = no
+  substrate blocker — the per-type gates above still admit each type); **0% for drift-detection-graded**;
+  the T3 real-AWS eval slice + T9 fidelity-diff sample stay real by **trust posture** (for the Phase-1
+  Terraform path their job is per-type CC-read parity; the CDK/T3 drift path is real-AWS-only end-to-end,
+  so there is nothing to fidelity-diff). **The entire real-AWS empirical half is pending fresh creds**
+  (the #60 probe profile was rotated): episode timing AND the per-type CC-read fidelity-diff — the
+  real-CFN side of the parity verdict is doc-grounded. Resource cost for the S3/SSM shapes is ~$0 by AWS
+  pricing — the real-side cost drivers are account-pool + guardrail infra (T6/T7) and slower stack
+  operations.
 
 ---
 
