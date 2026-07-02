@@ -70,9 +70,9 @@ provides HF access (their message anticipates this). Record on the issue.
       one-paragraph read on #176.
 
 ## Reviews (before PR merge-ready)
-- [ ] Two adversarial reviews: Codex gpt-5.5 xhigh (review + re-review to convergence on the diff)
+- [x] Two adversarial reviews: Codex gpt-5.5 xhigh (review + re-review to convergence on the diff)
       + a diverse-lens Workflow pass (trust-seam / correctness / craft). `/review` gate.
-- [ ] `bun run verify` green; smokes green against local LocalStack.
+- [x] `bun run verify` green; smokes green against local LocalStack.
 
 ## Scope guards
 - No new trust infra (issue guardrail); smallest change; every changed line traces to leg 1.
