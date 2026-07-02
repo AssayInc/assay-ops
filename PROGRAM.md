@@ -6,18 +6,21 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 ## Right Now
 
 - **Sequencing is now governed by `docs/priorities.md` (set 2026-07-01): evidence + the team before
-  architecture.** P0 = the Henry scout note (E15-2, founder), close the RL/eval seat (the real E15-3),
-  and the **#61** LocalStack↔real-CFN parity spike (startable now — the `blocked_by #25` edge is a
-  stale-strategy artifact, overridden by the #61 comment of record). P1 = the **#176 pre-T0
-  directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-graded, never
-  published, R1-scoped): **leg 3 (the Inspect harness, `py/packages/evals`) is BUILT** (see Recently
-  Landed); **leg 1 (corpus, ~15 TF drift tasks)** now has its **authoring contract landed (#155/PR #178
-  — the `assayops:address` deploy-tag + explicit golden server-posture, pinned by a real LocalStack
-  grade round-trip)**, so it is gated only on the #61 answer + a minimal private-store decision (#76
-  unbuilt) + extending the per-type round-trip smoke beyond `AWS::S3::Bucket`;
-  **leg 2 (trainer: TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its
-  ETL consumes the leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat +
-  the number + the Henry reply.
+  architecture** (it wins over the board on what-first). P0 = the Henry scout note (E15-2, founder),
+  close the RL/eval seat (the real T0 gate; the board's "E15-3 = Done" is stale), and the **#61**
+  LocalStack↔real-CFN drift/unit-economics spike — **RESOLVED** (PR #177; see Recently Landed: R3
+  substrate answer, ~12× wall-clock ratio, LocalStack grading substrate-sound for the slice). P1 =
+  the **#176 pre-T0 directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-
+  graded, never published, R1-scoped): **leg 3 (the Inspect harness, `py/packages/evals`) is BUILT**
+  (see Recently Landed); **leg 1 (corpus, ~15 TF drift tasks)** now has both its dependencies met —
+  its **authoring contract (#155/PR #178** — `assayops:address` deploy-tag + explicit golden
+  server-posture, pinned by a real LocalStack grade round-trip) and **#61's substrate answer** (author
+  CC-readable+listable types only, no custom resources, don't grade on CFN drift-*detection* — that's
+  the real-AWS-only CDK/T3 path) — so it is gated only on a minimal private-store decision (#76
+  unbuilt) + extending the per-type round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer:
+  TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its ETL consumes the
+  leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat + the number + the
+  Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -55,7 +58,9 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   the **E3 diff-ir core (#34) + Terraform adapter (#35) have landed** — the shared reward core + normalized
   IR + the deployed-state adapter, so the verifier core (E2/#3) is progressing — read path #30 landed;
   reward wiring #32 is next.
-  **T0 team gate (#25) closed** (founder interim RL/eval owner; Phase 3 hard-gated on the permanent owner).
+  **T0 team gate (#25) closed on the board** (founder interim RL/eval owner) — **superseded by
+  `docs/priorities.md` (2026-07-01): the RL/eval seat is effectively OPEN** (interim ≠ closed; closing it
+  is P0); Phase 3 stays hard-gated on the permanent owner.
 - **The E11-1 corpus contract (#155) landed** — the `assayops:address` deploy-tag + golden-server-posture
   requirements are documented (`NORMALIZATION.md`) and round-trip-pinned to a real LocalStack read, so the
   **#176 pre-T0 P1 slice's corpus leg** (~15 Terraform drift tasks, private store) is authorable against it
@@ -117,6 +122,50 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   lower bound + a divergent-quarantine WARNING (anti-farming visibility). Tests **41 → 61**.
   `bun run verify` green **32/32**; both lockfiles frozen-checked. (#176 comment records the
   grounding reconciliation + leg gating.)
+
+- **#61 (spike): LocalStack ↔ real-CFN drift parity — resolved, both substrates measured (licensed
+  LocalStack + real AWS on re-issued creds; the R3-spike answer + unit economics recorded — §7 R3 stays
+  open until the corpus-wide T9 fidelity-diff; the first 2-type sample ran clean).** **Zero parity on CFN
+  drift detection — the API family does not exist on LocalStack:**
+  `DetectStackDrift`/`DetectStackResourceDrift`/`DescribeStackResourceDrifts` return HTTP
+  501 "not currently supported" on licensed 2026.5.4 `pro` (empirical, incl. a nested-stack root;
+  `DriftInformation` remains `NOT_CHECKED`); `DescribeStackDriftDetectionStatus` + `DetectStackSetDrift`
+  unimplemented per the docs' API-coverage table (feature table: Drift "—"); the real-CFN side confirmed
+  empirically (same drifted stack → `DETECTION_COMPLETE`/`DRIFTED`, exact per-property `NOT_EQUAL` diffs)
+  ⇒ **drift-detection-graded reads are real-AWS-only** (the CDK/T3 path #66); the Phase-1 Terraform/CC
+  path is untouched (#80). **The fidelity that matters HOLDS: LocalStack Cloud Control reads live state**
+  (drift AND fix read truthfully; S3+SSM, both grade directions), and the **first LocalStack↔real-AWS
+  fidelity-diff sample ran clean on the graded surface** — every explicitly-authored property matched;
+  divergences: adapter-dropped readOnly endpoint props (#35); server-default posture on unauthored props
+  (**presence-parity holds** — all four S3 posture blocks present on both substrates, three byte-equal;
+  `BucketEncryption` shape diverges: LocalStack's S3-API-style `ApplyServerSideEncryptionByDefault` vs the
+  CFN-schema `ServerSideEncryptionByDefault` + real-AWS-only `BlockedEncryptionTypes` ⇒ #155's shape-pin
+  is **per-substrate**); and real-CFN-injected **`aws:cloudformation:*` system tags** absent on LocalStack → the
+  `aws:*`-strip adapter rule filed as **#179** (E3, boarded); per-type gates (#35/#141/canary) still admit
+  each corpus type; corpus-wide sample = T9. Parity by corpus feature: DeletionPolicy=`Retain` honored on
+  delete (both substrates); nested-stack children deploy + CC-readable, and real CFN's root drift run
+  **masks a drifted child (root reads `IN_SYNC` — false-clean; child directly reads `DRIFTED`)**; **custom
+  resources** work end-to-end on both (LocalStack needs the **docker-socket mount** — an E7 substrate
+  requirement; `infra-local` omits it by design) but are **ungradable on both substrates** (not registry
+  types ⇒ not CC-readable; real drift ⇒ `NOT_CHECKED`, and a custom-resource-only stack reads `IN_SYNC` —
+  a second false-clean) → corpus-excluded. Real-CFN drift
+  detection is itself lossy (explicit-props
+  only, per-type subset, `KMSKeyId`/Lambda-`Code`/write-only excluded, `1GB`≠`1024MB` false positives) —
+  confirms #80's "drift alone is incomplete" as a design input to #66. **Unit economics (the Phase-1
+  exit-bar "measured LocalStack cost/trajectory"):** minimal drift episode (create → mutate → CC grade-read
+  → teardown) = **~2.1s median** (n=5, poll-dominated ceiling) ⇒ ~$0.0003/trajectory substrate compute
+  extrapolated at GH-Actions rates; license Hobby $0 now / Base $39/license/mo (annual; $45 monthly), CI
+  un-metered ⇒ **≈$0.039/trajectory at 1k/mo (annual billing)**, falling with volume; **real AWS measured:
+  ~26.0s median** (n=3; create 19.4s, grade-read 1.2s, teardown 4.6s) ⇒ **~12× LocalStack substrate
+  wall-clock**, resources ~$0 (the real cost drivers are T6/T7 account infra);
+  **ratio: bulk = 100% LocalStack for the CC-graded Terraform corpus (per-type gates still apply); 0% for
+  drift-detection-graded; the T3 real-AWS eval slice + T9 fidelity-diff sample stay real by trust
+  posture.** Ratified note in
+  `DECISIONS.md` §1; probes preserved in the #61 thread (scratchpad-only — a spike's output is the
+  decision, not a package); real-AWS leftovers swept to zero (stacks/buckets/lambda/role/params). Biases
+  #176's task authoring → CC-readable types, no custom resources. **Cross-model adversarial review**
+  (Claude subagent + Codex gpt-5.5 xhigh, both fed the verbatim probe record): both P1s fixed pre-merge
+  (empirical-vs-doc attribution split; R3-spike vs §7-R3 scoping); Codex re-review → SHIP. (#61, PR #177.)
 
 - **E11-1 (#155): the Terraform-adapter corpus contract — `assayops:address` deploy-tag + golden
   server-posture, pinned to a real read (the LocalStack grade round-trip).** The two corpus requirements
