@@ -315,6 +315,20 @@ def test_a_udp_gateway_port_is_not_accepted(tmp_path: Path) -> None:
     assert isinstance(load_corpus(corpus_dir), Corpus)
 
 
+def test_a_symlinked_corpus_module_fails_closed(tmp_path: Path) -> None:
+    # corpus.py is EXECUTED at load -- the most executable asset in the class must refuse a link
+    # (a symlinked module runs code from outside the store, sidestepping the I11 residency intent).
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside-corpus.py"
+    module = corpus_dir / "corpus.py"
+    outside.write_text(module.read_text())
+    module.unlink()
+    module.symlink_to(outside)
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
 def test_a_symlinked_setup_script_fails_closed(tmp_path: Path) -> None:
     # setup.sh's CONTENT executes in the sandbox at sample start -- a symlinked script would run
     # content from outside the corpus. Same admission class as the files/ guards.

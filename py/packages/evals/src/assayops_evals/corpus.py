@@ -187,6 +187,8 @@ def _publishes_gateway_port(ports: object) -> bool:
 
 
 def _grading_inputs(module_path: Path) -> tuple[GoldenRegistry, ReadScope, BridgeRegistry | None]:
+    # The most executable asset in the symlink class: this module is exec'd at load.
+    _refuse_symlink(module_path, "corpus module")
     if not module_path.is_file():
         raise CorpusError(f"corpus has no {_CORPUS_MODULE} (REGISTRY + READ_SCOPE): {module_path}")
     spec = importlib.util.spec_from_file_location("assayops_evals._private_corpus", module_path)
