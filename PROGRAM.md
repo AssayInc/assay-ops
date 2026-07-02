@@ -19,10 +19,12 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   the real-AWS-only CDK/T3 path) — so it is gated only on a **minimal private/uncommitted store
   decision** (a founder scoping call — a gitignored local dir or private HF dataset; **NOT #76**, which
   as scoped is `blocked_by #52`/E8 trust infra = P2-frozen; see ISSUES.md) + extending the per-type
-  round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer:
-  TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its ETL consumes the
-  leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat + the number + the
-  Henry reply.
+  round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer, `py/packages/trainer`) is BUILT**
+  (see Recently Landed — the trajectory→SFT ETL + TRL SFT+LoRA harness). With legs 2+3 built, the
+  three legs **converge only at the runs**: the remaining gate to a directional number is leg 1's
+  corpus (the founder store call above + authoring ~15 tasks), then rejection-sampling rollouts
+  through leg 3 → the ETL → an SFT run → the base-vs-SFT delta. The Freeze list (more trust infra now)
+  holds until the seat + the number + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -84,6 +86,38 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#176 leg 2: the trainer — new `py/packages/trainer` (`assayops_trainer`): a trajectory→SFT ETL +
+  a TRL `SFTTrainer`+LoRA harness, built pre-T0 for the directional slice.** The **ETL**
+  (`build_sft_dataset`/`build_and_write`) turns leg-3's graded Inspect `EvalLog`s into a
+  rejection-sampled SFT set: an example enters **only** when the deploy-verifier `Score` is `CORRECT`
+  — i.e. **reward 1 = the account-B `verify()` grade** (§8 reward-boundary, non-waivable: train on the
+  graded reward, **never** the env `step()`). "#78-shaped minus KMS": pre-T0 has no ledger, so the
+  reward is read from the log's scorer key and the join key is the eval **sample id** (the
+  `trajectory_id ⨝ KMS-signed WORM record` join #78 adds later). Everything else is **excluded and
+  counted** (INCORRECT / quarantined-NaN / errored); a **held-out task id in the training logs FAILS
+  CLOSED** (contamination — eval-rigor/I11); duplicates dropped; output deterministically sorted →
+  reproducible **`sft.jsonl`** (clean `{messages, tools}`) + **`manifest.json`** (provenance + counts,
+  R1-framed). Transcripts convert via inspect-ai's own **`messages_to_openai`** (never hand-rolled);
+  tools come from the sample's model events (public `ToolInfo`→OpenAI, deduped). The **`TrainerConfig`**
+  encodes I6 (Qwen2.5-Coder-7B, LoRA r=32/α=16), I8 (**required** `model_revision` pin), and
+  `assistant_only_loss` (TRL masks tool observations — not hand-rolled); eval-rigor: `training_seed`
+  is labelled distinct from a rollout seed. **`run_sft`** lazy-imports the heavy stack (trl/peft/
+  transformers/datasets/torch) — pinned in `train-requirements.txt`, deliberately **OUT of the
+  hermetic gate** (a clear `ImportError` points there when absent). SFT-only (no RL/GRPO before the
+  proof). The scorer-log-key contract with `assayops_evals` is locked by a cross-check test. TDD
+  (RED→GREEN); the config kwargs are proven against the real TRL/PEFT API behind `importorskip`
+  (skips in-gate). **Diverse-lens adversarial review** (Codex gpt-5.5 xhigh + a reward-boundary/
+  eval-rigor lens + a correctness/Python-craft lens) — all three converged, findings validated
+  against the pre-T0 context and the real fixes applied: the **held-out tripwire now fires on ANY
+  appearance** (before grade/error triage, not only on the CORRECT path); a CORRECT is admitted only
+  against **reproduced-grade metadata** (verdict + graded task_id) from a **`status=="success"`** log
+  (foreign/partial/edited logs fail closed — the pre-T0 stand-in for #78's signature check); a
+  **limit-hit** sample is counted-incomplete, not a whole-build crash; **`model_revision` must be a
+  hex commit hash** (rejects `main`/tags/`""` — real I8); dedup key + provenance carry the **eval
+  task identity** (no cross-task collision); async `read_eval_log_async`; `exclude_none` tool dumps;
+  deduped `source_run_ids`; `verifier_runs` `None`-not-`0`; and the inaccurate "pinned" wording
+  corrected to "minimums, frozen at run time". `bun run verify` green **35/35** (33 trainer tests, 1
+  GPU-only skip); both lockfiles frozen-checked.
 - **#176 leg 3: the Inspect-AI eval harness — new `py/packages/evals` (`assayops_evals`), the E13/T11
   seam built pre-T0 for the directional slice.** The **deploy-verifier as a custom Inspect `Scorer`**
   (I6/T11) around the shipped **`verify()`** — the only reward-emitting entry — with every grading

@@ -1,0 +1,14 @@
+{
+  "name": "@assayops/py-trainer",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@assayops/py-evals": "workspace:*"
+  },
+  "scripts": {
+    "lint": "uv run --frozen ruff check . && uv run --frozen ruff format --check .",
+    "format": "uv run --frozen ruff format .",
+    "typecheck": "uv run --frozen mypy src tests",
+    "test": "uv run --frozen pytest -q"
+  }
+}
