@@ -21,10 +21,16 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `AWS::IAM::Role`/`AWS::KMS::Key`; SNS/SSM/SQS/DynamoDB/Logs all FAIL the CC-read/tag-return gate
   on the pinned LocalStack image — probed empirically), each validated end-to-end through the
   production `verify()` closed-world path (drifted → 0, reference fix → 1, K-run reproducible).
-  **The only remaining gate to a directional number is the runs** (`docs/pre-t0-directional-run.md`):
-  rejection-sampling rollouts (a base-model endpoint) → the ETL (held-out split) → an SFT run
-  (CUDA GPU — HF Jobs or a box) → the base-vs-SFT delta. The Freeze list (more trust infra now)
-  holds until the seat + the number + the Henry reply.
+  **The runs RAN (2026-07-02) and the directional number is in — flat: held-out +0.0 points
+  (6/9 both arms), trained −2.8 (13/36 → 12/36); zero quarantined/errored across ~200 graded
+  episodes (all K=3-reproducible).** The honest read (recorded on the issue): the MACHINE is
+  validated end-to-end (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls`
+  → held-out-split ETL → TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta), and the
+  binding constraint is corpus scale + hard-task trajectory yield (top-up sampling: 1/40), NOT
+  trust infra — the P2 "corpus + proof" dial. Artifacts + pins in the private HF dataset
+  (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
+  (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now)
+  holds until the seat + the (now-informed) go/no-go + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface

@@ -58,15 +58,15 @@ provides HF access (their message anticipates this). Record on the issue.
 - [x] **B4. End-to-end plumbing run:** `inspect eval` drift_slice with `mockllm/model` on 1–2 tasks —
       sandbox comes up, setup runs, scorer grades through `verify()` (INCORRECT expected) — proves
       compose/endpoint-discovery/scorer wiring without model spend.
-- [ ] **B5. Mirror to private HF dataset** (needs founder HF access/token).
+- [x] **B5. Mirror to private HF dataset** (needs founder HF access/token).
 
 ## C. The runs (converge here; GPU/HF-gated — surface exact needs to founder)
 
-- [ ] **C1. Rollout collection:** base Qwen2.5-Coder-7B-Instruct over the corpus (epochs>1) →
+- [x] **C1. Rollout collection:** base Qwen2.5-Coder-7B-Instruct over the corpus (epochs>1) →
       graded logs. Model endpoint: ollama local or HF — founder call on spend.
-- [ ] **C2. ETL → `sft.jsonl`** (held_out_ids explicit) → **SFT run** (TRL harness; CUDA — HF Jobs
+- [x] **C2. ETL → `sft.jsonl`** (held_out_ids explicit) → **SFT run** (TRL harness; CUDA — HF Jobs
       or founder GPU box; freeze exact pins + model_revision at provision, I8).
-- [ ] **C3. Eval:** base vs SFT ×3 seeds × ~15 tasks, LocalStack-graded → `render_report` →
+- [x] **C3. Eval:** base vs SFT ×3 seeds × ~15 tasks, LocalStack-graded → `render_report` →
       one-paragraph read on #176.
 
 ## Reviews (before PR merge-ready)
