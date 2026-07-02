@@ -35,8 +35,10 @@ pointer to that file when the stack is absent.
 #    (rejection-sampling rollouts of the training tasks; see py/packages/evals.)
 
 # 2. ETL: graded logs -> sft.jsonl (messages+tools) + manifest.json (provenance, R1-framed).
+#    held_out_ids is REQUIRED — an explicit (possibly empty) split is a call-site decision.
 python -c "import asyncio; from pathlib import Path; from assayops_trainer import build_and_write; \
-  asyncio.run(build_and_write([Path('logs/base.eval')], Path('out/'), harness_git_sha='<sha>'))"
+  asyncio.run(build_and_write([Path('logs/base.eval')], Path('out/'), \
+  held_out_ids=frozenset(), harness_git_sha='<sha>'))"
 
 # 3. SFT+LoRA train (GPU env; freeze the stack to exact hashes + pin the model revision — I8):
 uv pip install -r py/packages/trainer/train-requirements.txt
@@ -45,5 +47,11 @@ python -c "from pathlib import Path; from assayops_trainer import TrainerConfig,
 ```
 
 `assistant_only_loss=True` masks tool observations at train time (TRL's mechanism, not a hand-rolled
-mask) — it needs a tokenizer chat template that emits an assistant-token mask (trl ≥ 0.13); verify
-the chosen Qwen2.5-Coder revision's template supports it before a run.
+mask; trl ≥ 1.7 per `train-requirements.txt`). Qwen2.5's stock chat template carries no
+`{% generation %}` markers — trl 1.7 handles that by swapping in its own vendored Qwen2.5 TRAINING
+template when the tokenizer's template byte-equals the stock one, and fails LOUD otherwise
+(`ValueError` at init on an unrecognized template; `RuntimeError` on an example whose assistant mask
+is empty). `run_sft` loads BOTH the model and the tokenizer itself at the pinned `model_revision`
+(handing trl a model string would leave its internal `AutoConfig` probe — and the processor — on
+`main`, unpinned), so that byte-match is stable; the run-time check is that the pinned revision's
+template equals trl's vendored constant.

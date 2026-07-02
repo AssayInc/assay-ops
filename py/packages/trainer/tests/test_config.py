@@ -29,6 +29,10 @@ def test_defaults_encode_the_i6_dense_baseline() -> None:
     assert config.lora_r == 32
     assert config.lora_alpha == 16
     assert config.assistant_only_loss is True  # tool observations masked at train time (TRL flag)
+    # packing is OFF by default: trl 1.7 bfd packing force-enables padding-free flattening, which
+    # is sample-isolated only under flash-attn; the slice set is tiny, so packing buys nothing.
+    assert config.packing is False
+    assert config.attn_implementation is None
 
 
 def test_the_model_revision_pin_is_required() -> None:
@@ -72,11 +76,48 @@ def test_lora_kwargs_map_to_peft_names() -> None:
     assert "q_proj" in kwargs["target_modules"]
 
 
-def test_sft_kwargs_map_to_trl_names_and_pin_the_revision() -> None:
+def test_sft_kwargs_map_to_trl_names() -> None:
     kwargs = as_dict(_config(training_seed=7).to_sft_config_kwargs())
     assert kwargs["assistant_only_loss"] is True
-    assert kwargs["packing"] is True
+    assert kwargs["packing"] is False
     # the TRAINING seed maps to TRL's `seed` (eval-rigor: distinct from a rollout/inference seed)
     assert kwargs["seed"] == 7
-    # I8: the revision reaches from_pretrained via model_init_kwargs
-    assert kwargs["model_init_kwargs"]["revision"] == _REV
+    # No model_init_kwargs: run_sft loads the model OBJECT itself (to_model_kwargs) -- handing trl
+    # a model string would leave its internal AutoConfig probe reading `main` unpinned.
+    assert "model_init_kwargs" not in kwargs
+
+
+def test_model_kwargs_pin_the_revision_and_derive_the_dtype() -> None:
+    # I8: every Hub read happens at the pinned revision (run_sft spreads these into the model's
+    # from_pretrained). The load dtype follows the training precision -- trl/transformers load
+    # float32 unless told otherwise (~28 GB of fp32 weights for the 7B under bf16=True training).
+    kwargs = as_dict(_config().to_model_kwargs())
+    assert kwargs["revision"] == _REV
+    assert kwargs["dtype"] == "bfloat16"
+    assert "attn_implementation" not in kwargs
+
+    assert as_dict(_config(bf16=False).to_model_kwargs())["dtype"] == "float32"
+
+
+def test_packing_requires_a_flash_attention_implementation() -> None:
+    # trl 1.7 packing (bfd) force-enables padding-free flattening, which respects sample boundaries
+    # ONLY under a flash-attention implementation; under the sdpa default TRL merely WARNS and
+    # packed samples cross-attend. The config refuses the silent-corruption combination.
+    with pytest.raises(ValidationError):
+        _config(packing=True)
+
+    config = _config(packing=True, attn_implementation="flash_attention_2")
+    assert as_dict(config.to_sft_config_kwargs())["packing"] is True
+    assert as_dict(config.to_model_kwargs())["attn_implementation"] == "flash_attention_2"
+    # TRL's supported set also includes the kernels-community flash-attn variants -- EXACT names,
+    # not a prefix: a non-flash hub kernel must not slip packing back onto the warn-and-train path.
+    _config(packing=True, attn_implementation="kernels-community/flash-attn2")
+    with pytest.raises(ValidationError):
+        _config(packing=True, attn_implementation="kernels-community/deformable-detr")
+
+
+def test_attn_implementation_maps_to_model_kwargs_only_when_set() -> None:
+    with_fa = as_dict(_config(attn_implementation="flash_attention_2").to_model_kwargs())
+    assert with_fa["attn_implementation"] == "flash_attention_2"
+    # omitted when None so transformers keeps its own default selection (sdpa)
+    assert "attn_implementation" not in as_dict(_config().to_model_kwargs())

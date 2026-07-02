@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 from inspect_ai._util.error import EvalError
-from inspect_ai.log import EvalConfig, EvalDataset, EvalLog, EvalSample, EvalSpec
+from inspect_ai.log import EvalConfig, EvalDataset, EvalLog, EvalSample, EvalSampleLimit, EvalSpec
 from inspect_ai.scorer import CORRECT, INCORRECT, Score
 
 from assayops_evals.report import directional_delta, render_report
@@ -44,7 +44,9 @@ def _errored_sample(sample_id: str) -> EvalSample:
     )
 
 
-def _make_log(model: str, samples: list[EvalSample], task: str = "drift_slice") -> EvalLog:
+def _make_log(
+    model: str, samples: list[EvalSample], task: str = "drift_slice", status: str = "success"
+) -> EvalLog:
     return EvalLog(
         eval=EvalSpec(
             created="2026-07-01T00:00:00+00:00",
@@ -53,6 +55,7 @@ def _make_log(model: str, samples: list[EvalSample], task: str = "drift_slice") 
             model=model,
             config=EvalConfig(),
         ),
+        status=status,  # type: ignore[arg-type]
         samples=samples,
     )
 
@@ -193,7 +196,7 @@ def test_a_lower_bound_rate_counts_quarantines_as_failures() -> None:
     assert delta.base.pass_rate == 1.0
     assert delta.base.pass_rate_lower_bound == 0.5
     report = render_report(delta)
-    assert "counting quarantines as fails" in report
+    assert "counting quarantined/errored as fails" in report
 
 
 def test_divergent_quarantine_rates_warn() -> None:
@@ -213,6 +216,74 @@ def test_even_quarantine_rates_do_not_warn() -> None:
 
     assert not directional_delta(base, sft).quarantine_rates_diverge
     assert "WARNING" not in render_report(directional_delta(base, sft))
+
+
+def test_a_non_success_log_fails_closed() -> None:
+    # An interrupted/errored run must not yield a directional delta (EvalLog defaults to
+    # status="started"; only a completed run reports) -- mirrors the ETL's status gate.
+    base = _make_log("hf/base", [_sample("task-0", CORRECT)], status="error")
+    sft = _make_log("hf/sft", [_sample("task-0", CORRECT)])
+
+    with pytest.raises(ValueError, match="status"):
+        directional_delta(base, sft)
+
+
+def test_an_unscored_limit_hit_counts_as_errored_and_a_scored_one_stays_settled() -> None:
+    # A rollout cut by a message/time limit BEFORE/DURING scoring (limit set, no verifier score)
+    # is an incomplete rollout -- excluded like an error (the ETL's triage), never a whole-report
+    # crash. A limit-hit rollout that WAS scored is a settled grade: the deployed state was graded
+    # and an unfinished fix deserves its 0.
+    limited_unscored = EvalSample(
+        id="task-1",
+        epoch=1,
+        input="fix the drift",
+        target="",
+        limit=EvalSampleLimit(type="time", limit=1800),
+    )
+    limited_scored = EvalSample(
+        id="task-2",
+        epoch=1,
+        input="fix the drift",
+        target="",
+        scores={DEPLOY_VERIFIER_SCORER_NAME: Score(value=INCORRECT)},
+        limit=EvalSampleLimit(type="message", limit=50),
+    )
+    log = _make_log("hf/base", [_sample("task-0", CORRECT), limited_unscored, limited_scored])
+
+    model_slice = directional_delta(log, log).base
+
+    assert model_slice.errored == 1
+    assert model_slice.failed == 1
+    assert model_slice.scored == 2
+
+
+def test_the_lower_bound_counts_errored_rollouts_too() -> None:
+    # Pre-T0 an agent-wedged substrate can surface as a scoring cancel/error, not only a
+    # quarantine -- the anti-farming floor must cover both dodge shapes.
+    log = _make_log(
+        "hf/base",
+        [_sample("task-0", CORRECT), _sample("task-1", NAN), _errored_sample("task-2")],
+    )
+
+    model_slice = directional_delta(log, log).base
+
+    assert model_slice.pass_rate == 1.0
+    assert model_slice.pass_rate_lower_bound == pytest.approx(1 / 3)
+
+
+def test_divergent_error_rates_warn() -> None:
+    # base errors out on most rollouts, sft on none -> uneven incomplete-rollout rates bias the
+    # delta invisibly (the error-side twin of quarantine divergence); the report warns.
+    base = _make_log(
+        "hf/base",
+        [_sample("task-0", CORRECT)] + [_errored_sample(f"task-{i}") for i in (1, 2, 3)],
+    )
+    sft = _make_log("hf/sft", [_sample(f"task-{i}", CORRECT) for i in range(4)])
+
+    delta = directional_delta(base, sft)
+
+    assert delta.error_rates_diverge
+    assert "WARNING" in render_report(delta)
 
 
 def test_mismatched_task_sets_fail_closed() -> None:

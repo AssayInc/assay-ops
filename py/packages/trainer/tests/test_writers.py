@@ -12,9 +12,10 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
 from inspect_ai.log import EvalConfig, EvalDataset, EvalLog, EvalSample, EvalSpec, write_eval_log
 from inspect_ai.model import ChatMessageUser
-from inspect_ai.scorer import CORRECT, Score
+from inspect_ai.scorer import CORRECT, INCORRECT, Score
 
 from assayops_trainer.etl import (
     DEFAULT_SCORER_NAME,
@@ -127,10 +128,46 @@ def test_build_and_write_reads_graded_logs_end_to_end(tmp_path: Path) -> None:
     write_eval_log(log, str(log_path))
     out_dir = tmp_path / "out"
 
-    ds = asyncio.run(build_and_write([log_path], out_dir, harness_git_sha="cafe"))
+    ds = asyncio.run(
+        build_and_write([log_path], out_dir, held_out_ids=frozenset(), harness_git_sha="cafe")
+    )
 
     assert len(ds.examples) == 1
     assert (out_dir / "sft.jsonl").is_file()
     assert (out_dir / "manifest.json").is_file()
     record = json.loads((out_dir / "sft.jsonl").read_text().splitlines()[0])
     assert record["messages"][0]["content"] == "fix task-pass"
+
+
+def test_build_and_write_refuses_an_empty_dataset(tmp_path: Path) -> None:
+    # All rollouts excluded -> zero examples. Writing a no-op sft.jsonl would hand a downstream
+    # training run an empty set that "succeeds" -- fail closed at the writer entrypoint instead.
+    sample = EvalSample(
+        id="task-fail",
+        epoch=1,
+        input="fix the drift",
+        target="",
+        messages=[ChatMessageUser(content="fix task-fail")],
+        scores={DEFAULT_SCORER_NAME: Score(value=INCORRECT)},
+    )
+    log = EvalLog(
+        eval=EvalSpec(
+            run_id="run-1",
+            created="2026-07-02T00:00:00+00:00",
+            task="drift_slice",
+            dataset=EvalDataset(),
+            model="hf/base",
+            config=EvalConfig(),
+        ),
+        status="success",
+        samples=[sample],
+    )
+    log_path = tmp_path / "base.eval"
+    write_eval_log(log, str(log_path))
+    out_dir = tmp_path / "out"
+
+    with pytest.raises(ValueError, match="zero examples"):
+        asyncio.run(build_and_write([log_path], out_dir, held_out_ids=frozenset()))
+
+    assert not (out_dir / "sft.jsonl").exists()
+    assert not (out_dir / "manifest.json").exists()

@@ -6,6 +6,30 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **#176 legs 2+3 post-merge hardening (the six-lens review follow-up PR) — what it fixed and what
+  stays deferred.** A post-merge review (4 Claude specialist lenses + a red-team pass + Codex gpt-5.5
+  xhigh, TRL/PEFT claims wheel-source-verified, Inspect claims verified against the installed
+  0.3.244) found the trust seam intact but three run-path criticals in the trainer plus
+  aggregation-honesty gaps. Fixed in the follow-up PR: tool-call `arguments` parsed back to dicts
+  (wire strings double-encode through trl's `| tojson` chat-template render); `run_sft` loads BOTH
+  the model and the tokenizer itself at the pinned `model_revision` and passes the object +
+  `processing_class` (handing trl a model string leaves its `AutoConfig` probe and the processor
+  on `main` — the I8 pin covered weights only); `packing` off by default + refused without a
+  flash-attention `attn_implementation` (padding-free flattening cross-attends under sdpa;
+  kernels-community variants accepted); the load `dtype` derived from `bf16` (transformers loads
+  fp32 otherwise); the report gates on
+  `status=="success"`, triages unscored limit-hits as errored, brackets errored rollouts in the
+  lower bound, and warns on divergent error rates; the ETL requires `held_out_ids` explicitly,
+  checks `reward == 1` in the reproduced-grade shape, excludes `bool` from `verifier_runs`, and
+  `build_and_write` refuses a zero-example set. **Still deferred:** a minimum-K admission floor in
+  the ETL/report (goes with the #78 KMS-signed join — K is recorded in score metadata + manifest,
+  not yet gated); report `ModelSlice.pass_rate` has no zero-guard on direct construction (the
+  in-package path guards); a `ContaminationError` subclass (the tripwire raises bare `ValueError`);
+  dedup'd exclusion counters across overlapping logs; `_sandbox_files` silently drops symlinked
+  corpus assets and allows `:` in file keys (leg-1 compose/corpus-contract admission work, with the
+  compose validation below); the private `inspect_ai._util.error.EvalError` import in two test
+  helpers (public path: `inspect_ai.log.EvalError`).
+
 - **#176 leg 3 (evals harness, PR #180) — deferred review findings + a leg-1 scoping correction.**
   The diverse-lens review (4 specialists + 2 moat-forge + Codex xhigh) cleared the trust seam; the
   fixed items landed in PR #180. These were **deferred** (out of leg-3 scope, tracked here rather than
@@ -41,9 +65,14 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     minimums (torch et al. are intentionally out of the hermetic lock). I8 full compliance = the GPU
     training env `uv pip compile --generate-hashes` + a pinned `TrainerConfig.model_revision` (a
     required field — an unpinned run can't construct) at provision time. Documented in the file.
-  - **`assistant_only_loss` needs a chat template that emits an assistant-token mask** (trl ≥ 0.13 /
-    `return_assistant_tokens_mask`). Verify the chosen Qwen2.5-Coder revision's template supports it
-    before a run (README callout) — else the mask silently no-ops.
+  - **`assistant_only_loss` mechanism (corrected by the #176 hardening PR).** The earlier note here
+    claimed trl ≥ 0.13 and a silent no-op on a template without an assistant-token mask — both wrong
+    (wheel-source-verified): the API is **trl ≥ 1.7**, Qwen2.5's stock template carries no
+    `{% generation %}` markers, and trl 1.7 **swaps in its vendored Qwen2.5 training template** on a
+    byte-exact match with the stock one, failing **loud** otherwise (ValueError at init /
+    RuntimeError on an empty assistant mask). `run_sft` now pins the tokenizer to `model_revision`
+    so the byte-match is stable; the run-time check is that the pinned revision's template equals
+    trl's vendored constant.
   - **The scorer-log-key is a literal in `etl.py`** (`DEFAULT_SCORER_NAME`), not an import from
     `assayops_evals`, to keep the trainer's *runtime* dep graph off the verifier/boto3 stack. The
     contract is locked by a cross-check test (imports the evals constant); an evals-side rename fails

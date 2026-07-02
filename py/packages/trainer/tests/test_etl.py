@@ -202,6 +202,51 @@ def test_a_correct_without_a_reproduced_grade_fails_closed() -> None:
         _build(log)
 
 
+def test_a_correct_with_contradictory_reward_metadata_fails_closed() -> None:
+    # A CORRECT whose own metadata claims reward 0 is not a reproduced account-B grade -- a
+    # corrupted/foreign log must not mint an SFT positive (one more shape check on the pre-T0
+    # stand-in; #78's signature replaces this).
+    contradictory = {"verdict": "reproducible", "reward": 0, "runs": 3, "task_id": "task-a"}
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata=contradictory)])
+
+    with pytest.raises(ValueError, match="reproduced"):
+        _build(log)
+
+
+def test_a_correct_with_a_boolean_reward_metadata_fails_closed() -> None:
+    # True == 1 in Python: a foreign log's `"reward": true` is not the scorer's integer grade and
+    # must not mint a positive (same bool-subclasses-int trap the runs field guards against).
+    meta = {"verdict": "reproducible", "reward": True, "runs": 3, "task_id": "task-a"}
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata=meta)])
+
+    with pytest.raises(ValueError, match="reproduced"):
+        _build(log)
+
+
+def test_a_boolean_runs_in_metadata_maps_to_unknown() -> None:
+    # bool subclasses int: a foreign log's `"runs": true` must not fabricate a K-reproduction
+    # count of 1 in the manifest -- unknown stays None.
+    meta = {"verdict": "reproducible", "reward": 1, "runs": True, "task_id": "task-a"}
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata=meta)])
+
+    dataset = _build(log)
+
+    assert dataset.examples[0].provenance.verifier_runs is None
+
+
+def test_held_out_ids_has_no_default_the_split_is_an_explicit_choice() -> None:
+    # The docstring's "FAILS CLOSED on any appearance" is inert under a silent empty default: the
+    # split must be an explicit call-site decision (an explicit empty set = a documented operator
+    # choice for the pre-T0 slice, not an accident).
+    import inspect as stdlib_inspect
+
+    from assayops_trainer.etl import build_and_write
+
+    for entrypoint in (build_sft_dataset, build_and_write):
+        parameter = stdlib_inspect.signature(entrypoint).parameters["held_out_ids"]
+        assert parameter.default is stdlib_inspect.Parameter.empty, entrypoint.__name__
+
+
 def test_a_correct_with_a_mismatched_metadata_task_id_fails_closed() -> None:
     bad = _sample(
         "task-a", CORRECT, metadata={"verdict": "reproducible", "task_id": "some-other-task"}
@@ -227,10 +272,9 @@ def test_a_limit_hit_sample_is_excluded_not_crashing() -> None:
 
 
 def test_verifier_runs_is_none_when_the_log_omits_it() -> None:
-    log = _log(
-        "hf/base",
-        [_sample("task-a", CORRECT, metadata={"verdict": "reproducible", "task_id": "task-a"})],
-    )
+    # A reproduced grade (verdict + task_id + reward) whose K count is missing -> unknown, not 0.
+    meta = {"verdict": "reproducible", "reward": 1, "task_id": "task-a"}
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata=meta)])
 
     assert _build(log).examples[0].provenance.verifier_runs is None
 

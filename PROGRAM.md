@@ -23,7 +23,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   (see Recently Landed — the trajectory→SFT ETL + TRL SFT+LoRA harness). With legs 2+3 built, the
   three legs **converge only at the runs**: the remaining gate to a directional number is leg 1's
   corpus (the founder store call above + authoring ~15 tasks), then rejection-sampling rollouts
-  through leg 3 → the ETL → an SFT run → the base-vs-SFT delta. The Freeze list (more trust infra now)
+  through leg 3 → the ETL → an SFT run → the base-vs-SFT delta. **Both legs were hardened post-merge**
+  (the six-lens review follow-up PR — trainer run-path fixes: tool-call arguments to dicts, pinned
+  tokenizer, packing/attn + load-dtype policy; report/ETL honesty guards: status gate, error
+  bracketing + divergence warning, required `held_out_ids`, reward-shape check; deferred remainder in
+  `ISSUES.md`) — fix-before-first-run, no trust-seam change. The Freeze list (more trust infra now)
   holds until the seat + the number + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,

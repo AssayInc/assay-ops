@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from assayops_trainer.records import JsonObject
 
@@ -21,6 +21,19 @@ _UnitInterval = Annotated[float, Field(ge=0, lt=1)]
 
 # Qwen2.5-Coder attention + MLP projections -- the standard LoRA target set for the family.
 _QWEN_LORA_TARGETS = ("q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj")
+
+# trl 1.7 packing (bfd) force-enables padding-free flattening, and only flash-attention varlen
+# kernels respect packed sample boundaries -- under the sdpa default TRL merely WARNS and packed
+# samples cross-attend (silent corruption). Packing is therefore refused without one of these --
+# trl 1.7.0's FLASH_ATTENTION_VARIANTS mirrored EXACTLY (a prefix match would let a non-flash hub
+# kernel slip packing back onto the warn-and-train path).
+_FLASH_ATTENTION_IMPLEMENTATIONS = (
+    "flash_attention_2",
+    "flash_attention_3",
+    "kernels-community/flash-attn2",
+    "kernels-community/flash-attn3",
+    "kernels-community/vllm-flash-attn3",
+)
 
 
 class TrainerConfig(BaseModel):
@@ -43,7 +56,11 @@ class TrainerConfig(BaseModel):
     per_device_train_batch_size: _PositiveInt = 1
     gradient_accumulation_steps: _PositiveInt = 8
     max_length: _PositiveInt = 4096
-    packing: bool = True
+    # OFF by default: the slice set is tiny (packing buys nothing) and turning it on requires a
+    # flash-attention implementation (see _FLASH_ATTENTION_IMPLEMENTATIONS; enforced below).
+    packing: bool = False
+    # Passed to the weights' from_pretrained when set; None keeps transformers' own default (sdpa).
+    attn_implementation: str | None = None
     # Mask everything but assistant turns at train time (tool observations included) -- TRL's own
     # mechanism, not a hand-rolled mask (the ETL emits faithful messages; TRL does the masking).
     assistant_only_loss: bool = True
@@ -54,6 +71,17 @@ class TrainerConfig(BaseModel):
     training_seed: int = 0
     output_dir: str = "sft-output"
     report_to: str = "none"
+
+    @model_validator(mode="after")
+    def _packing_requires_flash_attention(self) -> TrainerConfig:
+        if self.packing and self.attn_implementation not in _FLASH_ATTENTION_IMPLEMENTATIONS:
+            raise ValueError(
+                "packing=True requires attn_implementation to be one of "
+                f"{', '.join(_FLASH_ATTENTION_IMPLEMENTATIONS)} -- trl's padding-free "
+                "flattening cross-attends packed samples under any other implementation "
+                "(TRL only warns and trains on)"
+            )
+        return self
 
     def to_lora_config_kwargs(self) -> JsonObject:
         """PEFT ``LoraConfig`` kwargs."""
@@ -66,9 +94,31 @@ class TrainerConfig(BaseModel):
             "bias": "none",
         }
 
+    def to_model_kwargs(self) -> JsonObject:
+        """``AutoModelForCausalLM.from_pretrained`` kwargs -- the I8 pin + load policy.
+
+        ``run_sft`` loads the model OBJECT itself so every Hub read (config + weights; the
+        tokenizer separately) happens at the pinned revision -- handing trl a model string leaves
+        its internal ``AutoConfig`` probe reading ``main`` unpinned. The load dtype follows the
+        training precision (transformers loads float32 unless told otherwise -- ~28 GB of fp32
+        weights for the 7B under ``bf16=True``).
+        """
+        kwargs: JsonObject = {
+            "revision": self.model_revision,
+            "dtype": "bfloat16" if self.bf16 else "float32",
+        }
+        if self.attn_implementation is not None:
+            kwargs["attn_implementation"] = self.attn_implementation
+        return kwargs
+
     def to_sft_config_kwargs(self) -> JsonObject:
-        """TRL ``SFTConfig`` kwargs -- the training-seed maps to ``seed``; the pinned revision (I8)
-        reaches ``from_pretrained`` via ``model_init_kwargs``."""
+        """TRL ``SFTConfig`` kwargs -- the training-seed maps to ``seed``.
+
+        No ``model_init_kwargs``: trl only honors it for a model STRING, and ``run_sft`` passes a
+        loaded model object (see ``to_model_kwargs``) precisely so no Hub read floats on ``main``.
+        The tokenizer pin is ``run_sft``'s job too (trl loads the processor from ``main`` when one
+        is not passed in).
+        """
         return {
             "output_dir": self.output_dir,
             "learning_rate": self.learning_rate,
@@ -82,5 +132,4 @@ class TrainerConfig(BaseModel):
             "gradient_checkpointing": self.gradient_checkpointing,
             "seed": self.training_seed,
             "report_to": self.report_to,
-            "model_init_kwargs": {"revision": self.model_revision},
         }

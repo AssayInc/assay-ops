@@ -7,14 +7,16 @@ artifact says so on its face so it cannot be innocently reused. Quarantined roll
 NaN sentinel) are excluded from the headline rate, never counted as failures (7A: a quarantine is
 not a wrong answer -- counting it as 0 would poison the delta with a false negative).
 
-Two honesty guards for a directional (non-adversarial-SFT, never-published) number:
-- A CONSERVATIVE lower-bound rate that DOES count quarantines as failures is reported alongside the
-  headline. Pre-T0 the substrate is agent-reachable (the R1 caveat), so a policy could in principle
-  farm quarantines to dodge failures; the bracket [lower-bound, headline] makes that visible instead
-  of silently trusting the excluded-quarantine rate.
-- A DIVERGENCE warning when the two models quarantine at materially different rates (the signature
-  of such farming, or just an uneven run) -- the delta is then low-confidence.
-Neither changes a score (7A holds); they frame the number for the reader.
+Honesty guards for a directional (non-adversarial-SFT, never-published) number:
+- Only a ``status == "success"`` log reports (an interrupted run must not yield a delta).
+- A CONSERVATIVE lower-bound rate that counts quarantines AND errored/limit-cut rollouts as
+  failures is reported alongside the headline. Pre-T0 the substrate is agent-reachable (the R1
+  caveat), so a policy could in principle dodge a settled 0 two ways: farm quarantines (transient
+  budget) or wedge the substrate hard enough to error/cancel the scoring. The bracket
+  [lower-bound, headline] covers both dodge shapes instead of silently trusting the excluded rate.
+- DIVERGENCE warnings when the two models quarantine OR error at materially different rates (the
+  signature of such farming, or just an uneven run) -- the delta is then low-confidence.
+None of these changes a score (7A holds); they frame the number for the reader.
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from inspect_ai.log import EvalLog, EvalSample
-from inspect_ai.scorer import CORRECT, INCORRECT
+from inspect_ai.scorer import CORRECT, INCORRECT, Score
 
 from assayops_evals.scorer import DEPLOY_VERIFIER_SCORER_NAME
 
@@ -34,11 +36,12 @@ _R1_FRAMING = (
     "trust stack; DECISIONS.md section 5/section 6, docs/priorities.md P1)."
 )
 
-# A per-model quarantine fraction differing by more than this is flagged: a divergent quarantine
-# rate is the signature of a substrate-induced dodge (a flaky/throttled rollout is pulled from the
-# denominator, so one model quarantining far more can inflate its headline rate) or simply an
-# uneven run. It does not change a score (7A: a quarantine is never a false 0), only the confidence.
-_QUARANTINE_DIVERGENCE_WARN = 0.15
+# A per-model quarantine OR error fraction differing by more than this is flagged: a divergent
+# rate is the signature of a substrate-induced dodge (a flaky/throttled/wedged rollout is pulled
+# from the denominator, so one model quarantining or erroring far more can inflate its headline
+# rate) or simply an uneven run. It does not change a score (7A: a quarantine is never a false 0),
+# only the confidence.
+_RATE_DIVERGENCE_WARN = 0.15
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,7 @@ class ModelSlice:
     passed: int
     failed: int
     quarantined: int
+    # Incomplete rollouts: an infra/scoring error OR a limit hit that left no settled grade.
     errored: int
 
     @property
@@ -72,17 +76,22 @@ class ModelSlice:
 
     @property
     def pass_rate_lower_bound(self) -> float:
-        """Conservative rate: quarantines counted as failures (errored still excluded -- infra,
+        """Conservative rate: quarantined AND errored rollouts counted as failures.
 
-        not the agent's deploy). The anti-farming floor: what the rate is if every quarantined
-        rollout was really a failure the substrate hid.
+        The anti-farming floor: what the rate is if every rollout that dodged a settled grade --
+        a farmed quarantine (transient budget) or a substrate wedged hard enough to error/cancel
+        the scoring -- was really a failure the substrate hid.
         """
-        denominator = self.scored + self.quarantined
+        denominator = self.scored + self.quarantined + self.errored
         return self.passed / denominator if denominator else 0.0
 
     @property
     def quarantine_fraction(self) -> float:
         return self.quarantined / self.rollouts if self.rollouts else 0.0
+
+    @property
+    def error_fraction(self) -> float:
+        return self.errored / self.rollouts if self.rollouts else 0.0
 
 
 @dataclass(frozen=True)
@@ -100,8 +109,12 @@ class DirectionalDelta:
     def quarantine_rates_diverge(self) -> bool:
         return (
             abs(self.sft.quarantine_fraction - self.base.quarantine_fraction)
-            > _QUARANTINE_DIVERGENCE_WARN
+            > _RATE_DIVERGENCE_WARN
         )
+
+    @property
+    def error_rates_diverge(self) -> bool:
+        return abs(self.sft.error_fraction - self.base.error_fraction) > _RATE_DIVERGENCE_WARN
 
 
 def directional_delta(base: EvalLog, sft: EvalLog) -> DirectionalDelta:
@@ -157,6 +170,11 @@ def render_report(delta: DirectionalDelta) -> str:
             "WARNING: base and sft quarantine at materially different rates -- the delta is "
             "low-confidence (compare the lower-bound rates and inspect the quarantined rollouts)."
         )
+    if delta.error_rates_diverge:
+        lines.append(
+            "WARNING: base and sft error/limit out at materially different rates -- the delta is "
+            "low-confidence (compare the lower-bound rates and inspect the errored rollouts)."
+        )
     return "\n".join(lines)
 
 
@@ -167,20 +185,31 @@ def _slice_line(label: str, model_slice: ModelSlice) -> str:
         f"[{model_slice.tasks} tasks; {model_slice.quarantined} quarantined; "
         f"{model_slice.errored} errored]"
     )
-    if model_slice.quarantined:
+    if model_slice.quarantined or model_slice.errored:
         lower = model_slice.pass_rate_lower_bound * 100
-        line += f" (>= {lower:.1f}% counting quarantines as fails)"
+        line += f" (>= {lower:.1f}% counting quarantined/errored as fails)"
     return line
 
 
 def _slice_of(log: EvalLog) -> ModelSlice:
+    if log.status != "success":
+        raise ValueError(
+            f"eval log for {log.eval.model!r} has status {log.status!r}, not 'success' -- "
+            "refusing to report a rate from an incomplete/failed run (fail closed)"
+        )
     if not log.samples:
         raise ValueError(f"eval log for {log.eval.model!r} has no samples (need a full log)")
     passed = failed = quarantined = errored = 0
     for sample in log.samples:
         if sample.error is not None:
             # An infra failure (sandbox/scoring error), not a graded deploy -- excluded from the
-            # rate like a quarantine, never crashes the whole report on one flaky rollout.
+            # headline, bracketed by the lower bound, never crashes the report on one rollout.
+            errored += 1
+            continue
+        if sample.limit is not None and _verifier_score_of(sample) is None:
+            # Cut by a message/time limit before/during scoring -> an incomplete rollout, excluded
+            # like an error. A limit-hit rollout that WAS scored falls through: the deployed state
+            # was graded, and an unfinished fix deserves its settled 0.
             errored += 1
             continue
         value = _verifier_value(sample)
@@ -211,11 +240,16 @@ def _slice_of(log: EvalLog) -> ModelSlice:
     )
 
 
+def _verifier_score_of(sample: EvalSample) -> Score | None:
+    return (sample.scores or {}).get(DEPLOY_VERIFIER_SCORER_NAME)
+
+
 def _verifier_value(sample: EvalSample) -> object:
-    score = (sample.scores or {}).get(DEPLOY_VERIFIER_SCORER_NAME)
+    score = _verifier_score_of(sample)
     if score is None:
         raise ValueError(
             f"sample {sample.id!r} carries no {DEPLOY_VERIFIER_SCORER_NAME!r} score -- the log "
-            "was not produced by the drift-slice task (and the sample did not error)"
+            "was not produced by the drift-slice task (and the sample neither errored nor was "
+            "cut by a limit)"
         )
     return score.value
