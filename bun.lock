@@ -62,6 +62,13 @@
         "@assayops/py-diff-ir": "workspace:*",
       },
     },
+    "py/packages/trainer": {
+      "name": "@assayops/py-trainer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@assayops/py-evals": "workspace:*",
+      },
+    },
     "py/packages/verifier": {
       "name": "@assayops/py-verifier",
       "version": "0.0.0",
@@ -130,6 +137,8 @@
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
 
     "@assayops/py-replay": ["@assayops/py-replay@workspace:py/packages/replay"],
+
+    "@assayops/py-trainer": ["@assayops/py-trainer@workspace:py/packages/trainer"],
 
     "@assayops/py-verifier": ["@assayops/py-verifier@workspace:py/packages/verifier"],
 

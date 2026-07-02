@@ -26,6 +26,7 @@ members = [
     "assayops-infra-local",
     "assayops-logger",
     "assayops-replay",
+    "assayops-trainer",
     "assayops-verifier",
 ]
 
@@ -371,6 +372,21 @@ requires-dist = [{ name = "structlog", specifier = ">=25" }]
 name = "assayops-replay"
 version = "0.0.0"
 source = { virtual = "py/packages/replay" }
+
+[[package]]
+name = "assayops-trainer"
+version = "0.0.0"
+source = { virtual = "py/packages/trainer" }
+dependencies = [
+    { name = "inspect-ai" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "inspect-ai", specifier = ">=0.3.244" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
 
 [[package]]
 name = "assayops-verifier"

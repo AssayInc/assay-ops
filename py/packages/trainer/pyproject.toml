@@ -1,0 +1,91 @@
+[project]
+name = "assayops-trainer"
+version = "0.0.0"
+description = "AssayOps SFT trainer leg (built pre-T0 for the #176 directional slice). A trajectory→SFT ETL that turns leg-3's graded Inspect EvalLogs into a rejection-sampled SFT set (messages+tools, provenance, reproducible manifest), plus a TRL SFTTrainer+LoRA harness for Qwen2.5-Coder-7B (I6). Trains on the account-B graded reward only (§8 reward-boundary), reward==1 = the deploy-verifier Score (pre-T0, no ledger). The heavy ML stack is pinned in train-requirements.txt and kept OUT of the hermetic verify gate; SFT numbers are R1-scoped (never published, never the E13 proof)."
+requires-python = ">=3.12"
+# inspect-ai reads the graded EvalLogs and converts transcripts to OpenAI messages (messages_to_openai);
+# pydantic for the harness-internal frozen records/config. NO verifier/boto3/torch at runtime — the ETL
+# only reads logs. The scorer-key contract with assayops_evals is locked by a test (consumed by source
+# path — the repo's virtual-member convention; see the pytest pythonpath + mypy mypy_path below).
+dependencies = ["inspect-ai>=0.3.244", "pydantic>=2.10"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# Shared ruff config (line-length / target-version / lint.select) lives in the root pyproject; inherit it
+# via `extend` so the select stays single-sourced. Only this package's per-file-ignores are local.
+extend = "../../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101), use loose synthetic fixtures/fakes (ANN), and construct dummy model ids / config
+# secrets strings (S105/S106) — not the typed core.
+"tests/**" = ["S101", "ANN", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# pydantic.mypy synthesizes typed model __init__s. With init_typed + init_forbid_extra (below) it drops
+# the plugin's synthesized `Any`, so hand-written Pydantic models pass `disallow_any_explicit` — the
+# pydantic-v2 skill's repo-wide fix for the explicit-Any-vs-Pydantic gotcha.
+plugins = ["pydantic.mypy"]
+# `uv run mypy` runs from the package dir. The tests cross-check the scorer-log-key contract against
+# assayops_evals, so resolve it and the sibling cores it pulls (verifier/adapter/replay/diff-ir/contracts)
+# by source path (the repo's virtual-member convention) — the trainer SRC imports none of them.
+mypy_path = "src:../evals/src:../contracts/src:../diff-ir/src:../adapter-terraform/src:../replay/src:../verifier/src"
+
+[tool.pydantic-mypy]
+init_typed = true
+init_forbid_extra = true
+
+[[tool.mypy.overrides]]
+# Ban explicit `Any` in the hand-written trainer core — the Python mirror of the TS lane's `any` ban.
+# `--strict` does NOT enable this. Use `object` (narrow before use, like TS `unknown`) or a Pydantic model.
+module = ["assayops_trainer.*"]
+disallow_any_explicit = true
+
+[[tool.mypy.overrides]]
+# assayops_evals + the sibling cores are each typechecked under their OWN strict lane. Follow them for
+# real types but `silent` so their internals aren't re-judged under this package's stricter config.
+module = [
+    "assayops_evals.*",
+    "assayops_contracts.*",
+    "assayops_diff_ir.*",
+    "assayops_adapter_terraform.*",
+    "assayops_replay.*",
+    "assayops_verifier.*",
+]
+follow_imports = "silent"
+disallow_any_explicit = false
+
+[[tool.mypy.overrides]]
+# The heavy training stack is lazy-imported in sft.py and pinned in train-requirements.txt —
+# intentionally NOT a workspace dep (kept out of the hermetic gate). No stubs ship; the boundary is
+# guarded by a runtime ImportError that points at the requirements file.
+module = [
+    "trl",
+    "trl.*",
+    "peft",
+    "peft.*",
+    "transformers",
+    "transformers.*",
+    "datasets",
+    "datasets.*",
+    "accelerate",
+    "accelerate.*",
+    "torch",
+    "torch.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src",
+    "../evals/src",
+    "../contracts/src",
+    "../diff-ir/src",
+    "../adapter-terraform/src",
+    "../replay/src",
+    "../verifier/src",
+]
+testpaths = ["tests"]

@@ -1,0 +1,20 @@
+# SFT training stack for `assayops_trainer.sft.run_sft` (#176 leg 2) -- Qwen2.5-Coder-7B SFT+LoRA.
+#
+# Intentionally NOT a workspace dependency: torch + the HF training stack would force the hermetic
+# `bun run verify` gate to resolve CUDA wheels on every run. These live here instead and are
+# lazy-imported by sft.py, so the gate stays fast and torch-free.
+#
+# I8 (pin everything): the lower bounds below are the MINIMUMS this harness targets. Before a real
+# run, freeze exact, hash-locked versions in the GPU training env
+# (`uv pip compile --generate-hashes`) AND pin the model revision (TrainerConfig.model_revision) --
+# a directional lift number is only reproducible against a pinned stack + model.
+#
+# assistant_only_loss (masking tool observations at train time) needs trl >= 0.13 AND a tokenizer
+# chat template that emits an assistant-token mask (the `{% generation %}` block /
+# return_assistant_tokens_mask); verify the chosen Qwen2.5-Coder revision's template supports it.
+trl>=0.13
+peft>=0.13
+transformers>=4.46
+datasets>=3.0
+accelerate>=1.0
+torch>=2.4

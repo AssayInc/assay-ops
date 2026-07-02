@@ -35,6 +35,22 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
     HF dataset — a founder scoping call), never gate on #76/#52. (I11 residency + the held-out-data rule
     still bind: never committed to a code repo — the harness's `_require_out_of_repo` enforces it.)
 
+- **#176 leg 2 (trainer, `py/packages/trainer`) — run-time notes (not code gaps).** The ETL + config
+  + harness are built and gated; the deferred items are all **run-time**, not correctness holes:
+  - **Exact pins are frozen at run time, not in the repo.** `train-requirements.txt` carries `>=`
+    minimums (torch et al. are intentionally out of the hermetic lock). I8 full compliance = the GPU
+    training env `uv pip compile --generate-hashes` + a pinned `TrainerConfig.model_revision` (a
+    required field — an unpinned run can't construct) at provision time. Documented in the file.
+  - **`assistant_only_loss` needs a chat template that emits an assistant-token mask** (trl ≥ 0.13 /
+    `return_assistant_tokens_mask`). Verify the chosen Qwen2.5-Coder revision's template supports it
+    before a run (README callout) — else the mask silently no-ops.
+  - **The scorer-log-key is a literal in `etl.py`** (`DEFAULT_SCORER_NAME`), not an import from
+    `assayops_evals`, to keep the trainer's *runtime* dep graph off the verifier/boto3 stack. The
+    contract is locked by a cross-check test (imports the evals constant); an evals-side rename fails
+    that test loudly. Deliberate DRY-by-verification, not drift.
+  - **The number still converges only at the runs:** a directional delta needs leg 1's corpus →
+    rejection-sampling rollouts through leg 3 → this ETL → an SFT run. No new blocker introduced.
+
 - **Spike #60 (IAM eventual consistency) resolved — the measurement probe was NOT committed (removed per
   review; not core IP).** It measured IAM read-after-create + assume/use propagation (n=20, us-east-1): the
   verifier read path is sub-second (`cc_get` p99 ~0.76s, 0 bound-exceeded), so its read-after-create 7A budget
