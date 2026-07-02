@@ -63,11 +63,16 @@ class SftDataset:
 async def build_sft_dataset(
     logs: Iterable[EvalLog],
     *,
-    held_out_ids: frozenset[str] = frozenset(),
+    held_out_ids: frozenset[str],
     harness_git_sha: str | None = None,
     scorer_name: str = DEFAULT_SCORER_NAME,
 ) -> SftDataset:
-    """Build the rejection-sampled SFT set from graded eval logs (see the module docstring)."""
+    """Build the rejection-sampled SFT set from graded eval logs (see the module docstring).
+
+    ``held_out_ids`` is REQUIRED -- a silent empty default would make the contamination tripwire
+    inert. Passing an explicit ``frozenset()`` is a documented call-site decision (e.g. a pre-T0
+    slice with no held-out split yet), never an accident.
+    """
     examples: list[SFTExample] = []
     seen: set[tuple[str, str, str, int, str]] = set()
     incorrect = quarantined = errored = duplicates = 0
@@ -159,28 +164,35 @@ def _verifier_score(sample: EvalSample, scorer_name: str) -> Score:
 
 
 def _require_reproduced_grade(score: Score, task_id: str) -> None:
-    """A CORRECT must be a settled, reproduced account-B grade of THIS task, not a trusted key.
+    """A CORRECT must carry the full reproduced-grade shape for THIS task.
 
     Leg-3's scorer emits CORRECT only for a ``Reproducible`` verdict and records
-    ``metadata={"verdict": "reproducible", ..., "task_id": <graded task>}``. Requiring that here
-    means a foreign / partial / edited log whose sample merely carries the scorer key with a CORRECT
-    value -- but no reproduced-grade metadata, or a mismatched task id -- fails closed instead of
-    minting an ungrounded positive (§8 reward-boundary; the pre-T0 stand-in for #78's signature).
+    ``metadata={"verdict": "reproducible", "reward": 1, ..., "task_id": <graded task>}``. Requiring
+    that shape here means a foreign / partial / accidentally-edited log whose sample merely carries
+    the scorer key with a CORRECT value fails closed instead of minting an ungrounded positive.
+    This is a SHAPE check, not integrity -- it stops accidents, not deliberate forgery; #78's
+    KMS-signed WORM ``trajectory_id`` join replaces it (§8 reward-boundary).
     """
     metadata = score.metadata or {}
-    if metadata.get("verdict") != "reproducible" or metadata.get("task_id") != task_id:
+    if (
+        metadata.get("verdict") != "reproducible"
+        or metadata.get("task_id") != task_id
+        or metadata.get("reward") != 1
+    ):
         raise ValueError(
             f"sample {task_id!r} scored CORRECT but its score metadata is not a reproduced "
             f"account-B grade of this task (verdict={metadata.get('verdict')!r}, "
-            f"metadata task_id={metadata.get('task_id')!r}) -- refusing an ungrounded positive"
+            f"metadata task_id={metadata.get('task_id')!r}, reward={metadata.get('reward')!r}) "
+            "-- refusing an ungrounded positive"
         )
 
 
 def _verifier_runs(score: Score) -> int | None:
     # The K-reproduction count behind the grade (leg-3 replay). None (not 0) when the source log
-    # did not record it -- "unknown", never conflated with "zero reproductions".
+    # did not record it -- "unknown", never conflated with "zero reproductions". bool is excluded
+    # explicitly: it subclasses int, and a foreign log's `"runs": true` must not fabricate K=1.
     runs = (score.metadata or {}).get("runs")
-    return runs if isinstance(runs, int) else None
+    return runs if isinstance(runs, int) and not isinstance(runs, bool) else None
 
 
 def write_sft_jsonl(dataset: SftDataset, path: Path) -> None:
@@ -217,11 +229,15 @@ async def build_and_write(
     log_paths: Sequence[Path],
     out_dir: Path,
     *,
-    held_out_ids: frozenset[str] = frozenset(),
+    held_out_ids: frozenset[str],
     harness_git_sha: str | None = None,
     scorer_name: str = DEFAULT_SCORER_NAME,
 ) -> SftDataset:
-    """Read graded eval logs -> build the SFT set -> write ``sft.jsonl`` + ``manifest.json``."""
+    """Read graded eval logs -> build the SFT set -> write ``sft.jsonl`` + ``manifest.json``.
+
+    Refuses a zero-example build: writing a no-op ``sft.jsonl`` would hand a downstream training
+    run an empty set that "succeeds" -- fail closed at the writer instead.
+    """
     logs = [await read_eval_log_async(str(path)) for path in log_paths]
     dataset = await build_sft_dataset(
         logs,
@@ -229,6 +245,13 @@ async def build_and_write(
         harness_git_sha=harness_git_sha,
         scorer_name=scorer_name,
     )
+    if not dataset.examples:
+        raise ValueError(
+            "refusing to write an SFT set with zero examples -- no rollout survived rejection "
+            f"sampling ({dataset.excluded_incorrect} incorrect, {dataset.excluded_quarantined} "
+            f"quarantined, {dataset.excluded_errored} errored/limited, "
+            f"{dataset.dropped_duplicates} duplicates); nothing to train on"
+        )
     write_sft_jsonl(dataset, out_dir / _SFT_JSONL_NAME)
     write_manifest(dataset, out_dir / _MANIFEST_NAME)
     return dataset

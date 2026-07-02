@@ -1,30 +1,72 @@
-# #176 leg 2 — Trainer: trajectory→SFT ETL + TRL SFT+LoRA harness
+# #176 follow-up — review hardening: trainer run-path fixes + report/ETL honesty guards
 
 > Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md + the PR + GitHub #176.
 > **For Claude:** REQUIRED SUB-SKILL: superpowers:test-driven-development per task; verification-before-completion before claiming done.
 
-**Goal:** The trainer leg of the pre-T0 slice (#176 leg 2): a **trajectory→SFT ETL** that turns leg-3's
-graded `EvalLog`s into a rejection-sampled SFT set (messages+tools, provenance, dedup, reproducible
-manifest), plus a **TRL `SFTTrainer` + LoRA harness** for Qwen2.5-Coder-7B — so the SFT run has data + a runner.
+**Goal:** Fix the findings from the post-merge six-lens review of PR #180 (evals) + PR #182 (trainer)
+before the first SFT run consumes either package. Three run-path criticals (all TRL-semantic-layer,
+wheel-source-verified against trl 1.7.0 / transformers 5.12.1) + the report/ETL honesty-guard cluster
+(multi-model confirmed: Claude specialists + Codex xhigh) + the doc corrections. No behavior change to
+the trust seam itself — every fix is inside the already-licensed pre-T0 posture.
 
-**Branch:** `176-leg2-trainer` (off main). Umbrella #176 leg 2. Focused PR (`Advances #176`, never Closes).
+**Branch:** `176-review-hardening` (off main). Focused PR (`Advances #176`, never Closes).
 
-## Grounding (reconciled — no floor contradiction)
-- **I6** — TRL `SFTTrainer` + LoRA on **Qwen2.5-Coder-7B** dense baseline; eval via Inspect (leg 3, landed).
-- **I8** — pin the model **revision by commit hash** (config enforces a required `model_revision`); heavy ML deps pinned in `train-requirements.txt`, kept OUT of the hermetic `bun run verify` gate.
-- **§8 OpenEnv reward-boundary invariant (non-waivable)** — the trainer trains on the **account-B graded reward**, never the env `step()`. Pre-T0 has no ledger/KMS, so `reward==1` = the **deploy-verifier `Score`** in leg-3's `EvalLog` (that Score *is* `verify()` = the account-B grade). Join key = eval **sample id** (pre-T0 stand-in for `trajectory_id`). Ledger (#38/#78) later makes it `trajectory_id ⨝ KMS-signed WORM record` + signature verification — the step this leg omits ("#78-shaped minus KMS").
-- **eval-rigor** — config `seed` is a **training seed** (labeled, ≠ rollout/inference seed); **held-out contamination fails closed** (a held-out task id in the training logs → raise, never trained on).
-- **SFT-only** (DECISIONS: no RL/GRPO loop before the proof).
+## Fixes (each test-first)
 
-## Package: `py/packages/trainer` → `assayops_trainer`
-Runtime deps: `inspect-ai` (read logs + `messages_to_openai`), `pydantic`. NO verifier/boto3/torch at runtime.
+### Trainer (`py/packages/trainer`)
+- [x] **messages.py — tool-call `arguments` str→dict.** `messages_to_openai` emits OpenAI wire-format
+      JSON *strings*; TRL 1.7.0's conversational path renders `tool_call.arguments | tojson`, so string
+      arguments double-encode into every training target (silent corruption of the tool-call syntax the
+      SFT teaches). Parse each `tool_calls[*].function.arguments` back to a dict (TRL's documented
+      conversational format); an unparseable arguments string fails closed (ValueError).
+- [x] **config.py — packing requires flash-attention; load dtype.** `packing=True` (bfd) force-enables
+      padding-free flattening, sample-isolated ONLY under flash-attn kernels; TRL warns and trains on
+      under the sdpa default (cross-sample attention). Default `packing=False` for the slice (tiny set —
+      packing buys nothing) + new `attn_implementation: str | None` mapped into `model_init_kwargs`,
+      with a model_validator refusing `packing=True` without a flash-attention implementation. Add
+      `"dtype": "bfloat16"` to `model_init_kwargs` (trl 1.7.0 loads float32 by default → ~28 GB weights,
+      inconsistent with `bf16=True`). Correct the docstring pin claim (revision pins weights only).
+- [x] **sft.py — pin the tokenizer.** trl 1.7.0's `SFTTrainer` loads the tokenizer/processor from `main`
+      (no revision) when given a model string; the chat template gates the assistant-mask template swap
+      (byte-exact match) + tokenization. Load `AutoTokenizer.from_pretrained(model_id,
+      revision=model_revision)` and pass `processing_class=` so the I8 pin covers the template too.
+      Real-API check: assert `processing_class` is in `SFTTrainer.__init__`'s signature (importorskip).
+- [x] **etl.py — admission + accounting hardening.** (a) `_require_reproduced_grade` also requires
+      `metadata["reward"] == 1` (a CORRECT with contradictory metadata is refused — one more shape check
+      on the pre-T0 stand-in); (b) `held_out_ids` becomes REQUIRED on `build_sft_dataset`/`build_and_write`
+      (the fail-open `frozenset()` default contradicted the "FAILS CLOSED on any appearance" docstring —
+      an explicit empty set at the call site is a documented operator decision); (c) `_verifier_runs`
+      excludes `bool` (bool subclasses int — a `true` in a foreign log fabricated `verifier_runs: 1`);
+      (d) `build_and_write` refuses a zero-example dataset (never writes a no-op `sft.jsonl`).
 
-## TDD steps (each: failing test → minimal impl → green)
-- [ ] 1. `records.py` — `Provenance`, `SFTExample` (frozen, `extra="forbid"`).
-- [ ] 2. `messages.py` — `sample_to_openai_messages` (via `messages_to_openai`) + `sample_tools` (`ToolInfo`→OpenAI from the sample's model events, dedup by name).
-- [ ] 3. `etl.py` — `build_sft_dataset`: filter reward==1 (`CORRECT`); skip `INCORRECT`/quarantined-NaN/errored (counted); **held-out fail-closed**; dedup by `(model, task_id, epoch, run_id)`; deterministic sort; unexpected score value → raise.
-- [ ] 4. writers — `write_sft_jsonl` (clean `{messages, tools}`), `write_manifest` (provenance + counts + git sha; alignment asserted), `build_and_write` (`read_eval_log` orchestration).
-- [ ] 5. `config.py` — `TrainerConfig` (I6/I8/eval-rigor); `to_sft_config_kwargs` / `to_lora_config_kwargs` / `to_yaml_dict` (pure).
-- [ ] 6. `sft.py` — `run_sft`: lazy-import trl/peft/datasets → `SFTConfig`+`LoraConfig`+`SFTTrainer`; clear `ImportError` → `train-requirements.txt`. Real train behind `importorskip`.
-- [ ] 7. wiring — `pyproject.toml` (mypy strict + `disallow_any_explicit`; `ignore_missing_imports` trl/peft/…), `package.json`, `turbo.json`, `train-requirements.txt`, `README.md`.
-- [ ] 8. `bun run verify` green → focused PR (advances #176) → update PROGRAM.md / ISSUES.md → `/review`.
+### Evals (`py/packages/evals`)
+- [x] **report.py — status gate.** `directional_delta` refuses a non-`"success"` log (mirrors the ETL;
+      an interrupted run must not yield a delta).
+- [x] **report.py — limit triage.** A limit-hit sample with NO verifier score is counted `errored`
+      (incomplete), not a whole-report crash with a misleading message. A limit-hit sample WITH a score
+      stays a settled grade (deployed state was graded; an unfinished fix deserves its 0).
+- [x] **report.py — error bracketing.** `pass_rate_lower_bound` counts errored rollouts in the
+      denominator too (pre-T0 an agent-wedged substrate can surface as a scoring cancel/error, not just
+      a quarantine — the bracket must cover both dodge shapes), and a second divergence warning fires
+      when error rates differ materially (same 0.15 threshold as quarantine divergence).
+
+### Docs
+- [x] trainer README: `(trl ≥ 0.13)` is false for `assistant_only_loss` (that floor is peft's) → `trl ≥ 1.7`
+      + describe the REAL trl 1.7 mechanism (vendored Qwen2.5 training-template swap on byte-exact match;
+      loud ValueError/RuntimeError otherwise — NOT a silent no-op).
+- [x] train-requirements.txt: floors were jointly unsatisfiable (trl 1.7.0 itself requires
+      transformers>=4.56.2, datasets>=4.7.0, accelerate>=1.4.0) → raise to trl's own minimums; reword the
+      assistant_only_loss comment to the template-swap mechanism.
+- [x] ISSUES.md: correct the prior "mask silently no-ops" deferred note (trl 1.7 fails loud); record this
+      PR + the remaining deferred minors. PROGRAM.md: status note.
+
+## Out of scope (deliberate)
+- Min-K enforcement in ETL/report (goes with the #78 KMS-signed join — recorded in ISSUES.md).
+- Corpus-side compose validation / symlink / colon-in-path admission guards (leg-1 corpus-contract work,
+  already tracked in ISSUES.md).
+- report `ModelSlice.pass_rate` zero-guard, exception taxonomy (`ContaminationError`), dedup'd exclusion
+  counters, private `EvalError` test import — review minors, listed in the PR body, not blocking the run.
+
+## Verification
+- [x] `bun run verify` green (all packages; hermetic — no new deps in the gate).
+- [x] Codex gpt-5.5 xhigh review of the diff + re-review after fixes (standing practice).
