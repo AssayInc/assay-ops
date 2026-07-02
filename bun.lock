@@ -28,6 +28,17 @@
       "name": "@assayops/py-env-server",
       "version": "0.0.0",
     },
+    "py/packages/evals": {
+      "name": "@assayops/py-evals",
+      "version": "0.0.0",
+      "dependencies": {
+        "@assayops/py-adapter-terraform": "workspace:*",
+        "@assayops/py-contracts": "workspace:*",
+        "@assayops/py-diff-ir": "workspace:*",
+        "@assayops/py-replay": "workspace:*",
+        "@assayops/py-verifier": "workspace:*",
+      },
+    },
     "py/packages/infra-local": {
       "name": "@assayops/infra-local",
       "version": "0.0.0",
@@ -113,6 +124,8 @@
     "@assayops/py-diff-ir": ["@assayops/py-diff-ir@workspace:py/packages/diff-ir"],
 
     "@assayops/py-env-server": ["@assayops/py-env-server@workspace:py/packages/env-server"],
+
+    "@assayops/py-evals": ["@assayops/py-evals@workspace:py/packages/evals"],
 
     "@assayops/py-logger": ["@assayops/py-logger@workspace:py/packages/logger"],
 

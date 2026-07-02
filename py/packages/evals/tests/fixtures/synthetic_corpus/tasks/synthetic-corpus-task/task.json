@@ -1,0 +1,7 @@
+{
+  "task_id": "synthetic-corpus-task",
+  "title": "Synthetic corpus task",
+  "description": "Restore the drifted versioned bucket (synthetic engine-validation fixture).",
+  "tool": "terraform",
+  "seed": "seed-corpus-001"
+}

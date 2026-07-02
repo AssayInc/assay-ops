@@ -1,41 +1,84 @@
-# #61 — Spike: LocalStack ↔ real-CFN drift parity (unit economics)
+# #176 leg 3 — Inspect-AI eval harness (`py/packages/evals`) Implementation Plan
 
-> Ephemeral per-session scratchpad (CLAUDE.md). Durable record: the #61 issue comment + DECISIONS.md
-> note + PROGRAM.md.
+> Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md + the PR + GitHub #176.
+> **For Claude:** REQUIRED SUB-SKILL: superpowers:test-driven-development per task; superpowers:verification-before-completion before claiming done.
 
-**AC:** Spike closes when (1) the LocalStack↔real-CFN parity finding (DeletionPolicy / nested /
-custom resources) + (2) the LocalStack-vs-cloud ratio is recorded (feeds the unit-economics number).
+**Goal:** The Inspect-AI harness leg of the pre-T0 directional slice (#176): the deploy-verifier as
+an Inspect `Scorer` around the shipped `assayops_verifier.verify`, a private-corpus dataset loader,
+the drift-slice `Task` builder, and the R1-framed directional pass-rate-delta report — so the
+15 × 3-seed LocalStack-graded base-vs-SFT runs have a harness.
 
-**Grounding (done):** issue body + founder comment (blocked_by #25 overridden; P0 per
-docs/priorities.md item 3) · DECISIONS.md R3 / T3 / T9 / 8A / §3 LocalStack-licensing note ·
-impl-plan spike #3 (verbatim source) · brain `entities/localstack.md` (the founding open question:
-LocalStack-vs-real-cloud share + unit cost/trajectory) + `concepts/environment-economics.md`
-(cost anchors: Daytona ~$0.08–0.10/task; HUD $0.25/env-hr) · prior empirical: pinned image
-2026.5.4 does NOT serve `DetectStackDrift` (infra-local README, #134) · consumer: #176 ("biases
-which drift types the 15 tasks use") + #66 (CDK/T3 CFN-drift read path) + #47 (T9 fidelity-diff).
+**Architecture:** New `py/packages/evals` (`assayops_evals`), consuming the shipped verifier (E2),
+Terraform adapter (E3-2), replay verdicts (E6-2), and contracts by source path (the repo's
+virtual-member convention). The scorer maps `VerifyVerdict` → Inspect `Score`
+(`Reproducible(1)`→CORRECT, `Reproducible(0)`/`FailedClosed`→INCORRECT, `Quarantined`→
+`Score.unscored()`; corpus/config errors PROPAGATE). Tasks + goldens live in the PRIVATE corpus dir
+(I11 — never committed); in-repo tests use synthetic fixtures only. Per-sample Docker-compose
+sandbox = agent container + its own LocalStack service; the scorer runs in the eval process
+(outside the sandbox) and reads deployed state via boto3 Cloud Control against the sample's
+LocalStack endpoint (ephemeral published port, discovered via the sandbox connection — injected
+seam, hermetically tested).
 
-**Constraints:** spike output = recorded decision + numbers (issue comment + DECISIONS.md note
-flagged for ratification + PROGRAM.md), NOT a committed package (lessons: #60/#151 precedent).
-Probe scripts live in the scratchpad; method preserved in the issue thread. Real-AWS side:
-`assay-iam-spike` profile creds are INVALID (rotated post-#60) → empirical real-CFN confirm is
-flagged pending fresh creds; real-CFN semantics grounded in authoritative AWS docs instead.
+**Tech Stack:** inspect-ai (pinned), pydantic v2, boto3 (reader construction only), pytest,
+mypy --strict + disallow_any_explicit, ruff.
 
-## Todo
+**Trust framing (write-isolated-verifier / eval-rigor):** pre-T0 the agent and LocalStack share a
+compose network — no account A/B split. Allowed per docs/priorities.md P1 (no adversarial policy,
+no external claim; never published — R1). The report artifact hard-codes the
+"PRE-T0 DIRECTIONAL — NOT the E13 proof" framing so the number can't be innocently reused.
+Scorer inputs (task_id, seed, scope, registries) are harness-owned (sample metadata written by the
+dataset loader from the validated TaskSpec) — never agent-supplied. The verifier never executes in
+the agent's container; grading runs in the eval process via `verify()` only (the sole
+reward-emitting entry).
 
-- [x] Ground: issue + comments + timeline + DECISIONS.md + priorities.md + brain + related issues
-- [x] Phase A — official docs FIRST:
-  - [x] LocalStack docs: CFN coverage (drift APIs? DeletionPolicy? nested stacks? custom resources?) + current release notes (has drift support landed since 2026.5.4?)
-  - [x] AWS docs: drift-detection semantics + limitations (supported-type subset, custom resources, nested stacks, DeletionPolicy)
-  - [x] LocalStack pricing tiers (license cost folds into unit economics per DECISIONS §3 note)
-- [x] Phase B — empirical LocalStack (token present in .env):
-  - [x] Start Docker + `just up` the pinned image
-  - [x] Probe: CFN stack → out-of-band drift → DetectStackDrift / DescribeStackResourceDrifts / DetectStackResourceDrift (exact error/response)
-  - [x] Probe: DeletionPolicy=Retain honored on delete? nested stack deploys? Lambda/SNS-backed custom resource deploys?
-  - [x] Measure: wall-clock per representative drift-task episode (create → mutate → Cloud Control grade-read → teardown), n≥5 → LocalStack cost/trajectory
-- [x] Phase C — real-CFN side: doc-grounded finding + real-AWS cost/trajectory estimate from AWS pricing; FLAG empirical confirm pending creds
-- [x] Phase D — record:
-  - [x] Findings comment on #61 (method + numbers + parity finding + ratio)
-  - [x] DECISIONS.md §1 resolved-[spike] note (flagged for founder ratification in the PR)
-  - [x] PROGRAM.md Right Now / Recently Landed; ISSUES.md if needed
-  - [x] Pointer comment on #176 (drift-type bias implications)
-  - [x] PR, `bun run verify` green, /review (adversarial, validate findings before acting)
+---
+
+## Task 0: Grounding + package scaffold
+- [x] Ground #176 (body, comments=none, timeline), #61/#155/#78/#76/#67 siblings, DECISIONS.md §1/§3/§6/§8, priorities.md, ARCHITECTURE.md, brain (impl-plan E12/E13 lines), Inspect docs (custom-scorers/sandboxing/tasks/metrics), write-isolated-verifier + eval-rigor skills.
+- [x] Comment the grounding reconciliation + leg plan on #176.
+- [x] Scaffold `py/packages/evals`: `pyproject.toml` (deps: `inspect-ai` pinned, `pydantic>=2.10`, `boto3>=1.40`; mypy strict + `disallow_any_explicit` + sibling `follow_imports=silent` overrides mirroring verifier), thin `package.json` (`@assayops/py-evals`, workspace deps on py-verifier/py-adapter-terraform/py-diff-ir/py-contracts/py-replay), `turbo.json` (`dependsOn ^typecheck/^test`), `src/assayops_evals/__init__.py`.
+- [x] `bun install` + `uv sync` → BOTH lockfiles updated (lessons: bun-lock-and-uv-lock-after-adding-a-py-package); verify `bun install --frozen-lockfile` passes.
+
+## Task 1: Scorer — verdict → Score mapping (the moat seam)
+Files: `src/assayops_evals/scorer.py`, `tests/test_scorer.py`.
+- [x] RED: tests with a synthetic golden registry + fake reader (recording fake proving read-only ops only, mirroring verifier tests):
+      clean deploy → CORRECT; property drift → INCORRECT; extra resource → INCORRECT;
+      FailedClosed (unreadable) → INCORRECT + `verdict:"failed_closed"` metadata;
+      Quarantined → unscored (excluded from metrics); corpus error (unknown task) PROPAGATES;
+      task identity read from sample metadata (agent text cannot override).
+- [x] GREEN: `deploy_verifier_scorer(corpus, reader_factory, runs)` — `@scorer(metrics=[accuracy(), stderr()])`; re-validate TaskSpec from metadata (fail closed); call `verify()`; map verdict.
+- [x] Negative-control the load-bearing assertions (disable mapping → tests fail).
+
+## Task 2: Private-corpus loader (I11 residency, fail closed)
+Files: `src/assayops_evals/corpus.py`, `tests/test_corpus.py` (+ synthetic corpus fixture under `tests/fixtures/`).
+- [x] RED: loads `tasks/*.json` → validated `TaskSpec`s; loads `corpus.py` module (GoldenRegistry/ReadScope/BridgeRegistry, fail closed if missing/malformed); duplicate task_id → error; malformed spec → error; per-task sandbox assets (files/setup/compose) resolved.
+- [x] GREEN: `load_corpus(corpus_dir)` → frozen `Corpus` object.
+- [x] Residency guard: loading a corpus dir inside this repo fails closed unless the test-only flag is set (protects I11).
+
+## Task 3: Task builder + dataset mapping
+Files: `src/assayops_evals/task.py`, `tests/test_task.py`.
+- [x] RED: TaskSpec → `Sample` (input=description, metadata=spec+seed, files/setup from corpus); task builder wires solver (react agent + bash/text_editor), scorer, `epochs`, sandbox=(docker, corpus compose), limits.
+- [x] GREEN: `drift_slice_task(...)` `@task` factory, params for corpus_dir/epochs/limits.
+
+## Task 4: LocalStack endpoint discovery + reader factory (injected seam)
+Files: `src/assayops_evals/readers.py`, `tests/test_readers.py`.
+- [x] RED: reader factory builds per-region `DeployedStateReader` map from `ReadScope` + endpoint (boto3 client with endpoint_url, test creds, region); endpoint discovery parses the sandbox connection/port output (injected exec — no docker in tests); malformed discovery output fails closed.
+- [x] GREEN: `localstack_reader_factory(...)`, `discover_localstack_endpoint(...)`.
+
+## Task 5: Directional report (R1-framed)
+Files: `src/assayops_evals/report.py`, `tests/test_report.py`.
+- [x] RED: two eval logs (synthetic) → per-model pass rate, delta, n/epochs/unscored counts; report text contains the hard-coded PRE-T0/NOT-the-proof framing; quarantined excluded from the rate.
+- [x] GREEN: `directional_delta(base_log, sft_log)` + `render_report(...)`.
+
+## Task 6: Gate + docs + reviews
+- [x] `bun run verify` green — 32/32 tasks (41 evals tests).
+- [x] Package README/docstring: the pre-T0 trust caveat + run recipe (`inspect eval … -T corpus_dir=…`).
+- [x] Update PROGRAM.md (Right Now + Recently Landed) + ISSUES.md if residuals.
+- [x] Diverse-lens review (4 specialists + 2 moat-forge + Codex xhigh) → all valid findings fixed → Codex xhigh re-reviewed to a clean SHIP; quarantine-dodge validated as licensed pre-T0 (not a blocker).
+- [ ] PR `Advances #176` (never Closes — umbrella), diff scoped to this leg. [opening]
+
+## Out of scope (tracked, not built here)
+- Corpus leg (15 TF drift tasks): private store (#76 unbuilt), informed by #61 (open P0), per-type LocalStack Cloud Control smoke gate — comment on #176.
+- Trainer leg (TRL SFT + LoRA + ETL): follow-up PR; ETL consumes this harness's logs (#78 shape minus KMS — no ledger yet).
+- #155 item 3 (LocalStack adapter↔golden round-trip test) — owned by #155.
+- #46 (§6 determinism gate over the real corpus in the Scorer) — E13/Phase 2-3, blocked by #14/#45.

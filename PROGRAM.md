@@ -5,13 +5,24 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **Sequencing follows `docs/priorities.md` (set 2026-07-01 — it wins over the board on what-first).**
-  P0: the Henry scout note (E15-2) + closing the RL/eval seat (the real T0 gate; the board's "E15-3 =
-  Done" is stale) + the LocalStack↔real-CFN drift/unit-economics spike **#61 — resolved, see Recently
-  Landed**. P1: the pre-T0 **directional slice #176** (~15 TF drift tasks × 7B SFT, LocalStack-graded,
-  NOT the proof) — #61's answer clears its substrate and biases its drift-task types. Non-P0/P1 infra
-  (ledger polish, account-pool automation, env-server polish beyond the slice) is **frozen** until the
-  seat + a directional number + the Henry reply.
+- **Sequencing is now governed by `docs/priorities.md` (set 2026-07-01): evidence + the team before
+  architecture** (it wins over the board on what-first). P0 = the Henry scout note (E15-2, founder),
+  close the RL/eval seat (the real T0 gate; the board's "E15-3 = Done" is stale), and the **#61**
+  LocalStack↔real-CFN drift/unit-economics spike — **RESOLVED** (PR #177; see Recently Landed: R3
+  substrate answer, ~12× wall-clock ratio, LocalStack grading substrate-sound for the slice). P1 =
+  the **#176 pre-T0 directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-
+  graded, never published, R1-scoped): **leg 3 (the Inspect harness, `py/packages/evals`) is BUILT**
+  (see Recently Landed); **leg 1 (corpus, ~15 TF drift tasks)** now has both its dependencies met —
+  its **authoring contract (#155/PR #178** — `assayops:address` deploy-tag + explicit golden
+  server-posture, pinned by a real LocalStack grade round-trip) and **#61's substrate answer** (author
+  CC-readable+listable types only, no custom resources, don't grade on CFN drift-*detection* — that's
+  the real-AWS-only CDK/T3 path) — so it is gated only on a **minimal private/uncommitted store
+  decision** (a founder scoping call — a gitignored local dir or private HF dataset; **NOT #76**, which
+  as scoped is `blocked_by #52`/E8 trust infra = P2-frozen; see ISSUES.md) + extending the per-type
+  round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer:
+  TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its ETL consumes the
+  leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat + the number + the
+  Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -72,6 +83,47 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#176 leg 3: the Inspect-AI eval harness — new `py/packages/evals` (`assayops_evals`), the E13/T11
+  seam built pre-T0 for the directional slice.** The **deploy-verifier as a custom Inspect `Scorer`**
+  (I6/T11) around the shipped **`verify()`** — the only reward-emitting entry — with every grading
+  input HARNESS-OWNED (the TaskSpec re-validated from sample metadata the dataset loader writes; the
+  registry/scope/bridge from the private corpus; readers from the injected factory — never agent
+  output). Verdict→Score preserves the 7A semantics: `Reproducible`→C/I, `FailedClosed`→I (cause
+  surfaced), **`Quarantined`→`Score.unscored()`** (excluded from the rate — never a false 0), and a
+  corpus/config error PROPAGATES (fails the sample loudly). **`load_corpus`** defines the private
+  corpus-directory contract (corpus.py REGISTRY/READ_SCOPE/BRIDGE_REGISTRY + compose.yaml +
+  `tasks/<id>/{task.json,setup.sh,files/**}`) and is the task-ADMISSION gate — the golden must
+  regenerate (#75) and pass `assert_golden_readable` (#141's authoring-time per-property gate) — plus
+  a **fail-closed I11 residency guard** (an in-repo corpus is refused; in-repo fixtures synthetic
+  only). **`drift_slice`** wires the react agent (bash/text_editor) in a per-sample compose sandbox
+  (agent workbench + the sample's OWN LocalStack — per-sample isolation because the closed-world read
+  enumerates the whole substrate); **`localstack_reader_factory`** discovers the sample's published
+  4566 endpoint from the sandbox connection's typed port mappings (fail-closed) and builds one
+  reader per scope-required Region (mirrors the skill-validated `infra-local` client shape; boto3
+  adaptive per the #45/#141 policy split). **`render_report`** hard-codes the R1 framing (PRE-T0
+  DIRECTIONAL / NOT the E13 proof / never publish) into the delta artifact; quarantined rollouts are
+  excluded, never failures. **Pre-T0 trust caveat documented** (no A/B split — the substrate is
+  agent-reachable; licensed by priorities.md P1 for a no-claim directional number only). TDD
+  (RED→GREEN, no Docker/model in the gate; the scorer exercised end-to-end through the REAL
+  verify→read_closed_world→normalize→grade path over the shared Cloud Control fakes;
+  FailedClosed→CORRECT + Quarantined→INCORRECT negative controls proven to fail). Turbo edge
+  verified (a verifier source change flips the evals task hash). `inspect-ai` pinned (0.3.244,
+  py.typed → mypy-strict native).
+  **Diverse-lens adversarial review** (4 specialists + 2 moat-forge lenses + Codex gpt-5.5 xhigh):
+  both moat reviewers cleared the trust seam (no agent output reaches the grade); Codex's initial
+  "block" was the pre-T0 quarantine-as-dodge, **validated against the floor as licensed** (R1
+  non-adversarial-SFT, never-published; strictly weaker than the already-forgeable reward 1 in a
+  no-A/B slice) — documented, not changed. Fixes applied + re-reviewed to a clean Codex xhigh SHIP:
+  the **I11 residency guard** was FAIL-OPEN on an installed harness (no `.git` ancestor) — now keys
+  off the corpus's own location, refusing a corpus inside ANY git repo; **removed the
+  `allow_in_repo_for_tests` bypass from the `drift_slice` `-T` CLI surface**; **cancellable verify
+  thread** (`abandon_on_cancel=True` — read-only, so the scoring time limit can cancel a wedged
+  K-run); **report robustness** — errored samples excluded (never crash the artifact), a
+  full-rollout-grid `(task_id, epoch)` comparability gate, a conservative quarantines-as-failures
+  lower bound + a divergent-quarantine WARNING (anti-farming visibility). Tests **41 → 61**.
+  `bun run verify` green **32/32**; both lockfiles frozen-checked. (#176 comment records the
+  grounding reconciliation + leg gating.)
 
 - **#61 (spike): LocalStack ↔ real-CFN drift parity — resolved, both substrates measured (licensed
   LocalStack + real AWS on re-issued creds; the R3-spike answer + unit economics recorded — §7 R3 stays

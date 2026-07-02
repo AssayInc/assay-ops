@@ -6,6 +6,35 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
 
 ## Open Follow-Ups
 
+- **#176 leg 3 (evals harness, PR #180) — deferred review findings + a leg-1 scoping correction.**
+  The diverse-lens review (4 specialists + 2 moat-forge + Codex xhigh) cleared the trust seam; the
+  fixed items landed in PR #180. These were **deferred** (out of leg-3 scope, tracked here rather than
+  left in the review thread):
+  - **`load_corpus` does not structurally validate `compose.yaml`** — it checks the file exists but
+    not that it declares a `localstack` service publishing gateway `4566` (no fixed `container_name`,
+    no shared volume). A misauthored compose surfaces only at scoring time (the endpoint-discovery
+    fail-closed `ValueError`) after paying a full model rollout. **Owner: the corpus leg (#176 leg 1)** —
+    it defines the compose contract; validate at admission there (needs a YAML parse). Endpoint
+    discovery already fails closed, so this is a fail-fast DX improvement, not a correctness gap.
+  - **The evals tests reach into `../verifier/tests` on `mypy_path`/`pythonpath`** to reuse
+    `cloud_control_fakes` + `synthetic` (documented, deliberate — reuse-before-adding). Cleaner would be
+    to promote those fakes to an importable `assayops_verifier.testing` surface both packages consume;
+    deferred because it touches the landed verifier package.
+  - **Within the licensed pre-T0 caveat (documented, not bugs):** the quarantine-as-dodge (agent-reachable
+    substrate can farm quarantines — floor-correct 7A, strictly weaker than the already-forgeable reward 1
+    in a no-A/B slice; the report surfaces quarantine counts + a lower-bound rate + a divergence warning);
+    out-of-scope-type extras aren't enumerated without T7 (closure is primarily by T7 per §1); `stderr()`
+    in the scorer is unclustered (tolerable for a directional number; the **E13 proof** must cluster, per
+    `eval-rigor`); setup-script leftovers are agent-readable (corpus-authoring discipline, not a harness
+    fix). Minor/inspect-inherited: boto3 clients not explicitly closed (dormant at this scale), corpus
+    module exec'd without `sys.modules` registration, inspect's read-file path-vs-contents fallback.
+  - **Leg-1 store correction (grounds the PROGRAM "next" note):** the #176 corpus leg needs a **minimal,
+    private/uncommitted** task store — **NOT #76** as scoped. #76 (E13-2) is natively **`blocked_by #52`**
+    (E8-3 account-B KMS/S3-Object-Lock/roles — the full trust store), which is **P2-frozen** per
+    `docs/priorities.md`. Leg 1 must use a de-scoped minimal store (a gitignored local dir or a private
+    HF dataset — a founder scoping call), never gate on #76/#52. (I11 residency + the held-out-data rule
+    still bind: never committed to a code repo — the harness's `_require_out_of_repo` enforces it.)
+
 - **Spike #60 (IAM eventual consistency) resolved — the measurement probe was NOT committed (removed per
   review; not core IP).** It measured IAM read-after-create + assume/use propagation (n=20, us-east-1): the
   verifier read path is sub-second (`cc_get` p99 ~0.76s, 0 bound-exceeded), so its read-after-create 7A budget
