@@ -5,32 +5,30 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
-- **Sequencing is now governed by `docs/priorities.md` (set 2026-07-01): evidence + the team before
-  architecture** (it wins over the board on what-first). P0 = the Henry scout note (E15-2, founder),
-  close the RL/eval seat (the real T0 gate; the board's "E15-3 = Done" is stale), and the **#61**
-  LocalStack↔real-CFN drift/unit-economics spike — **RESOLVED** (PR #177; see Recently Landed: R3
-  substrate answer, ~12× wall-clock ratio, LocalStack grading substrate-sound for the slice). P1 =
-  the **#176 pre-T0 directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-
-  graded, never published, R1-scoped): **all three legs are BUILT.** Legs 2 (trainer) + 3 (Inspect
-  harness) landed earlier and were hardened post-merge (the six-lens review follow-up PR; deferred
-  remainder in `ISSUES.md`). **Leg 1 (the corpus) is AUTHORED + VALIDATED** (see Recently Landed):
-  the private store is a local out-of-repo dir (`~/assay-private/corpus/pre-t0-slice/`; a private
-  HF dataset is the durable mirror once org HF access is set up — the resolved founder store call;
-  **NOT #76**, which stays `blocked_by #52`/E8 = P2-frozen), holding **15 Terraform drift tasks
-  over the three per-type-gated types** (`AWS::S3::Bucket` + the newly gated
-  `AWS::IAM::Role`/`AWS::KMS::Key`; SNS/SSM/SQS/DynamoDB/Logs all FAIL the CC-read/tag-return gate
-  on the pinned LocalStack image — probed empirically), each validated end-to-end through the
-  production `verify()` closed-world path (drifted → 0, reference fix → 1, K-run reproducible).
-  **The runs RAN (2026-07-02) and the directional number is in — flat: held-out +0.0 points
-  (6/9 both arms), trained −2.8 (13/36 → 12/36); zero quarantined/errored across ~200 graded
-  episodes (all K=3-reproducible).** The honest read (recorded on the issue): the MACHINE is
-  validated end-to-end (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls`
-  → held-out-split ETL → TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta), and the
-  binding constraint is corpus scale + hard-task trajectory yield (top-up sampling: 1/40), NOT
-  trust infra — the P2 "corpus + proof" dial. Artifacts + pins in the private HF dataset
-  (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
-  (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now)
-  holds until the seat + the (now-informed) go/no-go + the Henry reply.
+- **Sequencing is governed by `docs/priorities.md` (re-set 2026-07-02, night: first seat candidate +
+  product/GTM elevated).** **P0 = close the RL/eval seat:** first candidate of the new search —
+  **Subhojyoti Mukherjee** (Adobe Research; applied post-training incl. a shipped tool-use agent
+  orchestrator; PhD in adaptive data collection / policy evaluation — the eval-design half of the
+  seat); **founder meeting next Friday 2026-07-10**, fit validation + meeting plan in **#188**;
+  keep sourcing in parallel (never hard-gate on one unconfirmed person). The **Henry scout note is
+  SENT** (#24 — awaiting the reply; log the learning on the issue when it lands). **P1 = the
+  teacher-distillation round (#186, IN FLIGHT, founder-run)** — a frontier teacher through the same
+  harness, **verifier-filtered** to reward-1 trajectories, SFT the 7B, re-run the 4-arm delta; same
+  R1 posture as #176 (LocalStack-graded, directional, never published). **P1 (parallel, founder
+  call 2026-07-02) = product/GTM presence (#23 + #189):** brand identity + assay.ai as a
+  product-grade site on the **verifier-isolation story** — guardrails locked: no numbers (R1), no
+  leaderboard (D1=C; E14 stays frozen), no task/corpus content (I11), site code private. **#176 is
+  CLOSED (2026-07-02) — the directional slice's outcome:** the MACHINE is validated end-to-end
+  (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls` → held-out-split ETL →
+  TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta) with a zero-flake reward (~200 graded
+  episodes, 0 quarantined/errored, all K=3-reproducible); the delta was **flat at a homeopathic
+  dose** — held-out +0.0 points (6/9 both arms), trained −2.8 (13/36 → 12/36) — uninformative on
+  lift, decisive on the bottleneck: **hard-task trajectory yield from a weak student** (top-up
+  sampling: 1/40), NOT trust infra — the P2 "corpus + proof" dial. Read:
+  `docs/learnings/2026-07-02-pre-t0-directional-slice.md`; artifacts + pins in the private HF
+  dataset (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
+  (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now) holds until the
+  seat outcome + the #186 signal + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
