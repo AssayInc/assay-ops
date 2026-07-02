@@ -46,7 +46,7 @@ set -a; source .env; set +a
 # (trainer/src is for step 2's ETL; one export covers the session):
 export PYTHONPATH="py/packages/evals/src:py/packages/trainer/src:py/packages/contracts/src:py/packages/diff-ir/src:py/packages/adapter-terraform/src:py/packages/replay/src:py/packages/verifier/src"
 uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_slice \
-  -T corpus_dir="$HOME/assay-private/corpus/pre-t0-slice" \
+  -T corpus_dir="$HOME/assay-private/corpus/pre-t0-slice" -T force_tool_calls=true \
   --sample-id "<training task ids, comma-separated — the corpus minus the held-out split>" \
   --model <base model> --epochs <rollouts-per-task> --max-sandboxes 3
 ```
@@ -55,10 +55,13 @@ uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_
 size to the machine). Rollouts here are **sampling for rejection-sampled SFT** — more epochs =
 more chances at reward-1 trajectories on hard tasks.
 
-**Endpoint quality matters:** a local q4-quantized 7B via ollama completes the loop but emitted
-zero tool calls in the smoke rollout (prose plans only → no reward-1 trajectories to harvest).
-Collect real rollouts on a serving stack with reliable tool-calling for the model (e.g. vLLM
-serving the bf16 checkpoint on a GPU); keep ollama for plumbing smokes.
+**`force_tool_calls=true` is required for Qwen2.5-Coder-7B** (and must be set identically for
+every arm of a run — it is a harness property). Under `tool_choice="auto"` the model emits tool
+calls in a malformed free-form syntax the serving parser cannot read (verified against both vLLM's
+hermes parser at bf16 and ollama — zero parsed calls either way); the flag forces
+`tool_choice="any"` (OpenAI `required`), letting the server grammar-constrain every call. Serve
+with vLLM (`--enable-auto-tool-choice --tool-call-parser hermes`, pinned revision); an HF Jobs
+`--expose` vLLM job works (URL gated by an HF token = the OpenAI api key).
 
 ## 2. ETL, SFT
 
