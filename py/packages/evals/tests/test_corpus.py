@@ -280,6 +280,22 @@ def test_a_symlinked_corpus_asset_fails_closed(tmp_path: Path) -> None:
         load_corpus(corpus_dir)
 
 
+def test_a_symlinked_directory_fails_closed(tmp_path: Path) -> None:
+    # The adjacent case: a symlinked DIRECTORY under files/ would smuggle a whole tree from
+    # outside the corpus. rglob does not descend into it (3.12), and the entry itself is a
+    # symlink -- the same guard must refuse it.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.tf").write_text("# outside the corpus\n")
+    (corpus_dir / "tasks" / TASK_ID / "files" / "linkdir").symlink_to(
+        outside, target_is_directory=True
+    )
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
 def test_a_colon_in_a_sandbox_file_key_fails_closed(tmp_path: Path) -> None:
     # ':' is Docker's source:destination separator -- a key carrying one is ambiguous to the
     # sandbox copy layer. Refuse at admission.

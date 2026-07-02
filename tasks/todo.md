@@ -24,30 +24,30 @@ provides HF access (their message anticipates this). Record on the issue.
 
 ## A. Committable (the PR — no task/golden content, engine + gates only)
 
-- [ ] **A1. Probe LocalStack CC shapes** (scratchpad, licensed image): SQS Queue / SNS Topic /
+- [x] **A1. Probe LocalStack CC shapes** (scratchpad, licensed image): SQS Queue / SNS Topic /
       SSM Parameter / DynamoDB Table — get/list support, `assayops:address` tag return shape,
       server-defaulted posture. Pick 2–3 new types minimizing adapter change (tag shape!).
-- [ ] **A2. TDD: `load_corpus` compose validation** (ISSUES.md leg-1 item): parse `compose.yaml`,
+- [x] **A2. TDD: `load_corpus` compose validation** (ISSUES.md leg-1 item): parse `compose.yaml`,
       require a `localstack` service publishing container port 4566 + a `default` service; fail
       closed (`CorpusError`) otherwise.
-- [ ] **A3. TDD: `_sandbox_files` guards** (ISSUES.md leg-1 item): a symlinked corpus asset and a
+- [x] **A3. TDD: `_sandbox_files` guards** (ISSUES.md leg-1 item): a symlinked corpus asset and a
       `:` in a file key fail closed (`CorpusError`), never silently dropped/passed.
-- [ ] **A4. Per new type (founder per-type gate):** adapter `TypeBridge` registration with real-schema
+- [x] **A4. Per new type (founder per-type gate):** adapter `TypeBridge` registration with real-schema
       `readOnlyProperties`/`tagProperty` (+ tag-shape support only if a chosen type needs it, TDD)
       + `infra-local` read smoke (tag return) + grade round-trip posture pin (golden = declared
       constants; negative control included). Types NOT probed green do not enter the corpus.
-- [ ] **A5. Runbook** — the three runs (rollout collection, ETL+SFT, base-vs-SFT eval ×3 seeds +
+- [x] **A5. Runbook** — the three runs (rollout collection, ETL+SFT, base-vs-SFT eval ×3 seeds +
       report), store layout, LOCALSTACK_AUTH_TOKEN handling, R1 framing. Smallest home that fits
       (evals/trainer READMEs + a short docs page only if genuinely cross-package).
 - [ ] **A6. PROGRAM.md / ISSUES.md** in-PR; issue comment: store decision + leg-1 grounding.
 
 ## B. Private store (out-of-repo; NEVER committed — I11)
 
-- [ ] **B1. Corpus skeleton:** `compose.yaml` (workbench `default` + per-sample `localstack` with
+- [x] **B1. Corpus skeleton:** `compose.yaml` (workbench `default` + per-sample `localstack` with
       pinned licensed image, ports "4566", auth token from host env) + workbench image (terraform +
       provider mirror + aws cli + inspect-tool-support) + `corpus.py` (REGISTRY / READ_SCOPE /
       BRIDGE_REGISTRY as needed).
-- [ ] **B2. Author ~15 tasks** across the proven types × drift categories (modified property /
+- [x] **B2. Author ~15 tasks** across the proven types × drift categories (modified property /
       removed resource / added-extra resource / tag drift), each `task.json` + `setup.sh` (deploy
       baseline → inject drift out-of-band) + `files/**` (the Terraform config = the intent).
       Goldens declare server-defaulted posture (#155). Fixed deterministic names (per-sample
