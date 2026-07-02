@@ -42,7 +42,11 @@ def samples_of(corpus: Corpus) -> list[Sample]:
         Sample(
             id=corpus_task.spec.task_id,
             input=corpus_task.spec.description,
-            metadata={TASK_SPEC_METADATA_KEY: corpus_task.spec.model_dump()},
+            # mode="json" so the metadata dict holds only JSON-native types (the Tool enum -> its
+            # string value) -- it is serialized into the eval log and read back by the scorer, so
+            # it must not depend on the log writer coercing a StrEnum (pydantic-v2: model_dump()'s
+            # default python mode is not JSON-safe by contract).
+            metadata={TASK_SPEC_METADATA_KEY: corpus_task.spec.model_dump(mode="json")},
             files={target: str(source) for target, source in corpus_task.files.items()} or None,
             setup=str(corpus_task.setup_script) if corpus_task.setup_script else None,
         )

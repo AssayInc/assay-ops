@@ -32,6 +32,10 @@ def test_samples_carry_the_task_spec_metadata_and_assets() -> None:
     spec_dump = sample.metadata[TASK_SPEC_METADATA_KEY]
     assert spec_dump["task_id"] == FIXTURE_TASK_ID
     assert spec_dump["seed"] == "seed-corpus-001"
+    # mode="json" dumps the Tool enum to its plain string (JSON-native), not the enum member, so
+    # the metadata survives the eval-log JSON round-trip independent of the log writer.
+    assert spec_dump["tool"] == "terraform"
+    assert isinstance(spec_dump["tool"], str)
     assert sample.files is not None
     assert Path(sample.files["main.tf"]).is_file()
     assert sample.setup is not None

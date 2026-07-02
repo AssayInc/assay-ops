@@ -28,7 +28,6 @@ never agent-reachable.
 from __future__ import annotations
 
 import importlib.util
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,7 +36,6 @@ from assayops_adapter_terraform import BridgeRegistry
 from assayops_contracts import TaskSpec
 from assayops_verifier import GoldenError, GoldenRegistry, assert_golden_readable
 from assayops_verifier.read_scope import ReadScope
-from pydantic import ValidationError
 
 _CORPUS_MODULE = "corpus.py"
 _COMPOSE_FILE = "compose.yaml"
@@ -191,8 +189,12 @@ def _task_spec(task_dir: Path) -> TaskSpec:
     if not spec_path.is_file():
         raise CorpusError(f"task directory {task_dir.name!r} has no {_TASK_SPEC_FILE}")
     try:
-        spec = TaskSpec.model_validate(json.loads(spec_path.read_text()))
-    except (ValueError, ValidationError) as error:
+        # model_validate_json parses + validates in one pass (pydantic-v2's JSON path) and wraps a
+        # malformed-JSON parse error as a ValidationError. `except ValueError` covers that
+        # (ValidationError subclasses ValueError) AND a non-UTF-8 read_text (UnicodeDecodeError,
+        # also a ValueError) -- so any unreadable/invalid spec fails closed as a CorpusError.
+        spec = TaskSpec.model_validate_json(spec_path.read_text())
+    except ValueError as error:
         raise CorpusError(f"invalid {_TASK_SPEC_FILE} in {task_dir.name!r}: {error}") from error
     if spec.task_id != task_dir.name:
         raise CorpusError(

@@ -7,10 +7,13 @@ every sandbox -- and discovers that endpoint from the sandbox connection's TYPED
 (harness infrastructure metadata; never parsed from agent output), then builds one read-only
 Cloud Control reader per Region the read scope requires.
 
-Client shape mirrors the ``infra-local`` LocalStack smoke (the skill-validated boto3 pattern):
-endpoint-pinned, LocalStack's well-known static dummy credentials, bounded timeouts, and boto3
-ADAPTIVE retries -- the SDK owns the within-read throttle/5xx retry; the 7A classifier + K-run own
-the POLICY for anything that surfaces past it (#45/#141).
+Client shape follows the ``infra-local`` LocalStack smoke's skill-validated boto3 pattern
+(endpoint-pinned, LocalStack's well-known static dummy credentials, bounded timeouts), with boto3
+**adaptive** retries per the verifier read path (#45/DECISIONS.md 7A) -- where the infra-local smoke
+uses ``standard``. Retries are the library's mechanism, never a hand-roll (python-resilience): the
+SDK owns the within-read throttle/5xx retry (adaptive adds client-side rate limiting for the shared
+LocalStack endpoint); the 7A classifier + K-run own the POLICY for a transient that surfaces past it
+(a genuine failure fails closed; #141).
 """
 
 from __future__ import annotations
