@@ -15,17 +15,24 @@
 > **Agent directive:** work the lowest-numbered incomplete item in **P0 → P1 → P2** order. **Never
 > start a P2 item or a Freeze-list item while any P0/P1 item is open.**
 
-**Last set: 2026-07-02** (Shaurya declined the RL/eval seat — status updated; sequencing unchanged). Re-evaluate when any of these flips: the RL/eval seat closes · a directional
-lift number lands · Henry routes an intro.
+**Last set: 2026-07-02, evening re-set — the directional number landed.** #176 ran all legs
+end-to-end: the machine + reward are validated (~200 graded episodes, 0 quarantined/errored,
+K=3-reproducible throughout), and the SFT delta came back **flat at a homeopathic dose** —
+uninformative on the lift claim, decisive on the bottleneck (hard-task trajectory yield; see
+`learnings/2026-07-02-pre-t0-directional-slice.md`). The Henry scout note is **sent** (#24,
+awaiting reply). Re-evaluate when any of these flips: the RL/eval seat closes · the
+teacher-round signal lands (#186) · Henry replies.
 
 ## Reality check (read before picking up work)
 
 - **We are PRE-T0. The team is NOT closed.** Sam is effectively **solo**. The **RL/eval owner — the
   single load-bearing role — is OPEN**: **Shaurya declined (2026-07-02)** — the lead candidate fell through,
   so we must **find a new researcher (RL/eval owner)** (Beshr = a *later* DevOps hire, task-authoring only,
-  not RL/eval). Per P0-2's pre-decided no-branch this does **not** hard-gate the build — the directional
-  number (#176) is the ammo for the next candidate *and* the solo-viability signal. (#25 closed `not planned`:
-  that was the Shaurya pitch, not the seat — the seat is still unfilled.)
+  not RL/eval). Per P0-2's pre-decided no-branch this does **not** hard-gate the build — **#176's
+  outcome is the ammo for the next candidate**: a working end-to-end loop with a zero-flake,
+  fail-closed reward is more credible to a skeptical RL/eval researcher than an undefendable
+  small-n lift number would have been. (#25 closed `not planned`: that was the Shaurya pitch, not
+  the seat — the seat is still unfilled.)
 - **The thesis is validated; the risk is now execution + people** — not "is this right" (yes) but "will
   we get a proof + a buyer + the RL/eval seat before the ~2-3yr consolidation window closes."
 - **The failure mode to avoid:** building beautiful trust infrastructure (comfortable, controllable)
@@ -41,32 +48,29 @@ E5 env → E6 replay → E7 orch → E8 accounts → E9 guardrails → E10 red-t
 solo team. Do this instead:
 
 ### P0 — This week (near-zero build; close the seat + open the door)
-1. **Send the Henry scout note** (E15-2). A name + an intro, *not* a pitch. Cheapest, highest-ROI action
-   on the board; de-risks the company and is the best ammo to close Shaurya.
-2. **Close the RL/eval seat** (the real T0 gate; correct E15-3). Pitch Shaurya as a co-founder who
-   *owns* RL/eval + eval design. **Pre-decide the "no" branch before the pitch** (hire an RL/eval owner,
-   or reassess whether AssayOps is solo-viable). Do not repeat the Cleno single-point-of-failure — never
-   hard-gate the company on one unconfirmed person.
-3. **Timebox the LocalStack ↔ real-CFN fidelity / unit-economics spike (#61).** It gates the entire
-   grading substrate; know the answer *before* authoring a corpus on it.
+1. ~~**Send the Henry scout note** (E15-2).~~ **SENT 2026-07-02** (#24) — awaiting the reply; log
+   the learning on the issue when it lands.
+2. **Close the RL/eval seat** (the real T0 gate) — **the one open P0**. New candidate search
+   (Shaurya declined); pitch a co-founder who *owns* RL/eval + eval design, with the working
+   loop as the ammo. **Pre-decide the "no" branch before each pitch** (hire an RL/eval owner,
+   or reassess whether AssayOps is solo-viable). Never hard-gate the company on one unconfirmed
+   person.
+3. ~~**Timebox the LocalStack ↔ real-CFN fidelity / unit-economics spike (#61).**~~ **RESOLVED**
+   (PR #177): LocalStack grading substrate-sound for the CC-graded Terraform corpus; ~$0.04/traj.
 
-### P1 — Weeks 2-4 (a thin vertical slice → a DIRECTIONAL number)
-4. **NEW pre-T0 spike: a thin, de-scoped vertical slice to a directional lift number — LocalStack-graded,
-   NOT for publication.** (File as one issue; do not confuse with the full-rigor E11/E12/E13.)
-   - ~**15 Terraform** drift tasks (subset of E11 / #67 — Terraform, not CDK; CDK waits for Beshr).
-   - **SFT a 7B** (Qwen2.5-Coder-7B — *not* the 30B MoE; skips the #64 MoE-LoRA spike).
-   - A **noisy number** (n≈15 tasks, 3 seeds) — explicitly **NOT** the pre-registered E13 proof.
-   - **Grade with what is already SHIPPED:** E2-1 verifier skeleton, E3-2 Terraform adapter, E2-5 golden
-     generator, E2-2 `grade_deployment`. No new trust infra required.
-   - **Purpose:** recruit Shaurya (the loop runs end-to-end + there's signal) and tell *us* whether the
-     approach has legs — before sinking weeks into the ledger and account pools.
-   - **Why this is allowed (respects R1):** the trust-isolation stack (E4 ledger, E8 accounts, E9
-     guardrails, E10 red-team) exists to make the reward un-gameable by an **adversarial RL agent** and to
-     back a **lab-facing claim**. An **SFT directional number has neither** — no adversarial policy, no
-     external claim — so it needs none of E4/E8/E9/E10. **Never publish or pitch this number as the
-     proof.** That would break R1.
+### P1 — This week (near-zero build; the experiment that resolves the P2 gate)
+4. ~~**Pre-T0 directional slice (#176).**~~ **DONE 2026-07-02** — all legs + the runs; delta flat
+   at a homeopathic dose (uninformative on lift, by design underpowered); machine + reward
+   validated; the bottleneck named: hard-task trajectory yield from a weak student (1/40).
+   Read: `learnings/2026-07-02-pre-t0-directional-slice.md`.
+5. **Teacher-distillation round (#186)** — the successor experiment that tests the actual product
+   mechanism: a frontier teacher sampled through the SAME harness, **verifier-filtered** to
+   reward-1 trajectories (the gold-trajectory story), SFT the 7B on that set, re-run the 4-arm
+   delta. ~$50–150 API + ~$5 GPU, days not weeks (the whole machine exists). Same R1 posture as
+   #176: LocalStack-graded, directional only, **never published**; no new trust infra. Needs a
+   frontier API key.
 
-### P2 — AFTER the seat closes (T0) AND the directional signal is positive: the real proof
+### P2 — AFTER the seat closes (T0) AND the teacher-round signal (#186) is positive: the real proof
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
 - **Trust infra (the moat):** E2-3/E2-4 reward core + cross-account isolation, E4 ledger, E8 accounts,
   **E9 / T7 guardrails = BLOCKING before any real-AWS episode**, E10 the 15-vector red-team
@@ -75,7 +79,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + a directional number + a Shaurya yes/no)
+## Freeze list (until: a Henry reply + the teacher-round signal (#186) + the seat outcome)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
