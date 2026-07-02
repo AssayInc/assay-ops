@@ -60,13 +60,28 @@ _S3_BUCKET = TypeBridge(
     ),
 )
 
+# AWS::IAM::Role / AWS::KMS::Key: readOnlyProperties from the official registry schemas
+# (schema.cloudformation.us-east-1.amazonaws.com); tagProperty is the default "Tags" for both.
+# Their ``assayops:address`` tag-return is proven by the ``infra-local`` grade round-trip smokes.
+_IAM_ROLE = TypeBridge(
+    type_name="AWS::IAM::Role",
+    read_only_paths=frozenset({"Arn", "RoleId"}),
+)
+_KMS_KEY = TypeBridge(
+    type_name="AWS::KMS::Key",
+    read_only_paths=frozenset({"Arn", "KeyId"}),
+)
+
 
 def default_registry() -> BridgeRegistry:
     """The Phase-1 default registry: types whose Cloud Control tag-return ``infra-local`` proves.
 
-    The Terraform A-spike engine supports ``AWS::S3::Bucket`` (the synthetic type, #75). Other
-    corpus-readable types register here as their per-type smoke lands.
+    The Terraform A-spike engine supports ``AWS::S3::Bucket`` (the synthetic type, #75) plus the
+    #176 corpus types ``AWS::IAM::Role`` and ``AWS::KMS::Key``. Other corpus-readable types
+    register here as their per-type smoke lands.
     """
     registry = BridgeRegistry()
     registry.register(_S3_BUCKET)
+    registry.register(_IAM_ROLE)
+    registry.register(_KMS_KEY)
     return registry

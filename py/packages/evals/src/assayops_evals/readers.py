@@ -27,10 +27,8 @@ from botocore.client import BaseClient
 from botocore.config import Config
 from inspect_ai.util import SandboxConnection, sandbox
 
+from assayops_evals.corpus import LOCALSTACK_GATEWAY_PORT, LOCALSTACK_SERVICE
 from assayops_evals.scorer import ReaderFactory
-
-LOCALSTACK_SERVICE = "localstack"
-_LOCALSTACK_GATEWAY_PORT = 4566
 
 # Bounded, adaptive-retry client config (see the module docstring). LocalStack serves every
 # Region from the one gateway endpoint, so per-Region clients differ only in region_name.
@@ -66,7 +64,7 @@ def localstack_reader_factory(
 
 
 def localstack_endpoint(
-    connection: SandboxConnection, *, container_port: int = _LOCALSTACK_GATEWAY_PORT
+    connection: SandboxConnection, *, container_port: int = LOCALSTACK_GATEWAY_PORT
 ) -> str:
     """Resolve the sample's published LocalStack endpoint from typed port mappings (fail closed).
 

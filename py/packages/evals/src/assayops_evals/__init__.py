@@ -15,9 +15,15 @@ requires the full trust stack.
 
 from __future__ import annotations
 
-from assayops_evals.corpus import Corpus, CorpusError, CorpusTask, load_corpus
-from assayops_evals.readers import (
+from assayops_evals.corpus import (
+    LOCALSTACK_GATEWAY_PORT,
     LOCALSTACK_SERVICE,
+    Corpus,
+    CorpusError,
+    CorpusTask,
+    load_corpus,
+)
+from assayops_evals.readers import (
     localstack_endpoint,
     localstack_reader_factory,
     readers_for_scope,
@@ -38,6 +44,7 @@ from assayops_evals.task import drift_slice, samples_of
 
 __all__ = [
     "DEPLOY_VERIFIER_SCORER_NAME",
+    "LOCALSTACK_GATEWAY_PORT",
     "LOCALSTACK_SERVICE",
     "TASK_SPEC_METADATA_KEY",
     "Corpus",

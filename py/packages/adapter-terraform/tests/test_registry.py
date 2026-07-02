@@ -27,3 +27,49 @@ def test_registering_a_type_twice_is_rejected() -> None:
     registry.register(TypeBridge(type_name="AWS::S3::Bucket"))
     with pytest.raises(ValueError, match="already registered"):
         registry.register(TypeBridge(type_name="AWS::S3::Bucket"))
+
+
+def test_the_default_registry_bridges_an_iam_role_read() -> None:
+    # AWS::IAM::Role joins the default registry (its Cloud Control tag-return is proven by the
+    # infra-local smoke). Schema facts: readOnlyProperties = Arn + RoleId (dropped -- they vary
+    # across identical deploys); tagProperty = Tags.
+    read = DeployedResourceRead(
+        type_name="AWS::IAM::Role",
+        identifier="assayops-role",
+        properties={
+            "RoleName": "assayops-role",
+            "AssumeRolePolicyDocument": {"Version": "2012-10-17", "Statement": []},
+            "MaxSessionDuration": 3600,
+            "Path": "/",
+            "Arn": "arn:aws:iam::000000000000:role/assayops-role",
+            "RoleId": "AROAEXAMPLE",
+            "Tags": [tag(ADDRESS_TAG, "ci_role")],
+        },
+    )
+    [resource] = normalize([read]).resources
+    assert resource.address == "ci_role"
+    assert "Arn" not in resource.properties
+    assert "RoleId" not in resource.properties
+    assert resource.properties["MaxSessionDuration"] == 3600
+
+
+def test_the_default_registry_bridges_a_kms_key_read() -> None:
+    # AWS::KMS::Key joins the default registry (tag-return proven by the infra-local smoke).
+    # Schema facts: readOnlyProperties = Arn + KeyId (dropped); tagProperty = Tags.
+    read = DeployedResourceRead(
+        type_name="AWS::KMS::Key",
+        identifier="6135f98c-87de-4309-b85a-cf90d231f177",
+        properties={
+            "Enabled": True,
+            "EnableKeyRotation": False,
+            "KeySpec": "SYMMETRIC_DEFAULT",
+            "Arn": "arn:aws:kms:us-east-1:000000000000:key/6135f98c",
+            "KeyId": "6135f98c-87de-4309-b85a-cf90d231f177",
+            "Tags": [tag(ADDRESS_TAG, "audit_key")],
+        },
+    )
+    [resource] = normalize([read]).resources
+    assert resource.address == "audit_key"
+    assert "Arn" not in resource.properties
+    assert "KeyId" not in resource.properties
+    assert resource.properties["EnableKeyRotation"] is False

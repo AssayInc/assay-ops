@@ -187,6 +187,110 @@ def test_a_missing_compose_file_fails_closed(tmp_path: Path) -> None:
         load_corpus(corpus_dir)
 
 
+# --- compose structural validation (the leg-1 admission item: a misauthored sandbox definition
+# must fail at load time, not at scoring time after paying a full model rollout) ---
+
+
+def _write_compose(corpus_dir: Path, text: str) -> None:
+    (corpus_dir / "compose.yaml").write_text(text)
+
+
+def test_a_compose_without_a_localstack_service_fails_closed(tmp_path: Path) -> None:
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(corpus_dir, "services:\n  default:\n    image: x\n")
+
+    with pytest.raises(CorpusError, match="localstack"):
+        load_corpus(corpus_dir)
+
+
+def test_a_compose_not_publishing_the_gateway_port_fails_closed(tmp_path: Path) -> None:
+    # Endpoint discovery reads the sandbox's published mapping for container port 4566; a compose
+    # that never publishes it only surfaces mid-eval today (the readers' fail-closed ValueError).
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        '    ports:\n      - "8080"\n',
+    )
+
+    with pytest.raises(CorpusError, match="4566"):
+        load_corpus(corpus_dir)
+
+
+def test_a_compose_without_a_default_service_fails_closed(tmp_path: Path) -> None:
+    # Inspect's docker sandbox needs a 'default' service when several are defined -- the agent's
+    # workbench. Without it the eval fails at sandbox startup, after admission.
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(
+        corpus_dir,
+        'services:\n  localstack:\n    image: y\n    ports:\n      - "4566"\n',
+    )
+
+    with pytest.raises(CorpusError, match="default"):
+        load_corpus(corpus_dir)
+
+
+def test_an_unparseable_compose_fails_closed(tmp_path: Path) -> None:
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(corpus_dir, "services: [unclosed\n")
+
+    with pytest.raises(CorpusError, match="compose.yaml"):
+        load_corpus(corpus_dir)
+
+
+def test_a_compose_without_a_services_mapping_fails_closed(tmp_path: Path) -> None:
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(corpus_dir, "just a string\n")
+
+    with pytest.raises(CorpusError, match="services"):
+        load_corpus(corpus_dir)
+
+
+def test_host_mapped_and_long_syntax_gateway_ports_are_accepted(tmp_path: Path) -> None:
+    # The adjacent-correct cases: compose's short host-mapped syntax and the long syntax both
+    # publish container port 4566 -- a valid corpus must not be refused over its port spelling.
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        '    ports:\n      - "127.0.0.1:9999:4566"\n',
+    )
+    assert isinstance(load_corpus(corpus_dir), Corpus)
+
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        "    ports:\n      - target: 4566\n        published: 9999\n",
+    )
+    assert isinstance(load_corpus(corpus_dir), Corpus)
+
+
+# --- sandbox-file admission (the leg-1 items: no silent symlink traversal, no ambiguous keys) ---
+
+
+def test_a_symlinked_corpus_asset_fails_closed(tmp_path: Path) -> None:
+    # A symlink under files/ would silently materialize content from OUTSIDE the corpus into the
+    # sandbox (or dangle) -- refuse it at admission instead of surprising at sandbox startup.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside.tf"
+    outside.write_text("# outside the corpus\n")
+    (corpus_dir / "tasks" / TASK_ID / "files" / "link.tf").symlink_to(outside)
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
+def test_a_colon_in_a_sandbox_file_key_fails_closed(tmp_path: Path) -> None:
+    # ':' is Docker's source:destination separator -- a key carrying one is ambiguous to the
+    # sandbox copy layer. Refuse at admission.
+    corpus_dir = _tmp_corpus(tmp_path)
+    weird = corpus_dir / "tasks" / TASK_ID / "files" / "a:b.tf"
+    weird.write_text("# colon-keyed\n")
+
+    with pytest.raises(CorpusError, match="':'"):
+        load_corpus(corpus_dir)
+
+
 def test_an_empty_task_set_fails_closed(tmp_path: Path) -> None:
     corpus_dir = _tmp_corpus(tmp_path)
     shutil.rmtree(corpus_dir / "tasks" / TASK_ID)

@@ -32,10 +32,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
 from assayops_adapter_terraform import BridgeRegistry
 from assayops_contracts import TaskSpec
 from assayops_verifier import GoldenError, GoldenRegistry, assert_golden_readable
 from assayops_verifier.read_scope import ReadScope
+
+# The compose contract this loader admits (and the readers consume): the agent's 'default'
+# workbench service plus the sample's OWN LocalStack service publishing the gateway port.
+LOCALSTACK_SERVICE = "localstack"
+LOCALSTACK_GATEWAY_PORT = 4566
 
 _CORPUS_MODULE = "corpus.py"
 _COMPOSE_FILE = "compose.yaml"
@@ -85,6 +91,7 @@ def load_corpus(corpus_dir: Path, *, allow_in_repo_for_tests: bool = False) -> C
         raise CorpusError(
             f"corpus has no {_COMPOSE_FILE} (the per-sample sandbox definition): {compose_file}"
         )
+    _validate_compose(compose_file)
     tasks = _admitted_tasks(corpus_dir / _TASKS_DIR, registry, scope)
     return Corpus(
         registry=registry,
@@ -115,6 +122,61 @@ def _require_out_of_repo(corpus_dir: Path) -> None:
                 f"{str(candidate)!r} -- tasks/goldens live in the private store, never a code "
                 "repo (DECISIONS.md I11)"
             )
+
+
+def _validate_compose(compose_file: Path) -> None:
+    """Structural admission for the per-sample sandbox definition -- fail fast at load time.
+
+    A misauthored compose would otherwise surface only mid-eval (sandbox startup, or the readers'
+    endpoint-discovery ValueError) after paying a full model rollout. The contract: a ``default``
+    service (the agent's workbench -- Inspect's docker sandbox requires one when several services
+    are defined) and a ``localstack`` service publishing container port 4566 (what
+    ``localstack_endpoint`` discovers the sample's gateway from).
+    """
+    try:
+        parsed: object = yaml.safe_load(compose_file.read_text())
+    except (yaml.YAMLError, UnicodeDecodeError) as error:
+        raise CorpusError(f"unparseable {_COMPOSE_FILE}: {error}") from error
+    services: object = parsed.get("services") if isinstance(parsed, dict) else None
+    if not isinstance(services, dict):
+        raise CorpusError(f"{_COMPOSE_FILE} must define a 'services' mapping: {compose_file}")
+    if "default" not in services:
+        raise CorpusError(
+            f"{_COMPOSE_FILE} must define a 'default' service (the agent's workbench): "
+            f"{compose_file}"
+        )
+    localstack: object = services.get(LOCALSTACK_SERVICE)
+    if not isinstance(localstack, dict):
+        raise CorpusError(
+            f"{_COMPOSE_FILE} must define a {LOCALSTACK_SERVICE!r} service (the sample's own "
+            f"grading substrate): {compose_file}"
+        )
+    if not _publishes_gateway_port(localstack.get("ports")):
+        raise CorpusError(
+            f"the {LOCALSTACK_SERVICE!r} service in {_COMPOSE_FILE} must publish container port "
+            f'{LOCALSTACK_GATEWAY_PORT} (ports: ["{LOCALSTACK_GATEWAY_PORT}"]) -- endpoint '
+            f"discovery fails closed without it: {compose_file}"
+        )
+
+
+def _publishes_gateway_port(ports: object) -> bool:
+    """Whether a compose ``ports`` value publishes the LocalStack gateway container port.
+
+    Accepts both compose syntaxes: short strings/ints (``4566``, ``"host:4566"``,
+    ``"ip:host:4566"``, optional ``/protocol`` suffix -- the container port is the last segment)
+    and the long mapping form (``target: 4566``).
+    """
+    if not isinstance(ports, list):
+        return False
+    for entry in ports:
+        if isinstance(entry, dict):
+            if entry.get("target") == LOCALSTACK_GATEWAY_PORT:
+                return True
+        elif isinstance(entry, (str, int)):
+            container = str(entry).split("/", 1)[0].rsplit(":", 1)[-1]
+            if container == str(LOCALSTACK_GATEWAY_PORT):
+                return True
+    return False
 
 
 def _grading_inputs(module_path: Path) -> tuple[GoldenRegistry, ReadScope, BridgeRegistry | None]:
@@ -206,8 +268,24 @@ def _task_spec(task_dir: Path) -> TaskSpec:
 def _sandbox_files(files_dir: Path) -> Mapping[str, Path]:
     if not files_dir.is_dir():
         return {}
-    return {
-        str(path.relative_to(files_dir).as_posix()): path
-        for path in sorted(files_dir.rglob("*"))
-        if path.is_file()
-    }
+    files: dict[str, Path] = {}
+    for path in sorted(files_dir.rglob("*")):
+        if path.is_symlink():
+            # A symlink would silently materialize content from OUTSIDE the corpus into the
+            # sandbox (or dangle at copy time) -- refuse at admission, never follow.
+            raise CorpusError(
+                f"corpus asset {str(path)!r} is a symlink -- sandbox files must be regular "
+                "files inside the corpus, never links"
+            )
+        if not path.is_file():
+            continue
+        key = str(path.relative_to(files_dir).as_posix())
+        if ":" in key:
+            # ':' is Docker's source:destination separator -- an ambiguous key to the sandbox
+            # copy layer.
+            raise CorpusError(
+                f"corpus asset key {key!r} contains ':' -- ambiguous to the sandbox file copy; "
+                "rename the file"
+            )
+        files[key] = path
+    return files
