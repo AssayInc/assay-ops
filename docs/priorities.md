@@ -15,14 +15,17 @@
 > **Agent directive:** work the lowest-numbered incomplete item in **P0 → P1 → P2** order. **Never
 > start a P2 item or a Freeze-list item while any P0/P1 item is open.**
 
-**Last set: 2026-07-01.** Re-evaluate when any of these flips: the RL/eval seat closes · a directional
+**Last set: 2026-07-02** (Shaurya declined the RL/eval seat — status updated; sequencing unchanged). Re-evaluate when any of these flips: the RL/eval seat closes · a directional
 lift number lands · Henry routes an intro.
 
 ## Reality check (read before picking up work)
 
 - **We are PRE-T0. The team is NOT closed.** Sam is effectively **solo**. The **RL/eval owner — the
-  single load-bearing role — is OPEN** (Shaurya = pitch in progress; Beshr = a *later* DevOps hire,
-  task-authoring only, not RL/eval). **The board's `E15-3 = Done` is STALE — the seat is not closed; fix it.**
+  single load-bearing role — is OPEN**: **Shaurya declined (2026-07-02)** — the lead candidate fell through,
+  so we must **find a new researcher (RL/eval owner)** (Beshr = a *later* DevOps hire, task-authoring only,
+  not RL/eval). Per P0-2's pre-decided no-branch this does **not** hard-gate the build — the directional
+  number (#176) is the ammo for the next candidate *and* the solo-viability signal. (#25 closed `not planned`:
+  that was the Shaurya pitch, not the seat — the seat is still unfilled.)
 - **The thesis is validated; the risk is now execution + people** — not "is this right" (yes) but "will
   we get a proof + a buyer + the RL/eval seat before the ~2-3yr consolidation window closes."
 - **The failure mode to avoid:** building beautiful trust infrastructure (comfortable, controllable)
