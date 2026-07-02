@@ -78,12 +78,6 @@
       "skillPath": "skills/hf-cli/SKILL.md",
       "computedHash": "8d7a3e2b59e574e4f2dd7f1c51efa49afcf057b39880395fa1121356a657daea"
     },
-    "huggingface-lora-space-builder": {
-      "source": "huggingface/skills",
-      "sourceType": "github",
-      "skillPath": "skills/huggingface-lora-space-builder/SKILL.md",
-      "computedHash": "7e376680581e44af43da8feff10bc29f7da455064496a7436f8601a9fd4190da"
-    },
     "karpathy-guidelines": {
       "source": "szkocot/andrej-karpathy-skills",
       "sourceType": "github",
