@@ -15,13 +15,16 @@
 > **Agent directive:** work the lowest-numbered incomplete item in **P0 → P1 → P2** order. **Never
 > start a P2 item or a Freeze-list item while any P0/P1 item is open.**
 
-**Last set: 2026-07-02, evening re-set — the directional number landed.** #176 ran all legs
-end-to-end: the machine + reward are validated (~200 graded episodes, 0 quarantined/errored,
-K=3-reproducible throughout), and the SFT delta came back **flat at a homeopathic dose** —
-uninformative on the lift claim, decisive on the bottleneck (hard-task trajectory yield; see
-`learnings/2026-07-02-pre-t0-directional-slice.md`). The Henry scout note is **sent** (#24,
-awaiting reply). Re-evaluate when any of these flips: the RL/eval seat closes · the
-teacher-round signal lands (#186) · Henry replies.
+**Last set: 2026-07-02, night re-set — first seat candidate scheduled + product/GTM elevated
+(founder call).** State: #176 is DONE (the machine + reward validated end-to-end — ~200 graded
+episodes, 0 quarantined/errored, K=3-reproducible; the delta flat at a homeopathic dose —
+bottleneck = hard-task trajectory yield; `learnings/2026-07-02-pre-t0-directional-slice.md`);
+**#186 (the teacher round) is IN FLIGHT** (founder-run). The Henry scout note is **sent** (#24,
+awaiting reply). The RL/eval seat search has its **first candidate: Subhojyoti Mukherjee** —
+founder meeting **next Friday 2026-07-10** (fit validation: #188). New this set: **the product/GTM
+surface is elevated to P1** (#23 + #189 — website, brand identity, positioning) — candidates, a
+co-founder, and buyers all look us up. Re-evaluate when any of these flips: the 2026-07-10 meeting
+outcome · the teacher-round signal lands (#186) · Henry replies.
 
 ## Reality check (read before picking up work)
 
@@ -31,8 +34,11 @@ teacher-round signal lands (#186) · Henry replies.
   not RL/eval). Per P0-2's pre-decided no-branch this does **not** hard-gate the build — **#176's
   outcome is the ammo for the next candidate**: a working end-to-end loop with a zero-flake,
   fail-closed reward is more credible to a skeptical RL/eval researcher than an undefendable
-  small-n lift number would have been. (#25 closed `not planned`: that was the Shaurya pitch, not
-  the seat — the seat is still unfilled.)
+  small-n lift number would have been. **First candidate in play: Subhojyoti Mukherjee (#188,
+  meeting 2026-07-10)** — strong on-paper fit (applied post-training + eval-design /
+  adaptive-data-collection + tool-use agents); the open question is co-founder appetite. The seat
+  closes only on the E15 gate (verbal yes + start date + named deliverable). (#25 closed
+  `not planned`: that was the Shaurya pitch, not the seat.)
 - **The thesis is validated; the risk is now execution + people** — not "is this right" (yes) but "will
   we get a proof + a buyer + the RL/eval seat before the ~2-3yr consolidation window closes."
 - **The failure mode to avoid:** building beautiful trust infrastructure (comfortable, controllable)
@@ -50,15 +56,19 @@ solo team. Do this instead:
 ### P0 — This week (near-zero build; close the seat + open the door)
 1. ~~**Send the Henry scout note** (E15-2).~~ **SENT 2026-07-02** (#24) — awaiting the reply; log
    the learning on the issue when it lands.
-2. **Close the RL/eval seat** (the real T0 gate) — **the one open P0**. New candidate search
-   (Shaurya declined); pitch a co-founder who *owns* RL/eval + eval design, with the working
-   loop as the ammo. **Pre-decide the "no" branch before each pitch** (hire an RL/eval owner,
-   or reassess whether AssayOps is solo-viable). Never hard-gate the company on one unconfirmed
-   person.
+2. **Close the RL/eval seat** (the real T0 gate) — **the one open P0**. **First candidate:
+   Subhojyoti Mukherjee (#188)** — Adobe Research (applied post-training incl. a shipped tool-use
+   agent orchestrator); PhD = adaptive data collection / policy evaluation, so the eval-design
+   half of the seat is his research identity; validated strong-on-paper, the open question is
+   co-founder appetite. **Founder meeting next Friday 2026-07-10** — prep per #188 (ownership
+   test on the #176→#186 story + the §6 proof bar; pitch what he'd OWN). **Pre-decide the "no"
+   branch before the meeting** (next candidates + a possible advisor ask, or reassess whether
+   AssayOps is solo-viable). Keep sourcing in parallel — never hard-gate the company on one
+   unconfirmed person.
 3. ~~**Timebox the LocalStack ↔ real-CFN fidelity / unit-economics spike (#61).**~~ **RESOLVED**
    (PR #177): LocalStack grading substrate-sound for the CC-graded Terraform corpus; ~$0.04/traj.
 
-### P1 — This week (near-zero build; the experiment that resolves the P2 gate)
+### P1 — This week (the experiment that resolves the P2 gate + the surface every conversation lands on)
 4. ~~**Pre-T0 directional slice (#176).**~~ **DONE 2026-07-02** — all legs + the runs; delta flat
    at a homeopathic dose (uninformative on lift, by design underpowered); machine + reward
    validated; the bottleneck named: hard-task trajectory yield from a weak student (1/40).
@@ -69,6 +79,15 @@ solo team. Do this instead:
    delta. ~$50–150 API + ~$5 GPU, days not weeks (the whole machine exists). Same R1 posture as
    #176: LocalStack-graded, directional only, **never published**; no new trust infra. Needs a
    frontier API key.
+6. **Product/GTM presence — make Assay legible as a REAL product (founder call, 2026-07-02):
+   #23 + #189.** The assay.ai one-pager (#23) → a product-grade site + brand identity (#189):
+   wordmark/logo, brand guidelines, positioning on the **verifier-isolation story** (the
+   roadmap-sanctioned public artifact — publishing the *design* leaks nothing), how-it-works, the
+   eval design *described*, and the open co-founder seat. Audience: candidates + a co-founder +
+   buyers — the seat pitch, the scout reply, and every future intro land on this surface.
+   **Guardrails (locked):** R1 — no directional numbers, ever; D1=C — no public
+   benchmark/leaderboard (E14 stays frozen); I11 — no task/corpus content, site code private.
+   Runs in #186's wall-clock; never blocks the seat or #186.
 
 ### P2 — AFTER the seat closes (T0) AND the teacher-round signal (#186) is positive: the real proof
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
@@ -84,7 +103,8 @@ Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract har
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
 of the three things that ARE the company: the seat, the number, the lab door.** The full moat gets built
-in P2 — not before.
+in P2 — not before. (The P1-6 product/GTM surface — #23/#189 — is deliberately **not** on this list:
+it is people/evidence-facing GTM, not trust infra; the leaderboard stays frozen even as the site ships.)
 
 ## The one rule this file serves
 **Evidence and the team before architecture.** Sequence the cheap, uncontrollable, evidence-producing
