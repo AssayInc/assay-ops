@@ -108,7 +108,11 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   posture — trust policy, key policy, PAB — tags, added resource/property, deleted resource) each
   carry `task.json` + `setup.sh` (terraform-apply baseline → aws-CLI out-of-band drift) +
   `files/**` (style-guide-conformant TF; provider pinned `~> 5.0` — 6.x reads S3 tags via the S3
-  Control API the pinned image doesn't serve) and were **validated end-to-end in the real
+  Control API the pinned image doesn't serve). **Difficulty is tiered against a blind-apply
+  policy** (a diverse-lens review finding): five tasks are **state-absent** (setup removes the
+  local tfstate after the baseline deploy — the agent must reconcile from config + deployed
+  reads) and four require aws-CLI reads/removals by construction, so "run `terraform apply`,
+  submit" scores 6/15, not 11/15. All were **validated end-to-end in the real
   per-sample compose sandbox** (workbench image: terraform + tflocal + provider mirror + aws CLI;
   `S3_HOSTNAME=localstack` forces path-style for inter-container S3): drifted state grades **0**,
   the reference fix grades **1**, K-run reproducible, through the production

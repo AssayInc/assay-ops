@@ -87,6 +87,7 @@ def load_corpus(corpus_dir: Path, *, allow_in_repo_for_tests: bool = False) -> C
 
     registry, scope, bridge_registry = _grading_inputs(corpus_dir / _CORPUS_MODULE)
     compose_file = corpus_dir / _COMPOSE_FILE
+    _refuse_symlink(compose_file, "compose file")
     if not compose_file.is_file():
         raise CorpusError(
             f"corpus has no {_COMPOSE_FILE} (the per-sample sandbox definition): {compose_file}"
@@ -230,7 +231,19 @@ def _admitted_tasks(
     return tuple(_admit_task(task_dir, registry, scope) for task_dir in task_dirs)
 
 
+def _refuse_symlink(path: Path, role: str) -> None:
+    """The symlink admission rule, one place: corpus content lives INSIDE the corpus, never
+    behind links -- a symlink would silently materialize (or execute, for setup.sh) content
+    from outside the store."""
+    if path.is_symlink():
+        raise CorpusError(
+            f"corpus {role} {str(path)!r} is a symlink -- corpus content must live inside the "
+            "corpus directory, never behind links"
+        )
+
+
 def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> CorpusTask:
+    _refuse_symlink(task_dir, "task directory")
     spec = _task_spec(task_dir)
     # The admission gate: the golden must regenerate (fail closed on an unregistered task / broken
     # builder -- surfacing it here beats an UnknownTaskError mid-eval) and every asserted property
@@ -244,6 +257,7 @@ def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> C
         # ValueError covers the read-scope gates (unknown coverage / write-only property).
         raise CorpusError(f"task {spec.task_id!r} failed admission: {error}") from error
     setup_script = task_dir / _SETUP_SCRIPT
+    _refuse_symlink(setup_script, "setup script")
     return CorpusTask(
         spec=spec,
         directory=task_dir,
@@ -254,6 +268,7 @@ def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> C
 
 def _task_spec(task_dir: Path) -> TaskSpec:
     spec_path = task_dir / _TASK_SPEC_FILE
+    _refuse_symlink(spec_path, "task spec")
     if not spec_path.is_file():
         raise CorpusError(f"task directory {task_dir.name!r} has no {_TASK_SPEC_FILE}")
     try:
@@ -272,13 +287,9 @@ def _task_spec(task_dir: Path) -> TaskSpec:
 
 
 def _sandbox_files(files_dir: Path) -> Mapping[str, Path]:
-    if files_dir.is_symlink():
-        # The root case: files/ itself linking to an OUTSIDE dir would admit that whole tree
-        # (its entries are regular files, so the per-entry guard below never fires).
-        raise CorpusError(
-            f"corpus files directory {str(files_dir)!r} is a symlink -- sandbox files must live "
-            "inside the corpus, never behind links"
-        )
+    # The root case: files/ itself linking to an OUTSIDE dir would admit that whole tree (its
+    # entries are regular files, so the per-entry guard below never fires).
+    _refuse_symlink(files_dir, "files directory")
     if not files_dir.is_dir():
         return {}
     files: dict[str, Path] = {}

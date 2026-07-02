@@ -315,6 +315,54 @@ def test_a_udp_gateway_port_is_not_accepted(tmp_path: Path) -> None:
     assert isinstance(load_corpus(corpus_dir), Corpus)
 
 
+def test_a_symlinked_setup_script_fails_closed(tmp_path: Path) -> None:
+    # setup.sh's CONTENT executes in the sandbox at sample start -- a symlinked script would run
+    # content from outside the corpus. Same admission class as the files/ guards.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside-setup.sh"
+    outside.write_text("#!/usr/bin/env bash\necho outside\n")
+    setup = corpus_dir / "tasks" / TASK_ID / "setup.sh"
+    setup.unlink()
+    setup.symlink_to(outside)
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
+def test_a_symlinked_task_dir_fails_closed(tmp_path: Path) -> None:
+    # A whole tasks/<id> dir linking outside the corpus admits foreign spec+setup+files at once.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside-task"
+    shutil.copytree(corpus_dir / "tasks" / TASK_ID, outside)
+    linked = corpus_dir / "tasks" / "linked-task"
+    linked.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
+def test_a_symlinked_task_spec_or_compose_fails_closed(tmp_path: Path) -> None:
+    # The remaining members of the class: task.json and compose.yaml as links.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside_spec = tmp_path / "outside-task.json"
+    spec_path = corpus_dir / "tasks" / TASK_ID / "task.json"
+    outside_spec.write_text(spec_path.read_text())
+    spec_path.unlink()
+    spec_path.symlink_to(outside_spec)
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+    corpus_dir2 = tmp_path / "corpus2"
+    shutil.copytree(FIXTURE_CORPUS, corpus_dir2)
+    outside_compose = tmp_path / "outside-compose.yaml"
+    compose_path = corpus_dir2 / "compose.yaml"
+    outside_compose.write_text(compose_path.read_text())
+    compose_path.unlink()
+    compose_path.symlink_to(outside_compose)
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir2)
+
+
 def test_a_symlinked_files_dir_itself_fails_closed(tmp_path: Path) -> None:
     # The root case: tasks/<id>/files being a symlink to an OUTSIDE dir would admit that whole
     # tree (its entries are regular files, so the per-entry guard never fires). Refuse the dir.

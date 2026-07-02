@@ -33,8 +33,12 @@ drifted → reward 0, reference fix → reward 1, K-run reproducible, through th
 
 ## 1. Rollout collection (trajectories for the SFT set)
 
-Run the base model over the corpus with several rollouts per task; every sample is graded by the
-deploy-verifier scorer (reward = the shipped `verify()`).
+**Pick the held-out split FIRST — at least one task per resource type — and collect SFT
+rollouts over the TRAINING split only.** The ETL's contamination tripwire fails closed on ANY
+appearance of a held-out task id in a training log (`DECISIONS.md` I11/§6), and Inspect writes
+every sample of a run into one log — the held-out samples cannot be filtered out afterwards, so
+a whole-corpus collection run is unusable for training. Restrict with `--sample-id` (sample ids
+are the task ids).
 
 ```sh
 set -a; source .env; set +a
@@ -43,6 +47,7 @@ set -a; source .env; set +a
 export PYTHONPATH="py/packages/evals/src:py/packages/trainer/src:py/packages/contracts/src:py/packages/diff-ir/src:py/packages/adapter-terraform/src:py/packages/replay/src:py/packages/verifier/src"
 uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_slice \
   -T corpus_dir="$HOME/assay-private/corpus/pre-t0-slice" \
+  --sample-id "<training task ids, comma-separated — the corpus minus the held-out split>" \
   --model <base model> --epochs <rollouts-per-task> --max-sandboxes 3
 ```
 
@@ -55,38 +60,44 @@ zero tool calls in the smoke rollout (prose plans only → no reward-1 trajector
 Collect real rollouts on a serving stack with reliable tool-calling for the model (e.g. vLLM
 serving the bf16 checkpoint on a GPU); keep ollama for plumbing smokes.
 
-## 2. Held-out split, ETL, SFT
+## 2. ETL, SFT
 
-**Hold out at least one task per resource type** (they never enter the SFT set; the ETL fails
-closed if a held-out task id appears in a training log — contamination, `DECISIONS.md` I11/§6).
-The delta on held-out tasks is the directional read; the delta on trained tasks only shows the
-loop learns at all. With n≈15 both are noisy — that is the accepted pre-T0 posture.
+The ETL admits an example only when its deploy-verifier `Score` is CORRECT (= the graded
+reward 1) and enforces the held-out split: pass the SAME held-out ids chosen in step 1 —
+a held-out id appearing in a training log raises, by design.
 
 ```sh
 # ETL: graded logs -> sft.jsonl + manifest.json (only CORRECT = account-B-graded reward 1 enters)
 uv run python -c "import asyncio; from pathlib import Path; from assayops_trainer import build_and_write; \
   asyncio.run(build_and_write(sorted(Path('logs').glob('*.eval')), Path('out/'), \
-  held_out_ids=frozenset({'<task-id>', ...}), harness_git_sha='$(git rev-parse HEAD)'))"
+  held_out_ids=frozenset({'<held-out task ids>'}), harness_git_sha='$(git rev-parse HEAD)'))"
 ```
 
 SFT runs in a GPU env per `py/packages/trainer/README.md` (freeze exact hashes, pin
 `model_revision` to a commit hash — I8). `training_seed` is a training seed, not a rollout seed;
 vary it across SFT repeats if measuring seed sensitivity.
 
-## 3. The delta
+## 3. The delta — two reads, computed separately
 
-Serve the SFT adapter next to the base (e.g. vLLM with `--enable-lora`), then re-run step 1 once
-per model — same corpus, same `--epochs` (the n×epochs grid) — and render the report:
+`directional_delta`/`render_report` aggregate every sample in a log pair, so the held-out and
+trained reads come from SEPARATE eval runs (the two logs of a pair must share the same
+`(task_id, epoch)` grid — the report refuses mismatched pairs). Serve the SFT adapter next to
+the base (e.g. vLLM with `--enable-lora`), then run the step-1 command **four times** — each
+model over the held-out ids, each model over the training ids — same `--epochs` everywhere:
+
+- **held-out pair → the directional read** (tasks the SFT never saw);
+- **training pair → the learn-at-all check** (secondary; inflated by memorization).
 
 ```python
 from assayops_evals import directional_delta, render_report
 from inspect_ai.log import read_eval_log
 
-print(render_report(directional_delta(read_eval_log("logs/base.eval"),
-                                      read_eval_log("logs/sft.eval"))))
+print(render_report(directional_delta(read_eval_log("logs/base-heldout.eval"),
+                                      read_eval_log("logs/sft-heldout.eval"))))
 ```
 
-The report brackets quarantined/errored rollouts and hard-codes the PRE-T0 DIRECTIONAL framing.
-Read it with the split in mind (held-out vs trained tasks), and record the one-paragraph
-"does the approach show signal?" call with the run artifacts in the private store — logs,
-`sft.jsonl`, `manifest.json`, and adapters stay private (I11; R1: no external claim).
+With ~a-handful of held-out tasks both reads are noisy — that is the accepted pre-T0 posture
+(never published, not the proof). The report brackets quarantined/errored rollouts and
+hard-codes the PRE-T0 DIRECTIONAL framing. Record the one-paragraph "does the approach show
+signal?" call with the run artifacts in the private store — logs, `sft.jsonl`, `manifest.json`,
+and adapters stay private (I11; R1: no external claim).
