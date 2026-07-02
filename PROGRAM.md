@@ -16,8 +16,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   its **authoring contract (#155/PR #178** — `assayops:address` deploy-tag + explicit golden
   server-posture, pinned by a real LocalStack grade round-trip) and **#61's substrate answer** (author
   CC-readable+listable types only, no custom resources, don't grade on CFN drift-*detection* — that's
-  the real-AWS-only CDK/T3 path) — so it is gated only on a minimal private-store decision (#76
-  unbuilt) + extending the per-type round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer:
+  the real-AWS-only CDK/T3 path) — so it is gated only on a **minimal private/uncommitted store
+  decision** (a founder scoping call — a gitignored local dir or private HF dataset; **NOT #76**, which
+  as scoped is `blocked_by #52`/E8 trust infra = P2-frozen; see ISSUES.md) + extending the per-type
+  round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer:
   TRL SFT+LoRA on Qwen2.5-Coder-7B + the #78-shaped ETL minus KMS)** is next — its ETL consumes the
   leg-3 harness's logs. The Freeze list (more trust infra now) holds until the seat + the number + the
   Henry reply.
