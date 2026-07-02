@@ -54,7 +54,11 @@ the standing brief. `gh`-query the next **open, unblocked** issue (tracked in Gi
 5. **Update `PROGRAM.md` / `ISSUES.md`** in the same PR.
 
 **Self-improvement.** After any user correction, append a preventing rule to `tasks/lessons.md` — the
-shared committed memory (distinct from per-developer gstack `/learn`).
+shared committed memory (distinct from per-developer gstack `/learn`). **Domain/strategy/empirical
+learnings** — what a run, experiment, or review taught about the platform, models, or market (not
+operating corrections) — are saved as a concise dated note in **`docs/learnings/`**, committed with the
+work's PR. Kept close to the code; the founder copies them into the brain (`raw/learnings/`) for wiki
+distillation.
 
 **Subagents.** Offload research/exploration to keep context clean — one task each. Parallel work → git
 worktrees (`superpowers:using-git-worktrees`).

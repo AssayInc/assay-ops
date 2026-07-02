@@ -11,24 +11,26 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   LocalStack↔real-CFN drift/unit-economics spike — **RESOLVED** (PR #177; see Recently Landed: R3
   substrate answer, ~12× wall-clock ratio, LocalStack grading substrate-sound for the slice). P1 =
   the **#176 pre-T0 directional slice** (three legs, focused PRs; NOT the E13 proof — LocalStack-
-  graded, never published, R1-scoped): **leg 3 (the Inspect harness, `py/packages/evals`) is BUILT**
-  (see Recently Landed); **leg 1 (corpus, ~15 TF drift tasks)** now has both its dependencies met —
-  its **authoring contract (#155/PR #178** — `assayops:address` deploy-tag + explicit golden
-  server-posture, pinned by a real LocalStack grade round-trip) and **#61's substrate answer** (author
-  CC-readable+listable types only, no custom resources, don't grade on CFN drift-*detection* — that's
-  the real-AWS-only CDK/T3 path) — so it is gated only on a **minimal private/uncommitted store
-  decision** (a founder scoping call — a gitignored local dir or private HF dataset; **NOT #76**, which
-  as scoped is `blocked_by #52`/E8 trust infra = P2-frozen; see ISSUES.md) + extending the per-type
-  round-trip smoke beyond `AWS::S3::Bucket`/`SSM`; **leg 2 (trainer, `py/packages/trainer`) is BUILT**
-  (see Recently Landed — the trajectory→SFT ETL + TRL SFT+LoRA harness). With legs 2+3 built, the
-  three legs **converge only at the runs**: the remaining gate to a directional number is leg 1's
-  corpus (the founder store call above + authoring ~15 tasks), then rejection-sampling rollouts
-  through leg 3 → the ETL → an SFT run → the base-vs-SFT delta. **Both legs were hardened post-merge**
-  (the six-lens review follow-up PR — trainer run-path fixes: tool-call arguments to dicts, pinned
-  tokenizer, packing/attn + load-dtype policy; report/ETL honesty guards: status gate, error
-  bracketing + divergence warning, required `held_out_ids`, reward-shape check; deferred remainder in
-  `ISSUES.md`) — fix-before-first-run, no trust-seam change. The Freeze list (more trust infra now)
-  holds until the seat + the number + the Henry reply.
+  graded, never published, R1-scoped): **all three legs are BUILT.** Legs 2 (trainer) + 3 (Inspect
+  harness) landed earlier and were hardened post-merge (the six-lens review follow-up PR; deferred
+  remainder in `ISSUES.md`). **Leg 1 (the corpus) is AUTHORED + VALIDATED** (see Recently Landed):
+  the private store is a local out-of-repo dir (`~/assay-private/corpus/pre-t0-slice/`; a private
+  HF dataset is the durable mirror once org HF access is set up — the resolved founder store call;
+  **NOT #76**, which stays `blocked_by #52`/E8 = P2-frozen), holding **15 Terraform drift tasks
+  over the three per-type-gated types** (`AWS::S3::Bucket` + the newly gated
+  `AWS::IAM::Role`/`AWS::KMS::Key`; SNS/SSM/SQS/DynamoDB/Logs all FAIL the CC-read/tag-return gate
+  on the pinned LocalStack image — probed empirically), each validated end-to-end through the
+  production `verify()` closed-world path (drifted → 0, reference fix → 1, K-run reproducible).
+  **The runs RAN (2026-07-02) and the directional number is in — flat: held-out +0.0 points
+  (6/9 both arms), trained −2.8 (13/36 → 12/36); zero quarantined/errored across ~200 graded
+  episodes (all K=3-reproducible).** The honest read (recorded on the issue): the MACHINE is
+  validated end-to-end (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls`
+  → held-out-split ETL → TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta), and the
+  binding constraint is corpus scale + hard-task trajectory yield (top-up sampling: 1/40), NOT
+  trust infra — the P2 "corpus + proof" dial. Artifacts + pins in the private HF dataset
+  (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
+  (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now)
+  holds until the seat + the (now-informed) go/no-go + the Henry reply.
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -90,6 +92,40 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Recently Landed
 
+- **#176 leg 1: the corpus — the last unbuilt leg of the pre-T0 directional slice. 15 Terraform
+  drift tasks authored + validated in the private store; per-type gates extended; the runs are all
+  that remain.** The **store call is resolved**: a local out-of-repo dir
+  (`~/assay-private/corpus/pre-t0-slice/` — `load_corpus`'s I11 residency guard refuses ANY
+  git-repo ancestor, so "gitignored in-repo" was never loadable), mirrored to a **private HF
+  dataset** when org HF access lands; **NOT #76** (P2-frozen behind #52). **Type selection is
+  empirical** (the founder per-type gate): probed Cloud Control on the pinned licensed LocalStack
+  image — SQS/DynamoDB/Logs have **no CC Read**, SNS/SSM read back **without tags** (the
+  `assayops:address` bridge fails closed), EC2 SecurityGroup is rejected (per-instance `VpcId` =
+  nondeterministic golden; set-normalization is #66), SecretsManager is weak-signal (write-only
+  value) ⇒ the slice spans **S3 Bucket + IAM Role + KMS Key**. The two new types are gated in-repo:
+  `default_registry` bridges (readOnly from the official registry schemas: role `Arn`/`RoleId`,
+  key `Arn`/`KeyId`) + per-type **grade round-trip smokes** (posture-declaring golden → reward 1;
+  minimal golden → reward 0 naming exactly the posture gap — role: ManagedPolicyArns/
+  MaxSessionDuration/Path/Policies, key: 8 blocks incl. the default KeyPolicy; untagged deploy
+  fails closed on a real read). **Corpus admission hardened** (the two leg-1 ISSUES.md items):
+  `load_corpus` structurally validates `compose.yaml` (a `default` workbench + a `localstack`
+  service publishing 4566, both port syntaxes) and fails closed on symlinked assets / `:` in file
+  keys. **The 15 tasks** (6 S3 / 5 IAM / 4 KMS; drift categories: modified property, security
+  posture — trust policy, key policy, PAB — tags, added resource/property, deleted resource) each
+  carry `task.json` + `setup.sh` (terraform-apply baseline → aws-CLI out-of-band drift) +
+  `files/**` (style-guide-conformant TF; provider pinned `~> 5.0` — 6.x reads S3 tags via the S3
+  Control API the pinned image doesn't serve). **Difficulty is tiered against a blind-apply
+  policy** (a diverse-lens review finding): five tasks are **state-absent** (setup removes the
+  local tfstate after the baseline deploy — the agent must reconcile from config + deployed
+  reads) and four require aws-CLI reads/removals by construction, so "run `terraform apply`,
+  submit" scores 6/15, not 11/15. All were **validated end-to-end in the real
+  per-sample compose sandbox** (workbench image: terraform + tflocal + provider mirror + aws CLI;
+  `S3_HOSTNAME=localstack` forces path-style for inter-container S3): drifted state grades **0**,
+  the reference fix grades **1**, K-run reproducible, through the production
+  `verify()` closed-world path — plus an `inspect eval` mockllm plumbing run (sandbox → setup →
+  scorer → log). Run recipe: **`docs/pre-t0-directional-run.md`** (rollouts → held-out-split ETL →
+  SFT → delta). Remaining to the number: a base-model endpoint for rollouts + a CUDA GPU (HF Jobs
+  or a box) for the SFT — founder-gated access.
 - **#176 leg 2: the trainer — new `py/packages/trainer` (`assayops_trainer`): a trajectory→SFT ETL +
   a TRL `SFTTrainer`+LoRA harness, built pre-T0 for the directional slice.** The **ETL**
   (`build_sft_dataset`/`build_and_write`) turns leg-3's graded Inspect `EvalLog`s into a

@@ -38,8 +38,10 @@ authoring-time per-property read gate, or the corpus is refused.
 ## Running the slice
 
 ```sh
-# one model, n tasks x 3 rollouts, LocalStack-graded per sample
-uv run inspect eval py/packages/evals/src/assayops_evals/task.py \
+# one model, n tasks x 3 rollouts, LocalStack-graded per sample. The workspace packages are
+# consumed by source path (no install), so the eval process needs them on PYTHONPATH:
+export PYTHONPATH="py/packages/evals/src:py/packages/contracts/src:py/packages/diff-ir/src:py/packages/adapter-terraform/src:py/packages/replay/src:py/packages/verifier/src"
+uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py \
   -T corpus_dir=/path/to/private-corpus --epochs 3 --model <base-or-sft-model>
 ```
 

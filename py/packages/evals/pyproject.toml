@@ -11,7 +11,7 @@ requires-python = ">=3.12"
 # ReadScope), `assayops_adapter_terraform` (BridgeRegistry), `assayops_replay` (the VerifyVerdict
 # shapes: Reproducible/Quarantined), `assayops_diff_ir` (GradeOutcome), and `assayops_contracts`
 # (TaskSpec).
-dependencies = ["inspect-ai>=0.3.244", "pydantic>=2.10", "boto3>=1.40"]
+dependencies = ["inspect-ai>=0.3.244", "pydantic>=2.10", "boto3>=1.40", "pyyaml>=6"]
 
 [tool.uv]
 package = false

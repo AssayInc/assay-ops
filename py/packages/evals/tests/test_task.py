@@ -69,3 +69,32 @@ def test_drift_slice_builds_the_inspect_task(tmp_corpus: Callable[[], Path]) -> 
     assert task.sandbox.config == str(corpus_dir / "compose.yaml")
     assert task.scorer is not None
     assert task.solver is not None
+
+
+def test_the_tool_forcing_model_forces_tool_choice_any() -> None:
+    # Qwen2.5-Coder-7B under tool_choice="auto" emits malformed free-form call syntax the server
+    # parser cannot read (verified against vLLM + ollama); "any" (OpenAI "required") lets the
+    # server grammar-constrain every call. The shim must pass "any" through and append the
+    # assistant message -- applied identically to every arm, a harness property.
+    import asyncio
+    from typing import cast
+
+    from inspect_ai.agent import AgentState
+    from inspect_ai.model import ChatMessageUser, Model, ModelOutput
+
+    from assayops_evals.task import tool_forcing_model
+
+    received: dict[str, object] = {}
+
+    class FakeModel:
+        async def generate(self, input: object, tools: object, tool_choice: object) -> ModelOutput:
+            received["tool_choice"] = tool_choice
+            return ModelOutput.from_content("fake/model", "ok")
+
+    shim = tool_forcing_model(model=cast(Model, FakeModel()))
+    state = AgentState(messages=[ChatMessageUser(content="fix the drift")])
+    state = asyncio.run(shim(state, []))
+
+    assert received["tool_choice"] == "any"
+    assert state.output.completion == "ok"
+    assert state.messages[-1].role == "assistant"

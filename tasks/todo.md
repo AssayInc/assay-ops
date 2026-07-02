@@ -1,82 +1,80 @@
-# #176 follow-up — review hardening: trainer run-path fixes + report/ETL honesty guards
+# #176 leg 1 — the corpus: private store + ~15 TF drift tasks + per-type gates + run enablement
 
 > Ephemeral per-session scratchpad (CLAUDE.md). Durable record: PROGRAM.md + the PR + GitHub #176.
-> **For Claude:** REQUIRED SUB-SKILL: superpowers:test-driven-development per task; verification-before-completion before claiming done.
+> **For Claude:** REQUIRED SUB-SKILL: superpowers:test-driven-development per code task;
+> verification-before-completion before claiming done.
 
-**Goal:** Fix the findings from the post-merge six-lens review of PR #180 (evals) + PR #182 (trainer)
-before the first SFT run consumes either package. Three run-path criticals (all TRL-semantic-layer,
-wheel-source-verified against trl 1.7.0 / transformers 5.12.1) + the report/ETL honesty-guard cluster
-(multi-model confirmed: Claude specialists + Codex xhigh) + the doc corrections. No behavior change to
-the trust seam itself — every fix is inside the already-licensed pre-T0 posture.
+**Goal:** the last unbuilt part of #176 — leg 1 (the corpus) plus run enablement. Legs 2+3 are built
+and hardened; the remaining gate to a directional number is: the minimal private-store decision,
+~15 Terraform drift tasks authored against the #155 contract, the per-type LocalStack gates beyond
+`AWS::S3::Bucket`, the two leg-1-owned admission guards (ISSUES.md), then the runs (rollouts → ETL →
+SFT → base-vs-SFT delta).
 
-**Branch:** `176-review-hardening` (off main). Focused PR (`Advances #176`, never Closes).
+**Grounding (reconciled):** issue #176 body + 4 comments (grounding reconciliation, #61 substrate
+answer, #155 contract, leg-2 status) · DECISIONS.md I6/I8/I11/§8 · priorities.md P1 item 4 (R1:
+directional only, never published) · PROGRAM.md "Right Now" · ISSUES.md leg-1 deferred items ·
+code contracts read first-hand (`load_corpus`, `drift_slice`, `readers`, `read_scope`,
+`assert_golden_readable`, adapter `normalize`/`BridgeRegistry`, roundtrip smoke). No blocked-by on
+the issue; #61 + #155 both landed.
 
-## Fixes (each test-first)
+**Store decision (founder call, synthesized):** author into an out-of-repo local dir
+(`~/assay-private/corpus/pre-t0-slice/` — I11: `_require_out_of_repo` refuses ANY git-repo ancestor,
+so "gitignored in-repo" is not even loadable), mirrored to a **private HF dataset** when the founder
+provides HF access (their message anticipates this). Record on the issue.
 
-### Trainer (`py/packages/trainer`)
-- [x] **messages.py — tool-call `arguments` str→dict.** `messages_to_openai` emits OpenAI wire-format
-      JSON *strings*; TRL 1.7.0's conversational path renders `tool_call.arguments | tojson`, so string
-      arguments double-encode into every training target (silent corruption of the tool-call syntax the
-      SFT teaches). Parse each `tool_calls[*].function.arguments` back to a dict (TRL's documented
-      conversational format); an unparseable arguments string fails closed (ValueError).
-- [x] **config.py — packing requires flash-attention; load dtype.** `packing=True` (bfd) force-enables
-      padding-free flattening, sample-isolated ONLY under flash-attn kernels; TRL warns and trains on
-      under the sdpa default (cross-sample attention). Default `packing=False` for the slice (tiny set —
-      packing buys nothing) + new `attn_implementation: str | None`, with a model_validator refusing
-      `packing=True` unless it is one of trl 1.7.0's exact FLASH_ATTENTION_VARIANTS. Final mechanism
-      (post-Codex): `to_model_kwargs()` carries revision + dtype (derived from `bf16`) +
-      attn_implementation for the model load; `to_sft_config_kwargs()` carries NO `model_init_kwargs`.
-- [x] **sft.py — pin every Hub read.** trl 1.7.0 loads the tokenizer/processor from `main` (no
-      revision) when given a model string, and its internal `AutoConfig` probe reads `main` too. Final
-      mechanism (post-Codex): `run_sft` loads BOTH `AutoTokenizer.from_pretrained(model_id,
-      revision=...)` (passed as `processing_class=` — the chat template gates the assistant-mask
-      template swap) AND the model object via `AutoModelForCausalLM.from_pretrained(model_id,
-      **to_model_kwargs())`. Real-API check: `processing_class` in `SFTTrainer.__init__`'s signature
-      (importorskip); wiring locked by a fake-module test at the lazy-import seam.
-- [x] **etl.py — admission + accounting hardening.** (a) `_require_reproduced_grade` also requires
-      `metadata["reward"] == 1` (a CORRECT with contradictory metadata is refused — one more shape check
-      on the pre-T0 stand-in); (b) `held_out_ids` becomes REQUIRED on `build_sft_dataset`/`build_and_write`
-      (the fail-open `frozenset()` default contradicted the "FAILS CLOSED on any appearance" docstring —
-      an explicit empty set at the call site is a documented operator decision); (c) `_verifier_runs`
-      excludes `bool` (bool subclasses int — a `true` in a foreign log fabricated `verifier_runs: 1`);
-      (d) `build_and_write` refuses a zero-example dataset (never writes a no-op `sft.jsonl`).
+## A. Committable (the PR — no task/golden content, engine + gates only)
 
-### Evals (`py/packages/evals`)
-- [x] **report.py — status gate.** `directional_delta` refuses a non-`"success"` log (mirrors the ETL;
-      an interrupted run must not yield a delta).
-- [x] **report.py — limit triage.** A limit-hit sample with NO verifier score is counted `errored`
-      (incomplete), not a whole-report crash with a misleading message. A limit-hit sample WITH a score
-      stays a settled grade (deployed state was graded; an unfinished fix deserves its 0).
-- [x] **report.py — error bracketing.** `pass_rate_lower_bound` counts errored rollouts in the
-      denominator too (pre-T0 an agent-wedged substrate can surface as a scoring cancel/error, not just
-      a quarantine — the bracket must cover both dodge shapes), and a second divergence warning fires
-      when error rates differ materially (same 0.15 threshold as quarantine divergence).
+- [x] **A1. Probe LocalStack CC shapes** (scratchpad, licensed image): SQS Queue / SNS Topic /
+      SSM Parameter / DynamoDB Table — get/list support, `assayops:address` tag return shape,
+      server-defaulted posture. Pick 2–3 new types minimizing adapter change (tag shape!).
+- [x] **A2. TDD: `load_corpus` compose validation** (ISSUES.md leg-1 item): parse `compose.yaml`,
+      require a `localstack` service publishing container port 4566 + a `default` service; fail
+      closed (`CorpusError`) otherwise.
+- [x] **A3. TDD: `_sandbox_files` guards** (ISSUES.md leg-1 item): a symlinked corpus asset and a
+      `:` in a file key fail closed (`CorpusError`), never silently dropped/passed.
+- [x] **A4. Per new type (founder per-type gate):** adapter `TypeBridge` registration with real-schema
+      `readOnlyProperties`/`tagProperty` (+ tag-shape support only if a chosen type needs it, TDD)
+      + `infra-local` read smoke (tag return) + grade round-trip posture pin (golden = declared
+      constants; negative control included). Types NOT probed green do not enter the corpus.
+- [x] **A5. Runbook** — the three runs (rollout collection, ETL+SFT, base-vs-SFT eval ×3 seeds +
+      report), store layout, LOCALSTACK_AUTH_TOKEN handling, R1 framing. Smallest home that fits
+      (evals/trainer READMEs + a short docs page only if genuinely cross-package).
+- [x] **A6. PROGRAM.md / ISSUES.md** in-PR; issue comment: store decision + leg-1 grounding.
 
-### Docs
-- [x] trainer README: `(trl ≥ 0.13)` is false for `assistant_only_loss` (that floor is peft's) → `trl ≥ 1.7`
-      + describe the REAL trl 1.7 mechanism (vendored Qwen2.5 training-template swap on byte-exact match;
-      loud ValueError/RuntimeError otherwise — NOT a silent no-op).
-- [x] train-requirements.txt: floors were jointly unsatisfiable (trl 1.7.0 itself requires
-      transformers>=4.56.2, datasets>=4.7.0, accelerate>=1.4.0) → raise to trl's own minimums; reword the
-      assistant_only_loss comment to the template-swap mechanism.
-- [x] ISSUES.md: correct the prior "mask silently no-ops" deferred note (trl 1.7 fails loud); record this
-      PR + the remaining deferred minors. PROGRAM.md: status note.
+## B. Private store (out-of-repo; NEVER committed — I11)
 
-## Out of scope (deliberate)
-- Min-K enforcement in ETL/report (goes with the #78 KMS-signed join — recorded in ISSUES.md).
-- Corpus-side compose validation / symlink / colon-in-path admission guards (leg-1 corpus-contract work,
-  already tracked in ISSUES.md).
-- report `ModelSlice.pass_rate` zero-guard, exception taxonomy (`ContaminationError`), dedup'd exclusion
-  counters, private `EvalError` test import — review minors, listed in the PR body, not blocking the run.
+- [x] **B1. Corpus skeleton:** `compose.yaml` (workbench `default` + per-sample `localstack` with
+      pinned licensed image, ports "4566", auth token from host env) + workbench image (terraform +
+      provider mirror + aws cli + inspect-tool-support) + `corpus.py` (REGISTRY / READ_SCOPE /
+      BRIDGE_REGISTRY as needed).
+- [x] **B2. Author ~15 tasks** across the proven types × drift categories (modified property /
+      removed resource / added-extra resource / tag drift), each `task.json` + `setup.sh` (deploy
+      baseline → inject drift out-of-band) + `files/**` (the Terraform config = the intent).
+      Goldens declare server-defaulted posture (#155). Fixed deterministic names (per-sample
+      LocalStack; no cross-sample collision).
+- [x] **B3. Per-task validation** (private script, spike-output rule — stays in the store):
+      admission via `load_corpus` → deploy+drift → grade 0 → apply the reference fix → grade 1,
+      against local LocalStack through the production read→normalize→grade path.
+- [x] **B4. End-to-end plumbing run:** `inspect eval` drift_slice with `mockllm/model` on 1–2 tasks —
+      sandbox comes up, setup runs, scorer grades through `verify()` (INCORRECT expected) — proves
+      compose/endpoint-discovery/scorer wiring without model spend.
+- [x] **B5. Mirror to private HF dataset** (needs founder HF access/token).
 
-## Codex xhigh re-review findings (all fixed)
-- [x] **sft.py — model string left trl's `AutoConfig` probe unpinned** (P2): `run_sft` now loads the
-      model OBJECT itself via `to_model_kwargs()` (revision + dtype + attn) and drops
-      `model_init_kwargs` from `SFTConfig` (trl only honors it for a string).
-- [x] **etl.py — `reward == 1` accepted `True`** (P2): the shape check now requires a non-bool int.
-- [x] **config.py — `dtype` contradicted `bf16=False`** (P3): load dtype derived from `bf16`.
-- [x] **config.py — flash-attn guard rejected kernels-community variants** (P3): accepted by prefix.
+## C. The runs (converge here; GPU/HF-gated — surface exact needs to founder)
 
-## Verification
-- [x] `bun run verify` green (all packages; hermetic — no new deps in the gate).
-- [x] Codex gpt-5.5 xhigh review of the diff + re-review after fixes (standing practice).
+- [x] **C1. Rollout collection:** base Qwen2.5-Coder-7B-Instruct over the corpus (epochs>1) →
+      graded logs. Model endpoint: ollama local or HF — founder call on spend.
+- [x] **C2. ETL → `sft.jsonl`** (held_out_ids explicit) → **SFT run** (TRL harness; CUDA — HF Jobs
+      or founder GPU box; freeze exact pins + model_revision at provision, I8).
+- [x] **C3. Eval:** base vs SFT ×3 seeds × ~15 tasks, LocalStack-graded → `render_report` →
+      one-paragraph read on #176.
+
+## Reviews (before PR merge-ready)
+- [x] Two adversarial reviews: Codex gpt-5.5 xhigh (review + re-review to convergence on the diff)
+      + a diverse-lens Workflow pass (trust-seam / correctness / craft). `/review` gate.
+- [x] `bun run verify` green; smokes green against local LocalStack.
+
+## Scope guards
+- No new trust infra (issue guardrail); smallest change; every changed line traces to leg 1.
+- Never commit tasks/goldens/trajectories (I11) — in-repo fixtures synthetic only.
+- The number is R1-scoped: directional, never published.

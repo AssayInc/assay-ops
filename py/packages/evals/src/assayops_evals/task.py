@@ -21,9 +21,10 @@ from pathlib import Path
 
 from assayops_replay import DEFAULT_RUNS
 from inspect_ai import Task, task
-from inspect_ai.agent import react
+from inspect_ai.agent import Agent, AgentState, agent, react
 from inspect_ai.dataset import Sample
-from inspect_ai.tool import bash, text_editor
+from inspect_ai.model import Model, get_model
+from inspect_ai.tool import Tool, bash, text_editor
 
 from assayops_evals.corpus import Corpus, load_corpus
 from assayops_evals.readers import localstack_reader_factory
@@ -54,6 +55,28 @@ def samples_of(corpus: Corpus) -> list[Sample]:
     ]
 
 
+@agent
+def tool_forcing_model(model: Model | None = None) -> Agent:
+    """A react model shim that forces ``tool_choice="any"`` (OpenAI ``required``).
+
+    Qwen2.5-Coder-7B under ``tool_choice="auto"`` frequently emits tool calls in a malformed
+    free-form syntax the serving parser cannot read (verified empirically against vLLM's hermes
+    parser and ollama) -- the calls surface as prose and the episode does nothing. ``"any"`` lets
+    the server grammar-constrain every call to the wire format. React-compatible: every turn is a
+    tool action (bash / text_editor / submit). Applied identically to every arm of a run -- a
+    harness property, never a per-model advantage; runs that enable it must enable it for base
+    AND SFT (the runbook does).
+    """
+
+    async def generate(state: AgentState, tools: list[Tool]) -> AgentState:
+        resolved = model if model is not None else get_model()
+        state.output = await resolved.generate(state.messages, tools, tool_choice="any")
+        state.messages.append(state.output.message)
+        return state
+
+    return generate
+
+
 @task
 def drift_slice(
     corpus_dir: str,
@@ -61,6 +84,7 @@ def drift_slice(
     message_limit: int = _DEFAULT_MESSAGE_LIMIT,
     time_limit: int = _DEFAULT_TIME_LIMIT_SECONDS,
     runs: int = DEFAULT_RUNS,
+    force_tool_calls: bool = False,
 ) -> Task:
     """The #176 directional-slice eval: n tasks x ``epochs`` rollouts, LocalStack-graded.
 
@@ -77,10 +101,11 @@ def drift_slice(
     return Task(
         dataset=samples_of(corpus),
         solver=react(
+            model=tool_forcing_model() if force_tool_calls else None,
             tools=[
                 bash(timeout=_TOOL_TIMEOUT_SECONDS),
                 text_editor(timeout=_TOOL_TIMEOUT_SECONDS),
-            ]
+            ],
         ),
         scorer=deploy_verifier_scorer(
             registry=corpus.registry,

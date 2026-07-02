@@ -32,10 +32,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
 from assayops_adapter_terraform import BridgeRegistry
 from assayops_contracts import TaskSpec
 from assayops_verifier import GoldenError, GoldenRegistry, assert_golden_readable
 from assayops_verifier.read_scope import ReadScope
+
+# The compose contract this loader admits (and the readers consume): the agent's 'default'
+# workbench service plus the sample's OWN LocalStack service publishing the gateway port.
+LOCALSTACK_SERVICE = "localstack"
+LOCALSTACK_GATEWAY_PORT = 4566
 
 _CORPUS_MODULE = "corpus.py"
 _COMPOSE_FILE = "compose.yaml"
@@ -81,10 +87,12 @@ def load_corpus(corpus_dir: Path, *, allow_in_repo_for_tests: bool = False) -> C
 
     registry, scope, bridge_registry = _grading_inputs(corpus_dir / _CORPUS_MODULE)
     compose_file = corpus_dir / _COMPOSE_FILE
+    _refuse_symlink(compose_file, "compose file")
     if not compose_file.is_file():
         raise CorpusError(
             f"corpus has no {_COMPOSE_FILE} (the per-sample sandbox definition): {compose_file}"
         )
+    _validate_compose(compose_file)
     tasks = _admitted_tasks(corpus_dir / _TASKS_DIR, registry, scope)
     return Corpus(
         registry=registry,
@@ -117,7 +125,70 @@ def _require_out_of_repo(corpus_dir: Path) -> None:
             )
 
 
+def _validate_compose(compose_file: Path) -> None:
+    """Structural admission for the per-sample sandbox definition -- fail fast at load time.
+
+    A misauthored compose would otherwise surface only mid-eval (sandbox startup, or the readers'
+    endpoint-discovery ValueError) after paying a full model rollout. The contract: a ``default``
+    service (the agent's workbench -- Inspect's docker sandbox requires one when several services
+    are defined) and a ``localstack`` service publishing container port 4566 (what
+    ``localstack_endpoint`` discovers the sample's gateway from).
+    """
+    try:
+        parsed: object = yaml.safe_load(compose_file.read_text())
+    except (yaml.YAMLError, UnicodeDecodeError) as error:
+        raise CorpusError(f"unparseable {_COMPOSE_FILE}: {error}") from error
+    services: object = parsed.get("services") if isinstance(parsed, dict) else None
+    if not isinstance(services, dict):
+        raise CorpusError(f"{_COMPOSE_FILE} must define a 'services' mapping: {compose_file}")
+    if "default" not in services:
+        raise CorpusError(
+            f"{_COMPOSE_FILE} must define a 'default' service (the agent's workbench): "
+            f"{compose_file}"
+        )
+    localstack: object = services.get(LOCALSTACK_SERVICE)
+    if not isinstance(localstack, dict):
+        raise CorpusError(
+            f"{_COMPOSE_FILE} must define a {LOCALSTACK_SERVICE!r} service (the sample's own "
+            f"grading substrate): {compose_file}"
+        )
+    if not _publishes_gateway_port(localstack.get("ports")):
+        raise CorpusError(
+            f"the {LOCALSTACK_SERVICE!r} service in {_COMPOSE_FILE} must publish container port "
+            f'{LOCALSTACK_GATEWAY_PORT} (ports: ["{LOCALSTACK_GATEWAY_PORT}"]) -- endpoint '
+            f"discovery fails closed without it: {compose_file}"
+        )
+
+
+def _publishes_gateway_port(ports: object) -> bool:
+    """Whether a compose ``ports`` value publishes the LocalStack gateway container port.
+
+    Accepts both compose syntaxes: short strings/ints (``4566``, ``"host:4566"``,
+    ``"ip:host:4566"``, optional ``/protocol`` suffix -- the container port is the last segment)
+    and the long mapping form (``target: 4566``). The mapping must be TCP (or unspecified, which
+    Docker defaults to tcp) -- endpoint discovery matches ``protocol == "tcp"``, so a udp-only
+    publication would pass a naive port check and fail only mid-eval.
+    """
+    if not isinstance(ports, list):
+        return False
+    for entry in ports:
+        if isinstance(entry, dict):
+            if entry.get("target") == LOCALSTACK_GATEWAY_PORT and entry.get("protocol") in (
+                None,
+                "tcp",
+            ):
+                return True
+        elif isinstance(entry, (str, int)):
+            mapping, _, protocol = str(entry).partition("/")
+            container = mapping.rsplit(":", 1)[-1]
+            if container == str(LOCALSTACK_GATEWAY_PORT) and protocol in ("", "tcp"):
+                return True
+    return False
+
+
 def _grading_inputs(module_path: Path) -> tuple[GoldenRegistry, ReadScope, BridgeRegistry | None]:
+    # The most executable asset in the symlink class: this module is exec'd at load.
+    _refuse_symlink(module_path, "corpus module")
     if not module_path.is_file():
         raise CorpusError(f"corpus has no {_CORPUS_MODULE} (REGISTRY + READ_SCOPE): {module_path}")
     spec = importlib.util.spec_from_file_location("assayops_evals._private_corpus", module_path)
@@ -162,7 +233,19 @@ def _admitted_tasks(
     return tuple(_admit_task(task_dir, registry, scope) for task_dir in task_dirs)
 
 
+def _refuse_symlink(path: Path, role: str) -> None:
+    """The symlink admission rule, one place: corpus content lives INSIDE the corpus, never
+    behind links -- a symlink would silently materialize (or execute, for setup.sh) content
+    from outside the store."""
+    if path.is_symlink():
+        raise CorpusError(
+            f"corpus {role} {str(path)!r} is a symlink -- corpus content must live inside the "
+            "corpus directory, never behind links"
+        )
+
+
 def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> CorpusTask:
+    _refuse_symlink(task_dir, "task directory")
     spec = _task_spec(task_dir)
     # The admission gate: the golden must regenerate (fail closed on an unregistered task / broken
     # builder -- surfacing it here beats an UnknownTaskError mid-eval) and every asserted property
@@ -176,6 +259,7 @@ def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> C
         # ValueError covers the read-scope gates (unknown coverage / write-only property).
         raise CorpusError(f"task {spec.task_id!r} failed admission: {error}") from error
     setup_script = task_dir / _SETUP_SCRIPT
+    _refuse_symlink(setup_script, "setup script")
     return CorpusTask(
         spec=spec,
         directory=task_dir,
@@ -186,6 +270,7 @@ def _admit_task(task_dir: Path, registry: GoldenRegistry, scope: ReadScope) -> C
 
 def _task_spec(task_dir: Path) -> TaskSpec:
     spec_path = task_dir / _TASK_SPEC_FILE
+    _refuse_symlink(spec_path, "task spec")
     if not spec_path.is_file():
         raise CorpusError(f"task directory {task_dir.name!r} has no {_TASK_SPEC_FILE}")
     try:
@@ -204,10 +289,29 @@ def _task_spec(task_dir: Path) -> TaskSpec:
 
 
 def _sandbox_files(files_dir: Path) -> Mapping[str, Path]:
+    # The root case: files/ itself linking to an OUTSIDE dir would admit that whole tree (its
+    # entries are regular files, so the per-entry guard below never fires).
+    _refuse_symlink(files_dir, "files directory")
     if not files_dir.is_dir():
         return {}
-    return {
-        str(path.relative_to(files_dir).as_posix()): path
-        for path in sorted(files_dir.rglob("*"))
-        if path.is_file()
-    }
+    files: dict[str, Path] = {}
+    for path in sorted(files_dir.rglob("*")):
+        if path.is_symlink():
+            # A symlink would silently materialize content from OUTSIDE the corpus into the
+            # sandbox (or dangle at copy time) -- refuse at admission, never follow.
+            raise CorpusError(
+                f"corpus asset {str(path)!r} is a symlink -- sandbox files must be regular "
+                "files inside the corpus, never links"
+            )
+        if not path.is_file():
+            continue
+        key = str(path.relative_to(files_dir).as_posix())
+        if ":" in key:
+            # ':' is Docker's source:destination separator -- an ambiguous key to the sandbox
+            # copy layer.
+            raise CorpusError(
+                f"corpus asset key {key!r} contains ':' -- ambiguous to the sandbox file copy; "
+                "rename the file"
+            )
+        files[key] = path
+    return files

@@ -25,21 +25,18 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   the ETL/report (goes with the #78 KMS-signed join — K is recorded in score metadata + manifest,
   not yet gated); report `ModelSlice.pass_rate` has no zero-guard on direct construction (the
   in-package path guards); a `ContaminationError` subclass (the tripwire raises bare `ValueError`);
-  dedup'd exclusion counters across overlapping logs; `_sandbox_files` silently drops symlinked
-  corpus assets and allows `:` in file keys (leg-1 compose/corpus-contract admission work, with the
-  compose validation below); the private `inspect_ai._util.error.EvalError` import in two test
-  helpers (public path: `inspect_ai.log.EvalError`).
+  dedup'd exclusion counters across overlapping logs; the private `inspect_ai._util.error.EvalError`
+  import in two test helpers (public path: `inspect_ai.log.EvalError`). The `_sandbox_files`
+  symlink/`:`-key admission guards landed with the leg-1 corpus PR (fail closed, no longer
+  deferred).
 
 - **#176 leg 3 (evals harness, PR #180) — deferred review findings + a leg-1 scoping correction.**
   The diverse-lens review (4 specialists + 2 moat-forge + Codex xhigh) cleared the trust seam; the
   fixed items landed in PR #180. These were **deferred** (out of leg-3 scope, tracked here rather than
   left in the review thread):
-  - **`load_corpus` does not structurally validate `compose.yaml`** — it checks the file exists but
-    not that it declares a `localstack` service publishing gateway `4566` (no fixed `container_name`,
-    no shared volume). A misauthored compose surfaces only at scoring time (the endpoint-discovery
-    fail-closed `ValueError`) after paying a full model rollout. **Owner: the corpus leg (#176 leg 1)** —
-    it defines the compose contract; validate at admission there (needs a YAML parse). Endpoint
-    discovery already fails closed, so this is a fail-fast DX improvement, not a correctness gap.
+  - **`load_corpus` compose validation — landed with the leg-1 corpus PR:** admission now parses
+    `compose.yaml` and fails closed unless it declares a `default` service and a `localstack`
+    service publishing container port 4566 (both compose port syntaxes accepted).
   - **The evals tests reach into `../verifier/tests` on `mypy_path`/`pythonpath`** to reuse
     `cloud_control_fakes` + `synthetic` (documented, deliberate — reuse-before-adding). Cleaner would be
     to promote those fakes to an importable `assayops_verifier.testing` surface both packages consume;
