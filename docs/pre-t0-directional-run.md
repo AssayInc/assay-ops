@@ -38,8 +38,9 @@ deploy-verifier scorer (reward = the shipped `verify()`).
 
 ```sh
 set -a; source .env; set +a
-# The workspace packages are consumed by source path (no install) — the eval process needs them:
-export PYTHONPATH="py/packages/evals/src:py/packages/contracts/src:py/packages/diff-ir/src:py/packages/adapter-terraform/src:py/packages/replay/src:py/packages/verifier/src"
+# The workspace packages are consumed by source path (no install) — the eval process needs them
+# (trainer/src is for step 2's ETL; one export covers the session):
+export PYTHONPATH="py/packages/evals/src:py/packages/trainer/src:py/packages/contracts/src:py/packages/diff-ir/src:py/packages/adapter-terraform/src:py/packages/replay/src:py/packages/verifier/src"
 uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_slice \
   -T corpus_dir="$HOME/assay-private/corpus/pre-t0-slice" \
   --model <base model> --epochs <rollouts-per-task> --max-sandboxes 3
@@ -48,6 +49,11 @@ uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_
 `--max-sandboxes` caps concurrent per-sample LocalStack containers (each is a full LocalStack —
 size to the machine). Rollouts here are **sampling for rejection-sampled SFT** — more epochs =
 more chances at reward-1 trajectories on hard tasks.
+
+**Endpoint quality matters:** a local q4-quantized 7B via ollama completes the loop but emitted
+zero tool calls in the smoke rollout (prose plans only → no reward-1 trajectories to harvest).
+Collect real rollouts on a serving stack with reliable tool-calling for the model (e.g. vLLM
+serving the bf16 checkpoint on a GPU); keep ollama for plumbing smokes.
 
 ## 2. Held-out split, ETL, SFT
 
@@ -76,8 +82,8 @@ per model — same corpus, same `--epochs` (the n×epochs grid) — and render t
 from assayops_evals import directional_delta, render_report
 from inspect_ai.log import read_eval_log
 
-print(render_report(directional_delta([read_eval_log("logs/base.eval")],
-                                      [read_eval_log("logs/sft.eval")])))
+print(render_report(directional_delta(read_eval_log("logs/base.eval"),
+                                      read_eval_log("logs/sft.eval"))))
 ```
 
 The report brackets quarantined/errored rollouts and hard-codes the PRE-T0 DIRECTIONAL framing.

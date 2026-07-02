@@ -39,7 +39,7 @@ provides HF access (their message anticipates this). Record on the issue.
 - [x] **A5. Runbook** — the three runs (rollout collection, ETL+SFT, base-vs-SFT eval ×3 seeds +
       report), store layout, LOCALSTACK_AUTH_TOKEN handling, R1 framing. Smallest home that fits
       (evals/trainer READMEs + a short docs page only if genuinely cross-package).
-- [ ] **A6. PROGRAM.md / ISSUES.md** in-PR; issue comment: store decision + leg-1 grounding.
+- [x] **A6. PROGRAM.md / ISSUES.md** in-PR; issue comment: store decision + leg-1 grounding.
 
 ## B. Private store (out-of-repo; NEVER committed — I11)
 
@@ -52,10 +52,10 @@ provides HF access (their message anticipates this). Record on the issue.
       baseline → inject drift out-of-band) + `files/**` (the Terraform config = the intent).
       Goldens declare server-defaulted posture (#155). Fixed deterministic names (per-sample
       LocalStack; no cross-sample collision).
-- [ ] **B3. Per-task validation** (private script, spike-output rule — stays in the store):
+- [x] **B3. Per-task validation** (private script, spike-output rule — stays in the store):
       admission via `load_corpus` → deploy+drift → grade 0 → apply the reference fix → grade 1,
       against local LocalStack through the production read→normalize→grade path.
-- [ ] **B4. End-to-end plumbing run:** `inspect eval` drift_slice with `mockllm/model` on 1–2 tasks —
+- [x] **B4. End-to-end plumbing run:** `inspect eval` drift_slice with `mockllm/model` on 1–2 tasks —
       sandbox comes up, setup runs, scorer grades through `verify()` (INCORRECT expected) — proves
       compose/endpoint-discovery/scorer wiring without model spend.
 - [ ] **B5. Mirror to private HF dataset** (needs founder HF access/token).

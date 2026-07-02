@@ -280,6 +280,56 @@ def test_a_symlinked_corpus_asset_fails_closed(tmp_path: Path) -> None:
         load_corpus(corpus_dir)
 
 
+def test_a_udp_gateway_port_is_not_accepted(tmp_path: Path) -> None:
+    # Endpoint discovery requires a TCP mapping; a compose publishing 4566/udp (either syntax)
+    # would pass a naive port check and then fail only mid-eval. tcp (or no protocol) stays valid.
+    corpus_dir = _tmp_corpus(tmp_path)
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        '    ports:\n      - "4566/udp"\n',
+    )
+    with pytest.raises(CorpusError, match="4566"):
+        load_corpus(corpus_dir)
+
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        "    ports:\n      - target: 4566\n        protocol: udp\n",
+    )
+    with pytest.raises(CorpusError, match="4566"):
+        load_corpus(corpus_dir)
+
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        '    ports:\n      - "4566/tcp"\n',
+    )
+    assert isinstance(load_corpus(corpus_dir), Corpus)
+
+    _write_compose(
+        corpus_dir,
+        "services:\n  default:\n    image: x\n  localstack:\n    image: y\n"
+        "    ports:\n      - target: 4566\n        protocol: tcp\n",
+    )
+    assert isinstance(load_corpus(corpus_dir), Corpus)
+
+
+def test_a_symlinked_files_dir_itself_fails_closed(tmp_path: Path) -> None:
+    # The root case: tasks/<id>/files being a symlink to an OUTSIDE dir would admit that whole
+    # tree (its entries are regular files, so the per-entry guard never fires). Refuse the dir.
+    corpus_dir = _tmp_corpus(tmp_path)
+    outside = tmp_path / "outside-files"
+    outside.mkdir()
+    (outside / "main.tf").write_text("# outside the corpus\n")
+    files_dir = corpus_dir / "tasks" / TASK_ID / "files"
+    shutil.rmtree(files_dir)
+    files_dir.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(CorpusError, match="symlink"):
+        load_corpus(corpus_dir)
+
+
 def test_a_symlinked_directory_fails_closed(tmp_path: Path) -> None:
     # The adjacent case: a symlinked DIRECTORY under files/ would smuggle a whole tree from
     # outside the corpus. rglob does not descend into it (3.12), and the entry itself is a

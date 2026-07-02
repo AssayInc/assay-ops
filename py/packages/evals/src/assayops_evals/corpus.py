@@ -164,17 +164,23 @@ def _publishes_gateway_port(ports: object) -> bool:
 
     Accepts both compose syntaxes: short strings/ints (``4566``, ``"host:4566"``,
     ``"ip:host:4566"``, optional ``/protocol`` suffix -- the container port is the last segment)
-    and the long mapping form (``target: 4566``).
+    and the long mapping form (``target: 4566``). The mapping must be TCP (or unspecified, which
+    Docker defaults to tcp) -- endpoint discovery matches ``protocol == "tcp"``, so a udp-only
+    publication would pass a naive port check and fail only mid-eval.
     """
     if not isinstance(ports, list):
         return False
     for entry in ports:
         if isinstance(entry, dict):
-            if entry.get("target") == LOCALSTACK_GATEWAY_PORT:
+            if entry.get("target") == LOCALSTACK_GATEWAY_PORT and entry.get("protocol") in (
+                None,
+                "tcp",
+            ):
                 return True
         elif isinstance(entry, (str, int)):
-            container = str(entry).split("/", 1)[0].rsplit(":", 1)[-1]
-            if container == str(LOCALSTACK_GATEWAY_PORT):
+            mapping, _, protocol = str(entry).partition("/")
+            container = mapping.rsplit(":", 1)[-1]
+            if container == str(LOCALSTACK_GATEWAY_PORT) and protocol in ("", "tcp"):
                 return True
     return False
 
@@ -266,6 +272,13 @@ def _task_spec(task_dir: Path) -> TaskSpec:
 
 
 def _sandbox_files(files_dir: Path) -> Mapping[str, Path]:
+    if files_dir.is_symlink():
+        # The root case: files/ itself linking to an OUTSIDE dir would admit that whole tree
+        # (its entries are regular files, so the per-entry guard below never fires).
+        raise CorpusError(
+            f"corpus files directory {str(files_dir)!r} is a symlink -- sandbox files must live "
+            "inside the corpus, never behind links"
+        )
     if not files_dir.is_dir():
         return {}
     files: dict[str, Path] = {}
