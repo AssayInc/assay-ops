@@ -67,6 +67,14 @@ the trust seam itself — every fix is inside the already-licensed pre-T0 postur
 - report `ModelSlice.pass_rate` zero-guard, exception taxonomy (`ContaminationError`), dedup'd exclusion
   counters, private `EvalError` test import — review minors, listed in the PR body, not blocking the run.
 
+## Codex xhigh re-review findings (all fixed)
+- [x] **sft.py — model string left trl's `AutoConfig` probe unpinned** (P2): `run_sft` now loads the
+      model OBJECT itself via `to_model_kwargs()` (revision + dtype + attn) and drops
+      `model_init_kwargs` from `SFTConfig` (trl only honors it for a string).
+- [x] **etl.py — `reward == 1` accepted `True`** (P2): the shape check now requires a non-bool int.
+- [x] **config.py — `dtype` contradicted `bf16=False`** (P3): load dtype derived from `bf16`.
+- [x] **config.py — flash-attn guard rejected kernels-community variants** (P3): accepted by prefix.
+
 ## Verification
 - [x] `bun run verify` green (all packages; hermetic — no new deps in the gate).
 - [x] Codex gpt-5.5 xhigh review of the diff + re-review after fixes (standing practice).

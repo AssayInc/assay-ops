@@ -24,8 +24,17 @@ _QWEN_LORA_TARGETS = ("q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_p
 
 # trl 1.7 packing (bfd) force-enables padding-free flattening, and only flash-attention varlen
 # kernels respect packed sample boundaries -- under the sdpa default TRL merely WARNS and packed
-# samples cross-attend (silent corruption). Packing is therefore refused without one of these.
+# samples cross-attend (silent corruption). Packing is therefore refused without one of these
+# (mirrors trl's FLASH_ATTENTION_VARIANTS: the canonical names + the kernels-community variants).
 _FLASH_ATTENTION_IMPLEMENTATIONS = ("flash_attention_2", "flash_attention_3")
+_FLASH_ATTENTION_KERNEL_PREFIX = "kernels-community/"
+
+
+def _is_flash_attention(implementation: str | None) -> bool:
+    return implementation is not None and (
+        implementation in _FLASH_ATTENTION_IMPLEMENTATIONS
+        or implementation.startswith(_FLASH_ATTENTION_KERNEL_PREFIX)
+    )
 
 
 class TrainerConfig(BaseModel):
@@ -66,10 +75,11 @@ class TrainerConfig(BaseModel):
 
     @model_validator(mode="after")
     def _packing_requires_flash_attention(self) -> TrainerConfig:
-        if self.packing and self.attn_implementation not in _FLASH_ATTENTION_IMPLEMENTATIONS:
+        if self.packing and not _is_flash_attention(self.attn_implementation):
             raise ValueError(
-                "packing=True requires attn_implementation to be one of "
-                f"{_FLASH_ATTENTION_IMPLEMENTATIONS} -- trl's padding-free flattening "
+                "packing=True requires attn_implementation to be a flash-attention "
+                f"implementation ({', '.join(_FLASH_ATTENTION_IMPLEMENTATIONS)}, or a "
+                f"{_FLASH_ATTENTION_KERNEL_PREFIX}* kernel) -- trl's padding-free flattening "
                 "cross-attends packed samples under sdpa (TRL only warns and trains on)"
             )
         return self
@@ -85,19 +95,31 @@ class TrainerConfig(BaseModel):
             "bias": "none",
         }
 
-    def to_sft_config_kwargs(self) -> JsonObject:
-        """TRL ``SFTConfig`` kwargs -- the training-seed maps to ``seed``; the pinned revision (I8)
-        reaches the WEIGHTS' ``from_pretrained`` via ``model_init_kwargs``. That pin does NOT cover
-        the tokenizer: trl loads the processor from ``main`` when handed a model string, so
-        ``run_sft`` loads and passes a revision-pinned tokenizer itself."""
-        model_init_kwargs: JsonObject = {
+    def to_model_kwargs(self) -> JsonObject:
+        """``AutoModelForCausalLM.from_pretrained`` kwargs -- the I8 pin + load policy.
+
+        ``run_sft`` loads the model OBJECT itself so every Hub read (config + weights; the
+        tokenizer separately) happens at the pinned revision -- handing trl a model string leaves
+        its internal ``AutoConfig`` probe reading ``main`` unpinned. The load dtype follows the
+        training precision (transformers loads float32 unless told otherwise -- ~28 GB of fp32
+        weights for the 7B under ``bf16=True``).
+        """
+        kwargs: JsonObject = {
             "revision": self.model_revision,
-            # trl 1.7 loads float32 unless told otherwise -- ~28 GB of fp32 weights for the 7B,
-            # inconsistent with bf16=True training; load in the training dtype.
-            "dtype": "bfloat16",
+            "dtype": "bfloat16" if self.bf16 else "float32",
         }
         if self.attn_implementation is not None:
-            model_init_kwargs["attn_implementation"] = self.attn_implementation
+            kwargs["attn_implementation"] = self.attn_implementation
+        return kwargs
+
+    def to_sft_config_kwargs(self) -> JsonObject:
+        """TRL ``SFTConfig`` kwargs -- the training-seed maps to ``seed``.
+
+        No ``model_init_kwargs``: trl only honors it for a model STRING, and ``run_sft`` passes a
+        loaded model object (see ``to_model_kwargs``) precisely so no Hub read floats on ``main``.
+        The tokenizer pin is ``run_sft``'s job too (trl loads the processor from ``main`` when one
+        is not passed in).
+        """
         return {
             "output_dir": self.output_dir,
             "learning_rate": self.learning_rate,
@@ -111,5 +133,4 @@ class TrainerConfig(BaseModel):
             "gradient_checkpointing": self.gradient_checkpointing,
             "seed": self.training_seed,
             "report_to": self.report_to,
-            "model_init_kwargs": model_init_kwargs,
         }

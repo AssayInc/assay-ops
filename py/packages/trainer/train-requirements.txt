@@ -17,7 +17,8 @@
 # observations at train time): Qwen2.5's stock template has no `{% generation %}` markers; trl 1.7
 # swaps in its VENDORED Qwen2.5 training template when the tokenizer's template byte-equals the
 # stock one, and fails LOUD otherwise (ValueError at init on an unrecognized template; RuntimeError
-# on an example with an empty assistant mask). run_sft pins the tokenizer to model_revision so that
+# on an example with an empty assistant mask). run_sft loads the model AND the tokenizer itself at
+# model_revision (a model string would leave trl's AutoConfig probe + processor on `main`) so that
 # byte-match is stable.
 # The transformers/datasets/accelerate floors are trl 1.7.0's OWN minimums (anything lower is
 # unresolvable next to trl>=1.7); peft's floor is peft's own API line.

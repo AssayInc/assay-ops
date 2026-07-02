@@ -44,6 +44,15 @@ def test_run_sft_pins_the_tokenizer_and_wires_the_trainer(
             calls["tokenizer"] = (model_id, revision)
             return FakeTokenizer()
 
+    class FakeModel:
+        pass
+
+    class FakeAutoModel:
+        @staticmethod
+        def from_pretrained(model_id: str, **kwargs: object) -> FakeModel:
+            calls["model"] = (model_id, kwargs)
+            return FakeModel()
+
     class FakeTrainer:
         def __init__(self, **kwargs: object) -> None:
             calls["trainer_kwargs"] = kwargs
@@ -67,6 +76,7 @@ def test_run_sft_pins_the_tokenizer_and_wires_the_trainer(
     trl_mod.SFTTrainer = FakeTrainer  # type: ignore[attr-defined]
     transformers_mod = types.ModuleType("transformers")
     transformers_mod.AutoTokenizer = FakeAutoTokenizer  # type: ignore[attr-defined]
+    transformers_mod.AutoModelForCausalLM = FakeAutoModel  # type: ignore[attr-defined]
     for name, module in {
         "datasets": datasets_mod,
         "peft": peft_mod,
@@ -78,10 +88,16 @@ def test_run_sft_pins_the_tokenizer_and_wires_the_trainer(
     out = run_sft(_CFG, tmp_path / "sft.jsonl")
 
     assert calls["tokenizer"] == ("Qwen/Qwen2.5-Coder-7B-Instruct", "a1b2c3d4")
+    # The model is loaded HERE at the pinned revision -- handing trl a model string would leave
+    # its internal AutoConfig probe reading `main` unpinned.
+    assert calls["model"] == (
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        {"revision": "a1b2c3d4", "dtype": "bfloat16"},
+    )
     trainer_kwargs = calls["trainer_kwargs"]
     assert isinstance(trainer_kwargs, dict)
     assert isinstance(trainer_kwargs["processing_class"], FakeTokenizer)
-    assert trainer_kwargs["model"] == "Qwen/Qwen2.5-Coder-7B-Instruct"
+    assert isinstance(trainer_kwargs["model"], FakeModel)
     assert trainer_kwargs["train_dataset"] == "fake-dataset"
     assert calls["dataset"] == ("json", str(tmp_path / "sft.jsonl"), "train")
     assert calls["trained"] is True

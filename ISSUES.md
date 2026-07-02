@@ -11,11 +11,13 @@ this file is for cross-cutting context a GitHub issue doesn't capture.
   xhigh, TRL/PEFT claims wheel-source-verified, Inspect claims verified against the installed
   0.3.244) found the trust seam intact but three run-path criticals in the trainer plus
   aggregation-honesty gaps. Fixed in the follow-up PR: tool-call `arguments` parsed back to dicts
-  (wire strings double-encode through trl's `| tojson` chat-template render); the tokenizer loaded
-  at the pinned `model_revision` and passed as `processing_class` (trl loads the processor from
-  `main` otherwise — the I8 pin covered weights only); `packing` off by default + refused without a
-  flash-attention `attn_implementation` (padding-free flattening cross-attends under sdpa);
-  `dtype: bfloat16` in `model_init_kwargs` (trl loads fp32 otherwise); the report gates on
+  (wire strings double-encode through trl's `| tojson` chat-template render); `run_sft` loads BOTH
+  the model and the tokenizer itself at the pinned `model_revision` and passes the object +
+  `processing_class` (handing trl a model string leaves its `AutoConfig` probe and the processor
+  on `main` — the I8 pin covered weights only); `packing` off by default + refused without a
+  flash-attention `attn_implementation` (padding-free flattening cross-attends under sdpa;
+  kernels-community variants accepted); the load `dtype` derived from `bf16` (transformers loads
+  fp32 otherwise); the report gates on
   `status=="success"`, triages unscored limit-hits as errored, brackets errored rollouts in the
   lower bound, and warns on divergent error rates; the ETL requires `held_out_ids` explicitly,
   checks `reward == 1` in the reproduced-grade shape, excludes `bool` from `verifier_runs`, and

@@ -213,6 +213,16 @@ def test_a_correct_with_contradictory_reward_metadata_fails_closed() -> None:
         _build(log)
 
 
+def test_a_correct_with_a_boolean_reward_metadata_fails_closed() -> None:
+    # True == 1 in Python: a foreign log's `"reward": true` is not the scorer's integer grade and
+    # must not mint a positive (same bool-subclasses-int trap the runs field guards against).
+    meta = {"verdict": "reproducible", "reward": True, "runs": 3, "task_id": "task-a"}
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata=meta)])
+
+    with pytest.raises(ValueError, match="reproduced"):
+        _build(log)
+
+
 def test_a_boolean_runs_in_metadata_maps_to_unknown() -> None:
     # bool subclasses int: a foreign log's `"runs": true` must not fabricate a K-reproduction
     # count of 1 in the manifest -- unknown stays None.

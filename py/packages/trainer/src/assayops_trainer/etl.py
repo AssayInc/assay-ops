@@ -174,15 +174,19 @@ def _require_reproduced_grade(score: Score, task_id: str) -> None:
     KMS-signed WORM ``trajectory_id`` join replaces it (§8 reward-boundary).
     """
     metadata = score.metadata or {}
+    reward = metadata.get("reward")
+    # bool is excluded explicitly: True == 1 in Python, and a foreign log's `"reward": true` is
+    # not the scorer's integer grade.
+    reward_is_1 = isinstance(reward, int) and not isinstance(reward, bool) and reward == 1
     if (
         metadata.get("verdict") != "reproducible"
         or metadata.get("task_id") != task_id
-        or metadata.get("reward") != 1
+        or not reward_is_1
     ):
         raise ValueError(
             f"sample {task_id!r} scored CORRECT but its score metadata is not a reproduced "
             f"account-B grade of this task (verdict={metadata.get('verdict')!r}, "
-            f"metadata task_id={metadata.get('task_id')!r}, reward={metadata.get('reward')!r}) "
+            f"metadata task_id={metadata.get('task_id')!r}, reward={reward!r}) "
             "-- refusing an ungrounded positive"
         )
 

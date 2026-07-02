@@ -31,19 +31,21 @@ def run_sft(config: TrainerConfig, dataset_path: Path) -> Path:
     try:
         from datasets import load_dataset
         from peft import LoraConfig
-        from transformers import AutoTokenizer
+        from transformers import AutoModelForCausalLM, AutoTokenizer
         from trl import SFTConfig, SFTTrainer
     except ImportError as error:
         raise ImportError(_MISSING_STACK) from error
 
     dataset = load_dataset("json", data_files=str(dataset_path), split="train")
-    # I8: the tokenizer must be pinned too. Handed a model string, trl loads the processor from
-    # `main` (no revision) -- and its chat template both gates trl's assistant-mask template swap
-    # (byte-exact match against the stock Qwen2.5 template) and defines tokenization, so a
-    # template change upstream would silently alter a "pinned" run.
+    # I8: EVERY Hub read happens at the pinned revision, so both artifacts are loaded HERE --
+    # handing trl a model string leaves its internal AutoConfig probe reading `main` unpinned,
+    # and it loads the processor from `main` too. The tokenizer's chat template both gates trl's
+    # assistant-mask template swap (byte-exact match against the stock Qwen2.5 template) and
+    # defines tokenization, so a template change upstream would silently alter a "pinned" run.
     tokenizer = AutoTokenizer.from_pretrained(config.model_id, revision=config.model_revision)
+    model = AutoModelForCausalLM.from_pretrained(config.model_id, **config.to_model_kwargs())
     trainer = SFTTrainer(
-        model=config.model_id,
+        model=model,
         args=SFTConfig(**config.to_sft_config_kwargs()),
         train_dataset=dataset,
         processing_class=tokenizer,

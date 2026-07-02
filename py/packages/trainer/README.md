@@ -51,5 +51,7 @@ mask; trl ≥ 1.7 per `train-requirements.txt`). Qwen2.5's stock chat template c
 `{% generation %}` markers — trl 1.7 handles that by swapping in its own vendored Qwen2.5 TRAINING
 template when the tokenizer's template byte-equals the stock one, and fails LOUD otherwise
 (`ValueError` at init on an unrecognized template; `RuntimeError` on an example whose assistant mask
-is empty). `run_sft` loads the tokenizer at the pinned `model_revision` so that byte-match is stable;
-the run-time check is that the pinned revision's template equals trl's vendored constant.
+is empty). `run_sft` loads BOTH the model and the tokenizer itself at the pinned `model_revision`
+(handing trl a model string would leave its internal `AutoConfig` probe — and the processor — on
+`main`, unpinned), so that byte-match is stable; the run-time check is that the pinned revision's
+template equals trl's vendored constant.
