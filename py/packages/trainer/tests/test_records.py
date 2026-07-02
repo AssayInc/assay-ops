@@ -16,6 +16,7 @@ from assayops_trainer.records import Provenance, SFTExample
 def _provenance(**overrides: object) -> Provenance:
     base: dict[str, object] = {
         "task_id": "drift-s3-encryption",
+        "eval_task_id": "eval-task-001",
         "epoch": 1,
         "model": "hf/Qwen2.5-Coder-7B",
         "run_id": "run-abc",

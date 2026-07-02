@@ -38,7 +38,7 @@ pointer to that file when the stack is absent.
 python -c "import asyncio; from pathlib import Path; from assayops_trainer import build_and_write; \
   asyncio.run(build_and_write([Path('logs/base.eval')], Path('out/'), harness_git_sha='<sha>'))"
 
-# 3. SFT+LoRA train (GPU env with the pinned stack + a pinned model revision — I8):
+# 3. SFT+LoRA train (GPU env; freeze the stack to exact hashes + pin the model revision — I8):
 uv pip install -r py/packages/trainer/train-requirements.txt
 python -c "from pathlib import Path; from assayops_trainer import TrainerConfig, run_sft; \
   run_sft(TrainerConfig(model_revision='<commit-hash>'), Path('out/sft.jsonl'))"

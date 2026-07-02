@@ -32,6 +32,7 @@ def _example(task_id: str, epoch: int = 1) -> SFTExample:
         tools=[{"type": "function", "function": {"name": "bash"}}],
         provenance=Provenance(
             task_id=task_id,
+            eval_task_id="eval-task-001",
             epoch=epoch,
             model="hf/base",
             run_id="run-1",
@@ -98,7 +99,17 @@ def test_build_and_write_reads_graded_logs_end_to_end(tmp_path: Path) -> None:
         input="fix the drift",
         target="",
         messages=[ChatMessageUser(content="fix task-pass")],
-        scores={DEFAULT_SCORER_NAME: Score(value=CORRECT, metadata={"runs": 3})},
+        scores={
+            DEFAULT_SCORER_NAME: Score(
+                value=CORRECT,
+                metadata={
+                    "verdict": "reproducible",
+                    "reward": 1,
+                    "runs": 3,
+                    "task_id": "task-pass",
+                },
+            )
+        },
     )
     log = EvalLog(
         eval=EvalSpec(
@@ -109,6 +120,7 @@ def test_build_and_write_reads_graded_logs_end_to_end(tmp_path: Path) -> None:
             model="hf/base",
             config=EvalConfig(),
         ),
+        status="success",
         samples=[sample],
     )
     log_path = tmp_path / "base.eval"

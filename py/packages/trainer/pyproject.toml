@@ -1,7 +1,7 @@
 [project]
 name = "assayops-trainer"
 version = "0.0.0"
-description = "AssayOps SFT trainer leg (built pre-T0 for the #176 directional slice). A trajectory→SFT ETL that turns leg-3's graded Inspect EvalLogs into a rejection-sampled SFT set (messages+tools, provenance, reproducible manifest), plus a TRL SFTTrainer+LoRA harness for Qwen2.5-Coder-7B (I6). Trains on the account-B graded reward only (§8 reward-boundary), reward==1 = the deploy-verifier Score (pre-T0, no ledger). The heavy ML stack is pinned in train-requirements.txt and kept OUT of the hermetic verify gate; SFT numbers are R1-scoped (never published, never the E13 proof)."
+description = "AssayOps SFT trainer leg (built pre-T0 for the #176 directional slice). A trajectory→SFT ETL that turns leg-3's graded Inspect EvalLogs into a rejection-sampled SFT set (messages+tools, provenance, reproducible manifest), plus a TRL SFTTrainer+LoRA harness for Qwen2.5-Coder-7B (I6). Trains on the account-B graded reward only (§8 reward-boundary), reward==1 = the deploy-verifier Score (pre-T0, no ledger). The heavy ML stack's minimum versions live in train-requirements.txt (frozen to exact hashes at run time) and are kept OUT of the hermetic verify gate; SFT numbers are R1-scoped (never published, never the E13 proof)."
 requires-python = ">=3.12"
 # inspect-ai reads the graded EvalLogs and converts transcripts to OpenAI messages (messages_to_openai);
 # pydantic for the harness-internal frozen records/config. NO verifier/boto3/torch at runtime — the ETL
@@ -59,7 +59,7 @@ follow_imports = "silent"
 disallow_any_explicit = false
 
 [[tool.mypy.overrides]]
-# The heavy training stack is lazy-imported in sft.py and pinned in train-requirements.txt —
+# The heavy training stack is lazy-imported in sft.py; its minimums live in train-requirements.txt —
 # intentionally NOT a workspace dep (kept out of the hermetic gate). No stubs ship; the boundary is
 # guarded by a runtime ImportError that points at the requirements file.
 module = [

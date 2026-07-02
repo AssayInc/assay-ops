@@ -29,8 +29,9 @@ class TrainerConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     model_id: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
-    # I8: pin the model by commit hash -- no default, so an unpinned run cannot be constructed.
-    model_revision: str
+    # I8: pin the model by COMMIT HASH -- required (no default) AND constrained to a hex sha, so a
+    # moving ref ("main"), a mutable tag, or "" is refused; only a real commit pin constructs.
+    model_revision: Annotated[str, Field(pattern=r"^[0-9a-f]{7,40}$")]
 
     lora_r: _PositiveInt = 32
     lora_alpha: _PositiveInt = 16

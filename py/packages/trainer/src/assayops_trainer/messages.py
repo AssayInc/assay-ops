@@ -28,7 +28,9 @@ def sample_tools(sample: EvalSample) -> list[JsonObject]:
     """The union of tool schemas the model saw across the sample's model events (deduped, sorted).
 
     Empty when the log carries no model events (events disabled, or a sample that never called the
-    model) -- the record then trains on messages alone.
+    model) -- the record then trains on messages alone. When a tool name recurs across events the
+    FIRST advertised schema wins (a react episode advertises a stable set, so this is a no-op in
+    practice).
     """
     by_name: dict[str, ToolInfo] = {}
     for event in sample.events or []:
@@ -44,6 +46,8 @@ def _tool_info_to_openai(tool: ToolInfo) -> JsonObject:
         "function": {
             "name": tool.name,
             "description": tool.description,
-            "parameters": tool.parameters.model_dump(mode="json"),
+            # exclude_none matches inspect's own OpenAI tool mapping -- drop null JSON-schema fields
+            # rather than emit `"description": null` etc. into the parameters spec.
+            "parameters": tool.parameters.model_dump(mode="json", exclude_none=True),
         },
     }

@@ -106,8 +106,18 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   hermetic gate** (a clear `ImportError` points there when absent). SFT-only (no RL/GRPO before the
   proof). The scorer-log-key contract with `assayops_evals` is locked by a cross-check test. TDD
   (RED→GREEN); the config kwargs are proven against the real TRL/PEFT API behind `importorskip`
-  (skips in-gate). `bun run verify` green **35/35** (25 trainer tests, 1 GPU-only skip); both
-  lockfiles frozen-checked.
+  (skips in-gate). **Diverse-lens adversarial review** (Codex gpt-5.5 xhigh + a reward-boundary/
+  eval-rigor lens + a correctness/Python-craft lens) — all three converged, findings validated
+  against the pre-T0 context and the real fixes applied: the **held-out tripwire now fires on ANY
+  appearance** (before grade/error triage, not only on the CORRECT path); a CORRECT is admitted only
+  against **reproduced-grade metadata** (verdict + graded task_id) from a **`status=="success"`** log
+  (foreign/partial/edited logs fail closed — the pre-T0 stand-in for #78's signature check); a
+  **limit-hit** sample is counted-incomplete, not a whole-build crash; **`model_revision` must be a
+  hex commit hash** (rejects `main`/tags/`""` — real I8); dedup key + provenance carry the **eval
+  task identity** (no cross-task collision); async `read_eval_log_async`; `exclude_none` tool dumps;
+  deduped `source_run_ids`; `verifier_runs` `None`-not-`0`; and the inaccurate "pinned" wording
+  corrected to "minimums, frozen at run time". `bun run verify` green **35/35** (33 trainer tests, 1
+  GPU-only skip); both lockfiles frozen-checked.
 - **#176 leg 3: the Inspect-AI eval harness — new `py/packages/evals` (`assayops_evals`), the E13/T11
   seam built pre-T0 for the directional slice.** The **deploy-verifier as a custom Inspect `Scorer`**
   (I6/T11) around the shipped **`verify()`** — the only reward-emitting entry — with every grading

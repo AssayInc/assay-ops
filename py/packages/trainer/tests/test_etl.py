@@ -15,7 +15,7 @@ import pytest
 from conftest import as_dict
 from inspect_ai._util.error import EvalError
 from inspect_ai.event import ModelEvent
-from inspect_ai.log import EvalConfig, EvalDataset, EvalLog, EvalSample, EvalSpec
+from inspect_ai.log import EvalConfig, EvalDataset, EvalLog, EvalSample, EvalSampleLimit, EvalSpec
 from inspect_ai.model import (
     ChatMessageUser,
     GenerateConfig,
@@ -41,7 +41,17 @@ def _model_event() -> ModelEvent:
     )
 
 
-def _sample(task_id: str, value: str | float, *, epoch: int = 1, runs: int = 3) -> EvalSample:
+def _sample(
+    task_id: str,
+    value: str | float,
+    *,
+    epoch: int = 1,
+    runs: int = 3,
+    metadata: dict[str, object] | None = None,
+) -> EvalSample:
+    # Default metadata mirrors leg-3's Reproducible grade (verdict + task_id + runs); a CORRECT is
+    # admitted only against this shape. Tests override `metadata` to exercise the fail-closed path.
+    meta = metadata or {"verdict": "reproducible", "reward": 1, "runs": runs, "task_id": task_id}
     return EvalSample(
         id=task_id,
         epoch=epoch,
@@ -49,7 +59,7 @@ def _sample(task_id: str, value: str | float, *, epoch: int = 1, runs: int = 3) 
         target="",
         messages=[ChatMessageUser(content=f"fix {task_id}")],
         events=[_model_event()],
-        scores={DEFAULT_SCORER_NAME: Score(value=value, metadata={"runs": runs})},
+        scores={DEFAULT_SCORER_NAME: Score(value=value, metadata=meta)},
     )
 
 
@@ -63,7 +73,9 @@ def _errored(task_id: str) -> EvalSample:
     )
 
 
-def _log(model: str, samples: list[EvalSample], *, run_id: str = "run-1") -> EvalLog:
+def _log(
+    model: str, samples: list[EvalSample], *, run_id: str = "run-1", status: str = "success"
+) -> EvalLog:
     return EvalLog(
         eval=EvalSpec(
             run_id=run_id,
@@ -73,6 +85,7 @@ def _log(model: str, samples: list[EvalSample], *, run_id: str = "run-1") -> Eva
             model=model,
             config=EvalConfig(),
         ),
+        status=status,  # type: ignore[arg-type]
         samples=samples,
     )
 
@@ -160,6 +173,72 @@ def test_a_log_missing_the_verifier_score_fails_closed() -> None:
 def test_an_unexpected_score_value_fails_closed() -> None:
     with pytest.raises(ValueError, match="unexpected score value"):
         _build(_log("hf/base", [_sample("task-x", "P")]))
+
+
+def test_held_out_fails_closed_even_when_the_rollout_did_not_pass() -> None:
+    # The tripwire fires on ANY appearance of a held-out id in a training log -- a task that merely
+    # FAILED (INCORRECT) is still the corpus-split bug the guard catches, not a silent exclusion.
+    log = _log("hf/base", [_sample("task-heldout", INCORRECT)])
+
+    with pytest.raises(ValueError, match="held-out"):
+        _build(log, held_out_ids=frozenset({"task-heldout"}))
+
+
+def test_a_non_success_log_fails_closed() -> None:
+    # An incomplete/failed run must not become training data -- fail closed on its status, not
+    # silently build from whatever partial samples it happens to carry.
+    log = _log("hf/base", [_sample("task-a", CORRECT)], status="error")
+
+    with pytest.raises(ValueError, match="not 'success'"):
+        _build(log)
+
+
+def test_a_correct_without_a_reproduced_grade_fails_closed() -> None:
+    # A CORRECT is admitted only against reproduced-grade metadata (verdict + graded task_id). A
+    # foreign/edited log with a CORRECT value but no reproduced-grade metadata is refused.
+    log = _log("hf/base", [_sample("task-a", CORRECT, metadata={"runs": 3})])
+
+    with pytest.raises(ValueError, match="ungrounded positive"):
+        _build(log)
+
+
+def test_a_correct_with_a_mismatched_metadata_task_id_fails_closed() -> None:
+    bad = _sample(
+        "task-a", CORRECT, metadata={"verdict": "reproducible", "task_id": "some-other-task"}
+    )
+    with pytest.raises(ValueError, match="ungrounded positive"):
+        _build(_log("hf/base", [bad]))
+
+
+def test_a_limit_hit_sample_is_excluded_not_crashing() -> None:
+    # A non-errored sample that hit a limit is unscored -> an incomplete rollout, excluded like an
+    # error, NOT a whole-build crash (and NOT a foreign-log fail-closed).
+    limited = EvalSample(
+        id="task-lim",
+        epoch=1,
+        input="x",
+        target="",
+        limit=EvalSampleLimit(type="message", limit=50),
+    )
+    ds = _build(_log("hf/base", [limited, _sample("task-a", CORRECT)]))
+
+    assert len(ds.examples) == 1
+    assert ds.excluded_errored == 1
+
+
+def test_verifier_runs_is_none_when_the_log_omits_it() -> None:
+    log = _log(
+        "hf/base",
+        [_sample("task-a", CORRECT, metadata={"verdict": "reproducible", "task_id": "task-a"})],
+    )
+
+    assert _build(log).examples[0].provenance.verifier_runs is None
+
+
+def test_source_run_ids_are_deduped() -> None:
+    log = _log("hf/base", [_sample("task-a", CORRECT)])
+
+    assert _build(log, log).source_run_ids == ("run-1",)
 
 
 def test_default_scorer_name_matches_the_evals_log_key_contract() -> None:

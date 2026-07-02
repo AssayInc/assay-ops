@@ -34,12 +34,16 @@ class Provenance(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     task_id: str
+    # The inspect eval-task identifier the rollout ran under (EvalSpec.task_id) -- distinguishes two
+    # tasks that share a sample id in one eval() run, and records which run produced the trajectory.
+    eval_task_id: str
     epoch: int
     model: str
     run_id: str | None
     harness_git_sha: str | None
     reward: Literal[1] = 1
-    verifier_runs: int
+    # The K-reproduction count behind the grade; None when the source log did not record it.
+    verifier_runs: int | None
 
 
 class SFTExample(BaseModel):

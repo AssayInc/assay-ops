@@ -37,6 +37,16 @@ def test_the_model_revision_pin_is_required() -> None:
         TrainerConfig.model_validate({})
 
 
+def test_the_model_revision_must_be_a_commit_hash() -> None:
+    # I8 means a COMMIT hash, not any string: a moving branch/tag or empty defeats the pin while the
+    # manifest still claims it, so the config refuses them.
+    for bad in ("", "main", "v1.0", "HEAD"):
+        with pytest.raises(ValidationError):
+            TrainerConfig.model_validate({"model_revision": bad})
+    # a real hex sha (short or full) is accepted
+    assert TrainerConfig.model_validate({"model_revision": "a1b2c3d"}).model_revision == "a1b2c3d"
+
+
 def test_config_is_frozen_and_forbids_extra() -> None:
     config = _config()
     with pytest.raises(ValidationError):

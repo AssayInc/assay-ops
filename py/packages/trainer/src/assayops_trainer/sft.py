@@ -1,8 +1,9 @@
 """The TRL ``SFTTrainer`` + LoRA harness (I6) -- the runner for the rejection-sampled slice set.
 
 The heavy training stack (trl / peft / transformers / datasets / accelerate / torch) is
-lazy-imported and pinned in ``train-requirements.txt``, kept OUT of the workspace so the
-hermetic ``bun run verify`` gate never resolves torch. A real run needs a CUDA GPU + a pinned model
+lazy-imported; its minimum versions live in ``train-requirements.txt`` (frozen to exact hashes at
+run time), kept OUT of the workspace so the hermetic ``bun run verify`` gate never resolves torch. A
+real run needs a CUDA GPU + a pinned model
 revision (I8); this harness only wires the config to the API -- ``config.py`` owns the (unit-tested)
 hyperparameter policy. SFT-only (DECISIONS: no RL/GRPO loop before the proof).
 """
@@ -15,7 +16,7 @@ from assayops_trainer.config import TrainerConfig
 
 _MISSING_STACK = (
     "the SFT training stack (trl, peft, transformers, datasets, accelerate, torch) is not "
-    "installed -- it is intentionally kept out of the hermetic verify gate. Install the pinned "
+    "installed -- it is intentionally kept out of the hermetic verify gate. Install the training "
     "stack into a training env (needs a CUDA GPU for a real run): "
     "`uv pip install -r py/packages/trainer/train-requirements.txt`."
 )

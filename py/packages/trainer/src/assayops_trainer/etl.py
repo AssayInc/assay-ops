@@ -3,12 +3,16 @@
 ``build_sft_dataset`` turns leg-3's graded ``EvalLog``s into a rejection-sampled SFT set: an example
 enters ONLY when the deploy-verifier ``Score`` is CORRECT (reward 1 = the account-B ``verify()``
 grade -- §8 reward-boundary; NEVER the env ``step()``). Pre-T0 there is no ledger, so the graded
-reward is read straight from the log's scorer key (the pre-T0 stand-in for the ``trajectory_id`` ⨝
-KMS-signed WORM join #78 adds later). Everything else is excluded and COUNTED (never silently
-dropped): INCORRECT (reward 0), quarantined (the unscored NaN sentinel -- an unsettled grade, not a
-negative), and infra-errored rollouts. A held-out task id in the training logs FAILS CLOSED
-(contamination -- eval-rigor/I11), duplicate rollouts are dropped, and output is deterministically
-sorted so the same logs yield the same manifest.
+reward is read from the log's scorer key (the pre-T0 stand-in for the ``trajectory_id`` ⨝ KMS-signed
+WORM join #78 adds later) -- but a CORRECT is not merely trusted by key: the metadata must show
+a settled, reproduced grade (``verdict == "reproducible"``) of THAT sample's task, and only a
+``status == "success"`` log is admitted, so a foreign / partial log fails closed rather than
+minting ungrounded positives. Everything else is excluded and COUNTED (never silently dropped):
+INCORRECT (reward 0), quarantined (the unscored NaN sentinel -- an unsettled grade, not a negative),
+and incomplete rollouts (an infra error or a hit limit). A held-out task id in the training logs
+FAILS CLOSED **on any appearance** -- regardless of grade -- because a held-out task in a training
+log is a corpus-split bug (contamination -- eval-rigor/I11). Duplicate rollouts are dropped, and
+output is deterministically sorted so the same logs yield the same manifest.
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from inspect_ai.log import EvalLog, EvalSample, read_eval_log
+from inspect_ai.log import EvalLog, EvalSample, read_eval_log_async
 from inspect_ai.scorer import CORRECT, INCORRECT, Score
 
 from assayops_trainer.messages import sample_to_openai_messages, sample_tools
@@ -50,6 +54,7 @@ class SftDataset:
     examples: tuple[SFTExample, ...]
     excluded_incorrect: int
     excluded_quarantined: int
+    # Incomplete rollouts: an infra error OR a hit limit -- not a settled grade.
     excluded_errored: int
     dropped_duplicates: int
     source_run_ids: tuple[str, ...]
@@ -64,14 +69,32 @@ async def build_sft_dataset(
 ) -> SftDataset:
     """Build the rejection-sampled SFT set from graded eval logs (see the module docstring)."""
     examples: list[SFTExample] = []
-    seen: set[tuple[str, str, int, str]] = set()
+    seen: set[tuple[str, str, str, int, str]] = set()
     incorrect = quarantined = errored = duplicates = 0
     run_ids: list[str] = []
+    seen_run_ids: set[str] = set()
     for log in logs:
+        if log.status != "success":
+            raise ValueError(
+                f"eval log for {log.eval.model!r} has status {log.status!r}, not 'success' -- "
+                "refusing to build training data from an incomplete/failed run (fail closed)"
+            )
         run_id = log.eval.run_id
-        run_ids.append(run_id)
+        if run_id not in seen_run_ids:
+            seen_run_ids.add(run_id)
+            run_ids.append(run_id)
         for sample in log.samples or []:
-            if sample.error is not None:
+            task_id = str(sample.id)
+            # Contamination tripwire FIRST: a held-out task id in a training-rollout log is a
+            # corpus-split bug -- fail closed on ANY appearance, before grade/error triage, never
+            # only when it happened to pass (eval-rigor / DECISIONS.md I11).
+            if task_id in held_out_ids:
+                raise ValueError(
+                    f"held-out task {task_id!r} appears in a training-rollout log -- refusing to "
+                    "train on / silently accept eval data (contamination; eval-rigor / I11)"
+                )
+            if sample.error is not None or sample.limit is not None:
+                # An infra error or a hit limit -> an incomplete rollout, not a settled grade.
                 errored += 1
                 continue
             score = _verifier_score(sample, scorer_name)
@@ -87,13 +110,8 @@ async def build_sft_dataset(
                     f"unexpected score value {value!r} for sample {sample.id!r} -- the "
                     "deploy-verifier scorer emits only CORRECT / INCORRECT / the unscored NaN"
                 )
-            task_id = str(sample.id)
-            if task_id in held_out_ids:
-                raise ValueError(
-                    f"held-out task {task_id!r} appears in a training-rollout log -- refusing to "
-                    "train on eval data (contamination; eval-rigor / DECISIONS.md I11)"
-                )
-            key = (log.eval.model, task_id, sample.epoch, run_id)
+            _require_reproduced_grade(score, task_id)
+            key = (log.eval.model, log.eval.task_id, task_id, sample.epoch, run_id)
             if key in seen:
                 duplicates += 1
                 continue
@@ -104,6 +122,7 @@ async def build_sft_dataset(
                     tools=sample_tools(sample),
                     provenance=Provenance(
                         task_id=task_id,
+                        eval_task_id=log.eval.task_id,
                         epoch=sample.epoch,
                         model=log.eval.model,
                         run_id=run_id,
@@ -124,9 +143,9 @@ async def build_sft_dataset(
     )
 
 
-def _sort_key(example: SFTExample) -> tuple[str, str, int, str]:
+def _sort_key(example: SFTExample) -> tuple[str, str, str, int, str]:
     prov = example.provenance
-    return (prov.model, prov.task_id, prov.epoch, prov.run_id or "")
+    return (prov.model, prov.eval_task_id, prov.task_id, prov.epoch, prov.run_id or "")
 
 
 def _verifier_score(sample: EvalSample, scorer_name: str) -> Score:
@@ -134,16 +153,34 @@ def _verifier_score(sample: EvalSample, scorer_name: str) -> Score:
     if score is None:
         raise ValueError(
             f"sample {sample.id!r} carries no {scorer_name!r} score -- the log was not produced by "
-            "the drift-slice task (and the sample did not error)"
+            "the drift-slice task (and the sample neither errored nor hit a limit)"
         )
     return score
 
 
-def _verifier_runs(score: Score) -> int:
-    # The K-reproduction count behind the grade (leg-3 replay), for provenance. Our scorer always
-    # records it; 0 is a benign "unknown" sentinel if a foreign-but-CORRECT log omitted it.
+def _require_reproduced_grade(score: Score, task_id: str) -> None:
+    """A CORRECT must be a settled, reproduced account-B grade of THIS task, not a trusted key.
+
+    Leg-3's scorer emits CORRECT only for a ``Reproducible`` verdict and records
+    ``metadata={"verdict": "reproducible", ..., "task_id": <graded task>}``. Requiring that here
+    means a foreign / partial / edited log whose sample merely carries the scorer key with a CORRECT
+    value -- but no reproduced-grade metadata, or a mismatched task id -- fails closed instead of
+    minting an ungrounded positive (§8 reward-boundary; the pre-T0 stand-in for #78's signature).
+    """
+    metadata = score.metadata or {}
+    if metadata.get("verdict") != "reproducible" or metadata.get("task_id") != task_id:
+        raise ValueError(
+            f"sample {task_id!r} scored CORRECT but its score metadata is not a reproduced "
+            f"account-B grade of this task (verdict={metadata.get('verdict')!r}, "
+            f"metadata task_id={metadata.get('task_id')!r}) -- refusing an ungrounded positive"
+        )
+
+
+def _verifier_runs(score: Score) -> int | None:
+    # The K-reproduction count behind the grade (leg-3 replay). None (not 0) when the source log
+    # did not record it -- "unknown", never conflated with "zero reproductions".
     runs = (score.metadata or {}).get("runs")
-    return runs if isinstance(runs, int) else 0
+    return runs if isinstance(runs, int) else None
 
 
 def write_sft_jsonl(dataset: SftDataset, path: Path) -> None:
@@ -185,7 +222,7 @@ async def build_and_write(
     scorer_name: str = DEFAULT_SCORER_NAME,
 ) -> SftDataset:
     """Read graded eval logs -> build the SFT set -> write ``sft.jsonl`` + ``manifest.json``."""
-    logs = [read_eval_log(str(path)) for path in log_paths]
+    logs = [await read_eval_log_async(str(path)) for path in log_paths]
     dataset = await build_sft_dataset(
         logs,
         held_out_ids=held_out_ids,
