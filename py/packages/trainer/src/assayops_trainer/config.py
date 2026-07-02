@@ -24,17 +24,16 @@ _QWEN_LORA_TARGETS = ("q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_p
 
 # trl 1.7 packing (bfd) force-enables padding-free flattening, and only flash-attention varlen
 # kernels respect packed sample boundaries -- under the sdpa default TRL merely WARNS and packed
-# samples cross-attend (silent corruption). Packing is therefore refused without one of these
-# (mirrors trl's FLASH_ATTENTION_VARIANTS: the canonical names + the kernels-community variants).
-_FLASH_ATTENTION_IMPLEMENTATIONS = ("flash_attention_2", "flash_attention_3")
-_FLASH_ATTENTION_KERNEL_PREFIX = "kernels-community/"
-
-
-def _is_flash_attention(implementation: str | None) -> bool:
-    return implementation is not None and (
-        implementation in _FLASH_ATTENTION_IMPLEMENTATIONS
-        or implementation.startswith(_FLASH_ATTENTION_KERNEL_PREFIX)
-    )
+# samples cross-attend (silent corruption). Packing is therefore refused without one of these --
+# trl 1.7.0's FLASH_ATTENTION_VARIANTS mirrored EXACTLY (a prefix match would let a non-flash hub
+# kernel slip packing back onto the warn-and-train path).
+_FLASH_ATTENTION_IMPLEMENTATIONS = (
+    "flash_attention_2",
+    "flash_attention_3",
+    "kernels-community/flash-attn2",
+    "kernels-community/flash-attn3",
+    "kernels-community/vllm-flash-attn3",
+)
 
 
 class TrainerConfig(BaseModel):
@@ -75,12 +74,12 @@ class TrainerConfig(BaseModel):
 
     @model_validator(mode="after")
     def _packing_requires_flash_attention(self) -> TrainerConfig:
-        if self.packing and not _is_flash_attention(self.attn_implementation):
+        if self.packing and self.attn_implementation not in _FLASH_ATTENTION_IMPLEMENTATIONS:
             raise ValueError(
-                "packing=True requires attn_implementation to be a flash-attention "
-                f"implementation ({', '.join(_FLASH_ATTENTION_IMPLEMENTATIONS)}, or a "
-                f"{_FLASH_ATTENTION_KERNEL_PREFIX}* kernel) -- trl's padding-free flattening "
-                "cross-attends packed samples under sdpa (TRL only warns and trains on)"
+                "packing=True requires attn_implementation to be one of "
+                f"{', '.join(_FLASH_ATTENTION_IMPLEMENTATIONS)} -- trl's padding-free "
+                "flattening cross-attends packed samples under any other implementation "
+                "(TRL only warns and trains on)"
             )
         return self
 

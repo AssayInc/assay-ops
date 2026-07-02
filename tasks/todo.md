@@ -22,15 +22,17 @@ the trust seam itself — every fix is inside the already-licensed pre-T0 postur
 - [x] **config.py — packing requires flash-attention; load dtype.** `packing=True` (bfd) force-enables
       padding-free flattening, sample-isolated ONLY under flash-attn kernels; TRL warns and trains on
       under the sdpa default (cross-sample attention). Default `packing=False` for the slice (tiny set —
-      packing buys nothing) + new `attn_implementation: str | None` mapped into `model_init_kwargs`,
-      with a model_validator refusing `packing=True` without a flash-attention implementation. Add
-      `"dtype": "bfloat16"` to `model_init_kwargs` (trl 1.7.0 loads float32 by default → ~28 GB weights,
-      inconsistent with `bf16=True`). Correct the docstring pin claim (revision pins weights only).
-- [x] **sft.py — pin the tokenizer.** trl 1.7.0's `SFTTrainer` loads the tokenizer/processor from `main`
-      (no revision) when given a model string; the chat template gates the assistant-mask template swap
-      (byte-exact match) + tokenization. Load `AutoTokenizer.from_pretrained(model_id,
-      revision=model_revision)` and pass `processing_class=` so the I8 pin covers the template too.
-      Real-API check: assert `processing_class` is in `SFTTrainer.__init__`'s signature (importorskip).
+      packing buys nothing) + new `attn_implementation: str | None`, with a model_validator refusing
+      `packing=True` unless it is one of trl 1.7.0's exact FLASH_ATTENTION_VARIANTS. Final mechanism
+      (post-Codex): `to_model_kwargs()` carries revision + dtype (derived from `bf16`) +
+      attn_implementation for the model load; `to_sft_config_kwargs()` carries NO `model_init_kwargs`.
+- [x] **sft.py — pin every Hub read.** trl 1.7.0 loads the tokenizer/processor from `main` (no
+      revision) when given a model string, and its internal `AutoConfig` probe reads `main` too. Final
+      mechanism (post-Codex): `run_sft` loads BOTH `AutoTokenizer.from_pretrained(model_id,
+      revision=...)` (passed as `processing_class=` — the chat template gates the assistant-mask
+      template swap) AND the model object via `AutoModelForCausalLM.from_pretrained(model_id,
+      **to_model_kwargs())`. Real-API check: `processing_class` in `SFTTrainer.__init__`'s signature
+      (importorskip); wiring locked by a fake-module test at the lazy-import seam.
 - [x] **etl.py — admission + accounting hardening.** (a) `_require_reproduced_grade` also requires
       `metadata["reward"] == 1` (a CORRECT with contradictory metadata is refused — one more shape check
       on the pre-T0 stand-in); (b) `held_out_ids` becomes REQUIRED on `build_sft_dataset`/`build_and_write`

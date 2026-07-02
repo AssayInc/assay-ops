@@ -109,8 +109,11 @@ def test_packing_requires_a_flash_attention_implementation() -> None:
     config = _config(packing=True, attn_implementation="flash_attention_2")
     assert as_dict(config.to_sft_config_kwargs())["packing"] is True
     assert as_dict(config.to_model_kwargs())["attn_implementation"] == "flash_attention_2"
-    # TRL's supported set also includes the kernels-community flash-attn variants.
+    # TRL's supported set also includes the kernels-community flash-attn variants -- EXACT names,
+    # not a prefix: a non-flash hub kernel must not slip packing back onto the warn-and-train path.
     _config(packing=True, attn_implementation="kernels-community/flash-attn2")
+    with pytest.raises(ValidationError):
+        _config(packing=True, attn_implementation="kernels-community/deformable-detr")
 
 
 def test_attn_implementation_maps_to_model_kwargs_only_when_set() -> None:
