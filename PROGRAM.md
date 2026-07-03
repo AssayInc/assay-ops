@@ -33,12 +33,13 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   holds until the seat + the (now-informed) go/no-go + the Henry reply.
 - **The #186 teacher-distillation round (P1-5) RAN end-to-end (2026-07-02) — a sharp negative on
   the training leg, a strong positive on the collection leg.** Teacher (claude-sonnet-5) through
-  the SAME `drift_slice` harness (`force_tool_calls=true`): hard-tier yield ~83% at the student's
-  message budget → 98.3% at a matched budget (the tier where the student was 1/40), **79
-  verifier-filtered examples** (`runs/sft-r2`, tripwire silent, 0 quarantined across ~272 graded
+  the SAME `drift_slice` harness (`force_tool_calls=true`): hard-tier CORRECT-rate 34/41 (~83%)
+  at the student-calibrated 50-message budget → 39/40 (97.5%) at a teacher-matched 100-message
+  budget (the tier where the student was 1/40; overall round 2: 59/60), **79 verifier-filtered
+  examples** (`runs/sft-r2`, tripwire silent, 0 quarantined across ~272 graded
   episodes), ~$10 API + ~$5 GPU total. SFT at the r1 pins (LoRA r=32, 1 epoch,
   max_length=16384): **held-out −22.2 pts (7/9 → 5/9), trained −2.8 (12/36 → 11/36)**; an
-  ml=100 diagnostic pair refutes the eval-budget rescue (held-out −33.3; the student learned the
+  ml=100 diagnostic pair argues against a budget-only rescue (held-out −33.3; the student learned the
   teacher's 50–73-message pacing without its competence — the trained diagnostic arm overflows
   the student's own 32k serving context and the fail-closed report refuses it). Read + follow-up
   options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md` + the #186 comment;
@@ -123,9 +124,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   found every failed sft held-out episode at the 50-message ceiling (sft median 50 msgs vs base
   13) → ran an ml=100 diagnostic grid (both arms, secondary): held-out −33.3 (sft median 73
   msgs, still limit-hitting) and the sft×trained arm un-runnable (episodes overflow the
-  student's own 32k serving context; fail-closed report refuses the partial run) ⇒ the
-  budget-rescue is refuted — **off-policy behavior cloning transferred the teacher's form, not
-  its function**. All HF jobs cancelled post-run; artifacts + PINS in the private store/dataset.
+  student's own 32k serving context; fail-closed report refuses the partial run) ⇒ the evidence
+  argues against a budget-only rescue — **off-policy behavior cloning transferred the teacher's
+  form, not its function** in this run. All HF jobs cancelled post-run; artifacts + PINS in the
+  private store/dataset.
   Read + cheap follow-up options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md`.
   (#186.)
 

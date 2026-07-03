@@ -20,8 +20,8 @@ end-to-end: the machine + reward are validated (~200 graded episodes, 0 quaranti
 K=3-reproducible throughout), and the SFT delta came back **flat at a homeopathic dose** —
 uninformative on the lift claim, decisive on the bottleneck (hard-task trajectory yield; see
 `learnings/2026-07-02-pre-t0-directional-slice.md`). The Henry scout note is **sent** (#24,
-awaiting reply). Re-evaluate when any of these flips: the RL/eval seat closes · the
-teacher-round signal lands (#186) · Henry replies.
+awaiting reply). Re-evaluate when any of these flips: the RL/eval seat closes · ~~the
+teacher-round signal lands (#186)~~ **LANDED 2026-07-02, not positive — see P1-5** · Henry replies.
 
 ## Reality check (read before picking up work)
 
@@ -64,10 +64,11 @@ solo team. Do this instead:
    validated; the bottleneck named: hard-task trajectory yield from a weak student (1/40).
    Read: `learnings/2026-07-02-pre-t0-directional-slice.md`.
 5. ~~**Teacher-distillation round (#186).**~~ **DONE 2026-07-02** — ran end-to-end same day,
-   ~$15 total. The signal: **collection validated, training leg negative.** Teacher yield ~83–98%
-   through the verifier filter on the tier where the student was 1/40 (79 gold examples,
-   tripwire silent); SFT on that set came back **negative** (held-out −22.2 pts; a matched-budget
-   diagnostic refutes the budget-rescue at −33.3) — form-not-function transfer at
+   ~$15 total. The signal: **collection validated, training leg negative.** Teacher hard-tier
+   CORRECT-rate 83% → 97.5% (budget-matched) through the verifier filter on the tier where the
+   student was 1/40 (79 gold examples, tripwire silent); SFT on that set came back **negative**
+   (held-out −22.2 pts; a matched-budget diagnostic argues against a budget-only rescue at
+   −33.3) — form-not-function transfer at
    7B/LoRA/1-epoch. Read: `learnings/2026-07-02-pre-t0-teacher-distillation.md`. The
    "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
    ⇒ the P2 gate stays closed).
@@ -81,7 +82,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + the teacher-round signal (#186) + the seat outcome)
+## Freeze list (until: a Henry reply + ~~the teacher-round signal (#186)~~ landed 2026-07-02, not positive + the seat outcome)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
