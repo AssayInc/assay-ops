@@ -63,12 +63,14 @@ solo team. Do this instead:
    at a homeopathic dose (uninformative on lift, by design underpowered); machine + reward
    validated; the bottleneck named: hard-task trajectory yield from a weak student (1/40).
    Read: `learnings/2026-07-02-pre-t0-directional-slice.md`.
-5. **Teacher-distillation round (#186)** — the successor experiment that tests the actual product
-   mechanism: a frontier teacher sampled through the SAME harness, **verifier-filtered** to
-   reward-1 trajectories (the gold-trajectory story), SFT the 7B on that set, re-run the 4-arm
-   delta. ~$50–150 API + ~$5 GPU, days not weeks (the whole machine exists). Same R1 posture as
-   #176: LocalStack-graded, directional only, **never published**; no new trust infra. Needs a
-   frontier API key.
+5. ~~**Teacher-distillation round (#186).**~~ **DONE 2026-07-02** — ran end-to-end same day,
+   ~$15 total. The signal: **collection validated, training leg negative.** Teacher yield ~83–98%
+   through the verifier filter on the tier where the student was 1/40 (79 gold examples,
+   tripwire silent); SFT on that set came back **negative** (held-out −22.2 pts; a matched-budget
+   diagnostic refutes the budget-rescue at −33.3) — form-not-function transfer at
+   7B/LoRA/1-epoch. Read: `learnings/2026-07-02-pre-t0-teacher-distillation.md`. The
+   "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
+   ⇒ the P2 gate stays closed).
 
 ### P2 — AFTER the seat closes (T0) AND the teacher-round signal (#186) is positive: the real proof
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
