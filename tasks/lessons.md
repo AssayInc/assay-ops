@@ -20,6 +20,15 @@ compressed rule.
 
 ---
 
+## 2026-07-03 — background-codex-needs-closed-stdin-and-a-liveness-check
+- **Mistake:** Launched a background `codex exec` re-review and only tailed its output file; the
+  process died at "Reading additional input from stdin..." (non-TTY stdin) and the run sat silent
+  for ~3h until the founder noticed.
+- **Rule:** A background `codex exec` gets stdin explicitly closed (`< /dev/null`) and a liveness
+  check right after launch (the `reasoning effort:` banner must appear within ~a minute, and the
+  process must exist in `ps`) — never infer "still running" from a quiet output file.
+- **Context:** #192 / PR #196 re-review. Complements [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
+
 ## 2026-06-26 — resolve-a-floor-touching-design-decision-with-two-grounded-reviews
 - **Mistake:** Surfaced a moat / frozen-floor-touching design decision (a genuine unreadable → reward 0
   vs. raise) to the founder as a bare `AskUserQuestion` multiple-choice.
