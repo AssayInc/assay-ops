@@ -12,23 +12,41 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   seat); **founder meeting next Friday 2026-07-10**, fit validation + meeting plan in **#188**;
   keep sourcing in parallel (never hard-gate on one unconfirmed person). The **Henry scout note is
   SENT** (#24 — awaiting the reply; log the learning on the issue when it lands). **P1 = the
-  teacher-distillation round (#186, IN FLIGHT, founder-run)** — a frontier teacher through the same
-  harness, **verifier-filtered** to reward-1 trajectories, SFT the 7B, re-run the 4-arm delta; same
-  R1 posture as #176 (LocalStack-graded, directional, never published). **P1 (parallel, founder
-  call 2026-07-02) = product/GTM presence (#23 + #189):** brand identity + assay.ai as a
-  product-grade site on the **verifier-isolation story** — guardrails locked: no numbers (R1), no
-  leaderboard (D1=C; E14 stays frozen), no task/corpus content (I11), site code private. **#176 is
-  CLOSED (2026-07-02) — the directional slice's outcome:** the MACHINE is validated end-to-end
-  (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls` → held-out-split ETL →
-  TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta) with a zero-flake reward (~200 graded
-  episodes, 0 quarantined/errored, all K=3-reproducible); the delta was **flat at a homeopathic
-  dose** — held-out +0.0 points (6/9 both arms), trained −2.8 (13/36 → 12/36) — uninformative on
-  lift, decisive on the bottleneck: **hard-task trajectory yield from a weak student** (top-up
-  sampling: 1/40), NOT trust infra — the P2 "corpus + proof" dial. Read:
+  teacher-distillation round (#186 — LANDED 2026-07-02, see the next bullet)** — a frontier teacher
+  through the same harness, **verifier-filtered** to reward-1 trajectories, SFT the 7B, re-run the
+  4-arm delta; same R1 posture as #176 (LocalStack-graded, directional, never published). **P1
+  (parallel, founder call 2026-07-02) = product/GTM presence (#23 + #189):** brand identity +
+  assay.ai as a product-grade site on the **verifier-isolation story** — guardrails locked: no
+  numbers (R1), no leaderboard (D1=C; E14 stays frozen), no task/corpus content (I11), site code
+  private. **#176 is CLOSED (2026-07-02) — the directional slice's outcome:** the MACHINE is
+  validated end-to-end (corpus → rollouts via a vLLM-on-HF-Jobs endpoint with `force_tool_calls` →
+  held-out-split ETL → TRL SFT+LoRA on HF Jobs → one-engine base+adapter delta) with a zero-flake
+  reward (~200 graded episodes, 0 quarantined/errored, all K=3-reproducible); the delta was **flat
+  at a homeopathic dose** — held-out +0.0 points (6/9 both arms), trained −2.8 (13/36 → 12/36) —
+  uninformative on lift, decisive on the bottleneck: **hard-task trajectory yield from a weak
+  student** (top-up sampling: 1/40), NOT trust infra — the P2 "corpus + proof" dial. Read:
   `docs/learnings/2026-07-02-pre-t0-directional-slice.md`; artifacts + pins in the private HF
   dataset (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
   (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now) holds until the
-  seat outcome + the #186 signal + the Henry reply.
+  seat outcome + a positive training-side signal (the #186 signal landed negative — leg stays
+  open) + the Henry reply.
+- **The #186 teacher-distillation round (P1-5) RAN end-to-end (2026-07-02) — a sharp negative on
+  the training leg, a strong positive on the collection leg.** Teacher (claude-sonnet-5) through
+  the SAME `drift_slice` harness (`force_tool_calls=true`): hard-tier CORRECT-rate 34/41 (~83%)
+  at the student-calibrated 50-message budget → 39/40 (97.5%) at a teacher-matched 100-message
+  budget (the tier where the student was 1/40; overall round 2: 59/60), **79 verifier-filtered
+  examples** (`runs/sft-r2`, tripwire silent, 0 quarantined across ~272 graded
+  episodes), ~$10 API + ~$5 GPU total. SFT at the r1 pins (LoRA r=32, 1 epoch,
+  max_length=16384): **held-out −22.2 pts (7/9 → 5/9), trained −2.8 (12/36 → 11/36)**; an
+  ml=100 diagnostic pair argues against a budget-only rescue (held-out −33.3; the student learned the
+  teacher's 50–73-message pacing without its competence — the trained diagnostic arm overflows
+  the student's own 32k serving context and the fail-closed report refuses it). Read + follow-up
+  options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md` + the #186 comment
+  (follow-ups tracked: #192, E12);
+  artifacts private (`AssayInc/pre-t0-drift-corpus` `runs/`, adapter
+  `AssayInc/pre-t0-qwen25-coder-7b-sft-r2`). **The priorities.md re-evaluation trigger
+  "teacher-round signal lands (#186)" has flipped — the re-set is the founder's call; P2 stays
+  gated (signal is not positive).**
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -89,6 +107,29 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#186: the pre-T0 teacher-distillation round — all legs ran end-to-end in one day (~$15
+  total; Anthropic spend $10.07 of the $119 ceiling).** Teacher = claude-sonnet-5 through the
+  SAME `drift_slice` harness (`force_tool_calls=true` on every arm, per-sample compose sandbox,
+  production `verify()` K=3). **Collection (the mechanism under test): validated** — 1-episode
+  smoke ($0.054/episode observed) → 12 training tasks × 5 epochs at message_limit=50 (54/61
+  CORRECT but 32 cut at the ceiling — the budget was 7B-calibrated; incomplete rollouts rightly
+  ETL-excluded) → round 2 at message_limit=100 (59/60, 50 clean; the one task the teacher
+  "failed" at ml=50 went 5/5 — budget-limited, not capability-limited). ETL → **`runs/sft-r2`:
+  79 examples** (reward-1 + complete only, 0 excluded_incorrect, tripwire silent, 0 dupes) →
+  TRL SFT+LoRA on HF Jobs at the r1 pins (max_length 16384) → adapter private
+  (`AssayInc/pre-t0-qwen25-coder-7b-sft-r2`) → 4-arm delta on one vLLM 0.24.0 engine (base +
+  LoRA). **Delta (R1-framed, never published): held-out −22.2 pts (base 7/9 → sft 5/9), trained
+  −2.8 (12/36 → 11/36); 0 quarantined/errored in the headline grid.** Disposition analysis
+  found every failed sft held-out episode at the 50-message ceiling (sft median 50 msgs vs base
+  13) → ran an ml=100 diagnostic grid (both arms, secondary): held-out −33.3 (sft median 73
+  msgs, still limit-hitting) and the sft×trained arm un-runnable (episodes overflow the
+  student's own 32k serving context; fail-closed report refuses the partial run) ⇒ the evidence
+  argues against a budget-only rescue — **off-policy behavior cloning transferred the teacher's
+  form, not its function** in this run. All HF jobs cancelled post-run; artifacts + PINS in the
+  private store/dataset.
+  Read + cheap follow-up options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md`.
+  (#186.)
 
 - **#176 leg 1: the corpus — the last unbuilt leg of the pre-T0 directional slice. 15 Terraform
   drift tasks authored + validated in the private store; per-type gates extended; the runs are all

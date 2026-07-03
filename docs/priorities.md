@@ -19,12 +19,14 @@
 (founder call).** State: #176 is DONE (the machine + reward validated end-to-end — ~200 graded
 episodes, 0 quarantined/errored, K=3-reproducible; the delta flat at a homeopathic dose —
 bottleneck = hard-task trajectory yield; `learnings/2026-07-02-pre-t0-directional-slice.md`);
-**#186 (the teacher round) is IN FLIGHT** (founder-run). The Henry scout note is **sent** (#24,
+**#186 (the teacher round) LANDED 2026-07-02** — collection validated, training leg **negative**
+(see P1-5). The Henry scout note is **sent** (#24,
 awaiting reply). The RL/eval seat search has its **first candidate: Subhojyoti Mukherjee** —
 founder meeting **next Friday 2026-07-10** (fit validation: #188). New this set: **the product/GTM
 surface is elevated to P1** (#23 + #189 — website, brand identity, positioning) — candidates, a
 co-founder, and buyers all look us up. Re-evaluate when any of these flips: the 2026-07-10 meeting
-outcome · the teacher-round signal lands (#186) · Henry replies.
+outcome · ~~the teacher-round signal lands (#186)~~ **LANDED 2026-07-02, not positive — see
+P1-5** · Henry replies.
 
 ## Reality check (read before picking up work)
 
@@ -73,12 +75,16 @@ solo team. Do this instead:
    at a homeopathic dose (uninformative on lift, by design underpowered); machine + reward
    validated; the bottleneck named: hard-task trajectory yield from a weak student (1/40).
    Read: `learnings/2026-07-02-pre-t0-directional-slice.md`.
-5. **Teacher-distillation round (#186)** — the successor experiment that tests the actual product
-   mechanism: a frontier teacher sampled through the SAME harness, **verifier-filtered** to
-   reward-1 trajectories (the gold-trajectory story), SFT the 7B on that set, re-run the 4-arm
-   delta. ~$50–150 API + ~$5 GPU, days not weeks (the whole machine exists). Same R1 posture as
-   #176: LocalStack-graded, directional only, **never published**; no new trust infra. Needs a
-   frontier API key.
+5. ~~**Teacher-distillation round (#186).**~~ **DONE 2026-07-02** — ran end-to-end same day,
+   ~$15 total. The signal: **collection validated, training leg negative.** Teacher hard-tier
+   CORRECT-rate 83% → 97.5% (budget-matched) through the verifier filter on the tier where the
+   student was 1/40 (79 gold examples, tripwire silent); SFT on that set came back **negative**
+   (held-out −22.2 pts; a matched-budget diagnostic argues against a budget-only rescue at
+   −33.3) — form-not-function transfer at
+   7B/LoRA/1-epoch. Read: `learnings/2026-07-02-pre-t0-teacher-distillation.md`. The
+   "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
+   ⇒ the P2 gate stays closed). Follow-up experiments tracked: **#192** (E12, untriaged —
+   prioritizing it is a founder call).
 6. **Product/GTM presence — make Assay legible as a REAL product (founder call, 2026-07-02):
    #23 + #189.** The assay.ai one-pager (#23) → a product-grade site + brand identity (#189):
    wordmark/logo, brand guidelines, positioning on the **verifier-isolation story** (the
@@ -89,7 +95,9 @@ solo team. Do this instead:
    benchmark/leaderboard (E14 stays frozen); I11 — no task/corpus content, site code private.
    Runs in #186's wall-clock; never blocks the seat or #186.
 
-### P2 — AFTER the seat closes (T0) AND the teacher-round signal (#186) is positive: the real proof
+### P2 — AFTER the seat closes (T0) AND a positive training-side signal: the real proof
+(#186 landed 2026-07-02 **negative** on the training leg — this gate now awaits a positive
+signal from a follow-up leg (tracked: #192), per the P1-5 read; the collection leg is validated.)
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
 - **Trust infra (the moat):** E2-3/E2-4 reward core + cross-account isolation, E4 ledger, E8 accounts,
   **E9 / T7 guardrails = BLOCKING before any real-AWS episode**, E10 the 15-vector red-team
@@ -98,7 +106,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + the teacher-round signal (#186) + the seat outcome)
+## Freeze list (until: a Henry reply + the seat outcome + a positive training-side signal — the #186 round landed 2026-07-02 negative, so this leg stays open)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
