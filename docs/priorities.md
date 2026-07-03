@@ -73,7 +73,9 @@ solo team. Do this instead:
    "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
    ⇒ the P2 gate stays closed).
 
-### P2 — AFTER the seat closes (T0) AND the teacher-round signal (#186) is positive: the real proof
+### P2 — AFTER the seat closes (T0) AND a positive training-side signal: the real proof
+(#186 landed 2026-07-02 **negative** on the training leg — this gate now awaits a positive
+signal from a follow-up leg, per the P1-5 read; the collection leg is validated.)
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
 - **Trust infra (the moat):** E2-3/E2-4 reward core + cross-account isolation, E4 ledger, E8 accounts,
   **E9 / T7 guardrails = BLOCKING before any real-AWS episode**, E10 the 15-vector red-team
@@ -82,7 +84,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + ~~the teacher-round signal (#186)~~ landed 2026-07-02, not positive + the seat outcome)
+## Freeze list (until: a Henry reply + the seat outcome; the #186 teacher-round signal landed 2026-07-02, not positive)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
