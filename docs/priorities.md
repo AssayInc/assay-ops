@@ -84,7 +84,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + the seat outcome; the #186 teacher-round signal landed 2026-07-02, not positive)
+## Freeze list (until: a Henry reply + the seat outcome + a positive training-side signal — the #186 round landed 2026-07-02 negative, so this leg stays open)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
