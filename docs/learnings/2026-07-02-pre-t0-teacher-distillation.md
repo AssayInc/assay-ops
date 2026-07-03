@@ -64,7 +64,7 @@ un-renderable diagnostic arm (below).
   shifted: dose alone did not help (3.8× the data with better provenance made it worse, not
   flat), so the next training-side leg must explain why it would differ.
 
-## Next experiment (cheap, days — founder's pick)
+## Next experiment (cheap, days — founder's pick; tracked: assay-ops#192)
 
 - **Trajectory-length-matched distillation:** train only on the 29 complete ≤50-message teacher
   episodes (already in the store), re-run the ml=50 delta — isolates pacing mismatch from

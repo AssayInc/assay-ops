@@ -83,7 +83,8 @@ solo team. Do this instead:
    −33.3) — form-not-function transfer at
    7B/LoRA/1-epoch. Read: `learnings/2026-07-02-pre-t0-teacher-distillation.md`. The
    "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
-   ⇒ the P2 gate stays closed).
+   ⇒ the P2 gate stays closed). Follow-up experiments tracked: **#192** (E12, untriaged —
+   prioritizing it is a founder call).
 6. **Product/GTM presence — make Assay legible as a REAL product (founder call, 2026-07-02):
    #23 + #189.** The assay.ai one-pager (#23) → a product-grade site + brand identity (#189):
    wordmark/logo, brand guidelines, positioning on the **verifier-isolation story** (the
@@ -96,7 +97,7 @@ solo team. Do this instead:
 
 ### P2 — AFTER the seat closes (T0) AND a positive training-side signal: the real proof
 (#186 landed 2026-07-02 **negative** on the training leg — this gate now awaits a positive
-signal from a follow-up leg, per the P1-5 read; the collection leg is validated.)
+signal from a follow-up leg (tracked: #192), per the P1-5 read; the collection leg is validated.)
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
 - **Trust infra (the moat):** E2-3/E2-4 reward core + cross-account isolation, E4 ledger, E8 accounts,
   **E9 / T7 guardrails = BLOCKING before any real-AWS episode**, E10 the 15-vector red-team

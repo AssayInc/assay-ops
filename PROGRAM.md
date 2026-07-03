@@ -41,7 +41,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   ml=100 diagnostic pair argues against a budget-only rescue (held-out −33.3; the student learned the
   teacher's 50–73-message pacing without its competence — the trained diagnostic arm overflows
   the student's own 32k serving context and the fail-closed report refuses it). Read + follow-up
-  options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md` + the #186 comment;
+  options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md` + the #186 comment
+  (follow-ups tracked: #192, E12);
   artifacts private (`AssayInc/pre-t0-drift-corpus` `runs/`, adapter
   `AssayInc/pre-t0-qwen25-coder-7b-sft-r2`). **The priorities.md re-evaluation trigger
   "teacher-round signal lands (#186)" has flipped — the re-set is the founder's call; P2 stays
