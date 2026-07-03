@@ -5,6 +5,23 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
+- **#192 (E12, the #186 follow-up) RAN 2026-07-03 — the training-side signal is POSITIVE.**
+  Founder-P1'd; options 1 + 2 only (RL stays off — §8 SFT-only). Both legs flipped the r2
+  negative: **length-matched SFT** (the 29 ml=50-clean teacher episodes, r2 config) → held-out
+  **+33.3** (6/9 → 9/9) with base-like pacing (median 11 msgs, 0 limit-hits — the r2 pathology
+  gone), trained +2.8; **multi-epoch dose** (the unchanged 79 × 5 epochs, train_loss
+  1.52 → 0.844) → held-out **+33.3** (9/9) + trained **+36.1** (12/36 → 25/36), still
+  ceiling-paced (every episode at the 50-msg limit; all 11 trained failures at the limit).
+  135 graded episodes, 0 quarantined/errored; base reproduced r2's trained split exactly
+  (12/36); one pinned vLLM 0.24.0 engine, shared base arms; ~$5 GPU, no new collection. The r2
+  "form-not-function" negative decomposes into **under-training + trajectory-length mismatch**
+  — both fixable; the SFT demonstration vehicle is ALIVE (#176 pivot trigger (a) answered in
+  the negative). **The P2 gate's training-side condition has its signal (R1: directional only,
+  never published) — the priorities re-set is the founder's call; the seat condition still
+  holds.** Read: `docs/learnings/2026-07-03-pre-t0-competence-transfer.md`; artifacts + PINS
+  private (`AssayInc/pre-t0-drift-corpus` `runs/`, adapters
+  `AssayInc/pre-t0-qwen25-coder-7b-sft-r3-{lm,me}`). **P1-6 (product/GTM, #23 + #189) is DONE
+  2026-07-03** — the assay.ai site + brand shipped; struck through in `docs/priorities.md`.
 - **Sequencing is governed by `docs/priorities.md` (re-set 2026-07-02, night: first seat candidate +
   product/GTM elevated).** **P0 = close the RL/eval seat:** first candidate of the new search —
   **Subhojyoti Mukherjee** (Adobe Research; applied post-training incl. a shipped tool-use agent
@@ -28,8 +45,8 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   `docs/learnings/2026-07-02-pre-t0-directional-slice.md`; artifacts + pins in the private HF
   dataset (`AssayInc/pre-t0-drift-corpus`, `runs/`); adapter private
   (`AssayInc/pre-t0-qwen25-coder-7b-sft`). The Freeze list (more trust infra now) holds until the
-  seat outcome + a positive training-side signal (the #186 signal landed negative — leg stays
-  open) + the Henry reply.
+  seat outcome + a positive training-side signal (**#192 landed 2026-07-03 positive** — the
+  condition is met pending the founder's re-set) + the Henry reply.
 - **The #186 teacher-distillation round (P1-5) RAN end-to-end (2026-07-02) — a sharp negative on
   the training leg, a strong positive on the collection leg.** Teacher (claude-sonnet-5) through
   the SAME `drift_slice` harness (`force_tool_calls=true`): hard-tier CORRECT-rate 34/41 (~83%)
@@ -42,11 +59,10 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   teacher's 50–73-message pacing without its competence — the trained diagnostic arm overflows
   the student's own 32k serving context and the fail-closed report refuses it). Read + follow-up
   options: `docs/learnings/2026-07-02-pre-t0-teacher-distillation.md` + the #186 comment
-  (follow-ups tracked: #192, E12);
+  (follow-ups tracked: #192, E12 — **ran 2026-07-03, positive; see the top bullet**);
   artifacts private (`AssayInc/pre-t0-drift-corpus` `runs/`, adapter
   `AssayInc/pre-t0-qwen25-coder-7b-sft-r2`). **The priorities.md re-evaluation trigger
-  "teacher-round signal lands (#186)" has flipped — the re-set is the founder's call; P2 stays
-  gated (signal is not positive).**
+  "teacher-round signal lands (#186)" has flipped — the re-set is the founder's call.**
 - **Python-first core is LOCKED (E17 decision landed, PR #118; epic #113 stays open tracking the follow-ups).** The proof-critical core is **Python**
   (verifier, diff/reward core, IaC adapters, reward ledger, deterministic replay, the OpenEnv env-server,
   episode orchestration in **`py/packages/*`**); **TypeScript** is the public/web/tooling surface
@@ -107,6 +123,23 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#192 (E12): the training-side competence-transfer round — both experiments ran same-day,
+  both POSITIVE (~$5 GPU; no new collection).** Option 1 (**length-matched**): ETL over the two
+  ml=50 teacher logs only → `runs/sft-r3-lm` (29 examples — exactly the predicted ml=50-clean
+  subset; 0 incorrect, 32 excluded-incomplete, tripwire silent; 11/12 tasks — one S3 task has
+  no clean ≤50-msg teacher episode; id in the private PINS), SFT at the r2 config exactly (train_loss 1.52) → **held-out +33.3
+  (6/9 → 9/9), trained +2.8**, pacing normalized (median 11 msgs, 0 limit-hits). Option 2
+  (**multi-epoch dose**): the unchanged `runs/sft-r2` 79 × `num_train_epochs=5` (train_loss
+  0.844) → **held-out +33.3 (9/9), trained +36.1 (12/36 → 25/36)**, pacing unchanged (all 45
+  episodes at the ceiling; grading is budget-agnostic so mid-episode fixes still grade). Option
+  3 (RL) not run — §8 SFT-only, explicit founder call required. Rigor: one pinned vLLM
+  **v0.24.0** engine (the r2-observed version) serving base + both LoRAs, `force_tool_calls=true`
+  every arm, shared base arms, ml=50 × 3 epochs/arm; **135 graded episodes, 0
+  quarantined/errored, K=3-reproducible; base reproduced r2's trained 12/36 exactly**; stack
+  drift recorded (transformers 5.13.0 vs r2's 5.12.1 — minimums frozen per run). All HF jobs
+  cancelled post-run; artifacts + PINS in the private store/dataset (adapters
+  `…-sft-r3-{lm,me}`). Read: `docs/learnings/2026-07-03-pre-t0-competence-transfer.md`. (#192.)
 
 - **#186: the pre-T0 teacher-distillation round — all legs ran end-to-end in one day (~$15
   total; Anthropic spend $10.07 of the $119 ceiling).** Teacher = claude-sonnet-5 through the
