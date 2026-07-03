@@ -55,6 +55,13 @@ uv run --frozen inspect eval py/packages/evals/src/assayops_evals/task.py@drift_
 size to the machine). Rollouts here are **sampling for rejection-sampled SFT** — more epochs =
 more chances at reward-1 trajectories on hard tasks.
 
+**`message_limit` is policy-relative** (`-T message_limit=N`): the 7B works in ~13-message
+episodes, while a frontier teacher's read-and-reconcile episodes need ~2× the 50-message default —
+an episode cut at the ceiling is an incomplete rollout the ETL rightly refuses even when the
+deployed state graded CORRECT. Calibrate the collection budget to the sampled policy; keep the
+delta arms' budget identical across both arms. Training-data trajectory length must also fit the
+student's serving context window, or the distilled policy overflows it at eval time.
+
 **`force_tool_calls=true` is required for Qwen2.5-Coder-7B** (and must be set identically for
 every arm of a run — it is a harness property). Under `tool_choice="auto"` the model emits tool
 calls in a malformed free-form syntax the serving parser cannot read (verified against both vLLM's
@@ -98,6 +105,10 @@ from inspect_ai.log import read_eval_log
 print(render_report(directional_delta(read_eval_log("logs/base-heldout.eval"),
                                       read_eval_log("logs/sft-heldout.eval"))))
 ```
+
+**Always pass `--log-dir` — including to `inspect eval-retry`**, which otherwise defaults to a
+repo-relative `./logs/` and lands a trajectory log inside the code repo (an I11 residency
+violation waiting to be committed). Eval logs belong under the private store's `runs/` only.
 
 With ~a-handful of held-out tasks both reads are noisy — that is the accepted pre-T0 posture
 (never published, not the proof). The report brackets quarantined/errored rollouts and
