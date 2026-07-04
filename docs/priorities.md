@@ -82,22 +82,23 @@ solo team. Do this instead:
    (held-out −22.2 pts; a matched-budget diagnostic argues against a budget-only rescue at
    −33.3) — form-not-function transfer at
    7B/LoRA/1-epoch. Read: `learnings/2026-07-02-pre-t0-teacher-distillation.md`. The
-   "teacher-round signal lands (#186)" re-evaluation trigger has now flipped (signal ≠ positive
-   ⇒ the P2 gate stays closed). Follow-up experiments tracked: **#192** (E12, untriaged —
-   prioritizing it is a founder call).
-6. **Product/GTM presence — make Assay legible as a REAL product (founder call, 2026-07-02):
-   #23 + #189.** The assay.ai one-pager (#23) → a product-grade site + brand identity (#189):
-   wordmark/logo, brand guidelines, positioning on the **verifier-isolation story** (the
-   roadmap-sanctioned public artifact — publishing the *design* leaks nothing), how-it-works, the
-   eval design *described*, and the open co-founder seat. Audience: candidates + a co-founder +
-   buyers — the seat pitch, the scout reply, and every future intro land on this surface.
-   **Guardrails (locked):** R1 — no directional numbers, ever; D1=C — no public
-   benchmark/leaderboard (E14 stays frozen); I11 — no task/corpus content, site code private.
-   Runs in #186's wall-clock; never blocks the seat or #186.
+   "teacher-round signal lands (#186)" re-evaluation trigger flipped negative — the P2 gate
+   stayed closed pending a follow-up leg. That leg landed: **#192** (E12) — **P1'd by the
+   founder and RAN 2026-07-03, POSITIVE**: both training-side legs (length-matched SFT;
+   multi-epoch dose) flipped the held-out delta to +33.3 (directional, never published) — the
+   r2 negative decomposes into under-training + trajectory-length mismatch, both fixable.
+   Read: `learnings/2026-07-03-pre-t0-competence-transfer.md`.
+6. ~~**Product/GTM presence — make Assay legible as a REAL product (founder call, 2026-07-02):
+   #23 + #189.**~~ **DONE 2026-07-03** — the assay.ai product site + brand identity shipped
+   (#23 + #189 closed); positioned on the verifier-isolation story with the guardrails held
+   (R1 — no directional numbers; D1=C — no leaderboard, E14 stays frozen; I11 — no task/corpus
+   content, site code private).
 
 ### P2 — AFTER the seat closes (T0) AND a positive training-side signal: the real proof
-(#186 landed 2026-07-02 **negative** on the training leg — this gate now awaits a positive
-signal from a follow-up leg (tracked: #192), per the P1-5 read; the collection leg is validated.)
+(#186 landed 2026-07-02 **negative** on the training leg; the follow-up **#192 landed
+2026-07-03 POSITIVE** — held-out +33.3 on both legs, directional — so this gate's
+training-side condition has its signal; **the re-set is the founder's call**, and the seat
+condition still holds.)
 Only now complete the horizontal build for the **lab-grade** proof (the un-gameable reward IS required here):
 - **Trust infra (the moat):** E2-3/E2-4 reward core + cross-account isolation, E4 ledger, E8 accounts,
   **E9 / T7 guardrails = BLOCKING before any real-AWS episode**, E10 the 15-vector red-team
@@ -106,7 +107,7 @@ Only now complete the horizontal build for the **lab-grade** proof (the un-gamea
   (OOD slice, ≥3 seeds, clustered SEs, contamination + **beat-synthetic-baseline** checks, +8-10 pt).
 - **Phase 4:** pitch Anthropic via Henry — gated on the proof clearing the bar, not a date.
 
-## Freeze list (until: a Henry reply + the seat outcome + a positive training-side signal — the #186 round landed 2026-07-02 negative, so this leg stays open)
+## Freeze list (until: a Henry reply + the seat outcome + a positive training-side signal — #192 landed 2026-07-03 positive, so this leg's condition is met pending the founder's re-set)
 Do **not** spend effort now on: WORM-ledger signing polish, codegen/contract hardening, account-pool
 automation, further Python-first refinement, the leaderboard (E14), env-server polish beyond what the P1
 slice needs. You already have enough verifier to grade 15 tasks. **More trust infra right now = avoidance
