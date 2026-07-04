@@ -5,6 +5,24 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
 
 ## Right Now
 
+- **#197 (E12, the #192 r4) RAN 2026-07-03 — the composed fix is dead; the r3 multi-epoch
+  student is budget-starved, not lost.** (All numbers R1-framed: PRE-T0 DIRECTIONAL, never
+  published, not §6 evidence; trained-split and diagnostic reads memorization-inflated by
+  design.) Composed (the 29 length-matched examples × 5 epochs):
+  **held-out −55.6 (7/9 → 2/9), trained −25.0 (12/36 → 3/36)**, every episode ceiling-paced —
+  dose interacts with data volume (5 epochs rescued 79 examples, destroyed 29; over-fitting a
+  tiny imitation set degrades the policy wholesale). Diagnostic (the r3-me student, trained
+  split, ml=100 both arms): **30/36 (83.3%) vs base 12/35 (34.3%) → +49.0** — its at-limit
+  ml=50 failures convert with budget (the opposite of r2's under-trained model, where budget
+  made it worse). Overflow downgraded systemic → stochastic-rare (1 episode per aborted first
+  attempt, 0/45 in the full-grid `--continue-on-fail` re-runs); **first quarantine in ~770
+  cumulative graded episodes** fired correctly (transient infra, NaN-excluded, lower bound
+  bracketed — 7A as designed); base trained = 12/36 a third consecutive round. **Recipe dial
+  moves to the data machine: scale the length-compatible teacher set (student-calibrated /
+  completion-friendly collection, 60–100 complete episodes) before re-dosing knobs.** The
+  #192-positive P2-gate signal stands (the r3-me model remains the best student); ~$2 GPU.
+  Read: `docs/learnings/2026-07-03-pre-t0-competence-transfer-r4.md`; artifacts private
+  (`runs/delta-*-r4*`, adapter `…-sft-r4`).
 - **#192 (E12, the #186 follow-up) RAN 2026-07-03 — the training-side signal is POSITIVE.**
   Founder-P1'd; options 1 + 2 only (RL stays off — §8 SFT-only). Both legs flipped the r2
   negative: **length-matched SFT** (the 29 ml=50-clean teacher episodes, r2 config) → held-out
@@ -123,6 +141,21 @@ Keep it concise (see `CLAUDE.md`/`AGENTS.md` → **Program State**).
   stays open; its determinism story now spans #45 + #141/#46/#31 + #47.
 
 ## Recently Landed
+
+- **#197 (E12): the r4 round — composed fix negative, budget diagnostic strongly positive
+  (~$2 GPU, same-day; all numbers R1-framed — directional only, never published, the
+  trained/diagnostic reads memorization-inflated by design).** Composed (`sft-r4`, the
+  unchanged 29 length-matched examples ×
+  `num_train_epochs=5`, train_loss 1.118): held-out **−55.6** (7/9 → 2/9), trained **−25.0**
+  (12/36 → 3/36), 45/45 episodes at the 50-msg ceiling — the r3 fixes don't compose on a tiny
+  set. Diagnostic (r3 `sft-me`, trained split, ml=100 both arms): **+49.0** (base 12/35 → sft
+  30/36) — budget-starved, not lost; r2's "budget doesn't rescue" verdict inverted by proper
+  dose. Rigor: pinned vLLM v0.24.0, one engine (base + both adapters), fresh base arms,
+  `--continue-on-fail` re-runs to full grids after stray-overflow aborts (overflow now
+  stochastic-rare: 0/45 re-run episodes); first-ever quarantine (1 base episode, transient
+  infra, NaN-excluded per 7A) at ~770 cumulative graded episodes; base trained 12/36 for the
+  third round running. All HF jobs cancelled; artifacts + PINS in the private store/dataset.
+  Read: `docs/learnings/2026-07-03-pre-t0-competence-transfer-r4.md`. (#197.)
 
 - **#192 (E12): the training-side competence-transfer round — both experiments ran same-day,
   both POSITIVE (~$5 GPU; no new collection).** Option 1 (**length-matched**): ETL over the two
