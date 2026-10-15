@@ -29,6 +29,16 @@ compressed rule.
   process must exist in `ps`) — never infer "still running" from a quiet output file.
 - **Context:** #192 / PR #196 re-review. Complements [[codex-reviews-run-at-xhigh-not-the-skill-default-high]].
 
+## 2026-07-03 — continue-on-fail-for-measurement-eval-arms
+- **Mistake:** Ran the r4 delta arms with Inspect's fail-fast default; a single 32k serving-window
+  overflow episode aborted a whole arm, forcing a re-run — and a fail-fast abort produces a
+  `status=error` log that can read as "the arm failed" rather than "one episode errored."
+- **Rule:** Run a **measurement** eval arm (a delta/diagnostic where you want the whole grid) with
+  `--continue-on-fail`, so a terminal per-episode error becomes a *counted* errored sample instead
+  of killing the run. The fail-closed report still refuses a partial/mismatched grid, so honesty is
+  preserved either way; you just don't throw away the good episodes.
+- **Context:** #197 / PR #198; r4 arms `delta-sft-r4-heldout`, `delta-sft-me-trained-r4-ml100`.
+
 ## 2026-06-26 — resolve-a-floor-touching-design-decision-with-two-grounded-reviews
 - **Mistake:** Surfaced a moat / frozen-floor-touching design decision (a genuine unreadable → reward 0
   vs. raise) to the founder as a bare `AskUserQuestion` multiple-choice.
